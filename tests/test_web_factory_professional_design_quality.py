@@ -6,7 +6,6 @@ from services.design_quality import (
     NativeDesignQualityEvaluator,
 )
 
-
 _PROFESSIONAL_FAILURES = (
     "giant_heading_failures",
     "empty_visual_placeholders",

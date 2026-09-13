@@ -1,22 +1,22 @@
 # ILAIOS — OBSERVABILITY
 
-**Document Type:** Canonical Observability Architecture & Operations Standard  
-**Format:** GitHub Markdown + ASCII observability diagrams  
-**Status:** Canonical Baseline v1.0 — Published in Repository  
-**Architecture Authority:** `SYSTEM_ARCHITECTURE.md`  
-**Product Authority:** `PRODUCT_REQUIREMENTS.md`  
-**Implementation Authority:** `IMPLEMENTATION_SPEC.md`  
-**Dependency Authority:** `DEPENDENCY_GRAPH.md`  
-**API Authority:** `API_CONTRACTS.md`  
-**Security Authority:** `SECURITY_ARCHITECTURE.md`  
-**Data Authority:** `DATA_ARCHITECTURE.md`  
-**Threat Model Companion:** `THREAT_MODEL.md`  
-**Testing Authority:** `TESTING_AND_EVALUATION.md`  
-**Deployment Authority:** `DEPLOYMENT_ARCHITECTURE.md`  
-**FinOps Authority:** `FINOPS.md`  
-**Engineering Authority:** `ENGINEERING_STANDARDS.md`  
-**Governance Authority:** `docs/governance/GOVERNANCE.md`  
-**Milestone Companion:** `MILESTONES.md`  
+**Document Type:** Canonical Observability Architecture & Operations Standard
+**Format:** GitHub Markdown + ASCII observability diagrams
+**Status:** Canonical Baseline v1.0 — Published in Repository
+**Architecture Authority:** `SYSTEM_ARCHITECTURE.md`
+**Product Authority:** `PRODUCT_REQUIREMENTS.md`
+**Implementation Authority:** `IMPLEMENTATION_SPEC.md`
+**Dependency Authority:** `DEPENDENCY_GRAPH.md`
+**API Authority:** `API_CONTRACTS.md`
+**Security Authority:** `SECURITY_ARCHITECTURE.md`
+**Data Authority:** `DATA_ARCHITECTURE.md`
+**Threat Model Companion:** `THREAT_MODEL.md`
+**Testing Authority:** `TESTING_AND_EVALUATION.md`
+**Deployment Authority:** `DEPLOYMENT_ARCHITECTURE.md`
+**FinOps Authority:** `FINOPS.md`
+**Engineering Authority:** `ENGINEERING_STANDARDS.md`
+**Governance Authority:** `docs/governance/GOVERNANCE.md`
+**Milestone Companion:** `MILESTONES.md`
 **Core Observability Principle:** **OBSERVE THE SYSTEM WITHOUT CREATING A SECOND SOURCE OF TRUTH**
 
 > This document defines the canonical observability model for ILAIOS: telemetry boundaries, logs, metrics, traces, correlation, health, SLOs, alerting, dashboards, provider/tool/worker/RAG visibility, security observability, privacy/redaction, cost observability, incident linkage, production health evidence, and observability Definition of Done. Observability explains what the platform is doing; it does not replace authoritative runtime state, Evidence Records, Policy Decisions, or deployment evidence.

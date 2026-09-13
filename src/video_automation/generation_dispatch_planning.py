@@ -143,17 +143,13 @@ class EpisodeGenerationDispatchPlan:
             raise GenerationDispatchPlanningError(
                 "dispatch_count must equal dispatches length"
             )
-        actual_request_count = sum(
-            len(dispatch.items) for dispatch in self.dispatches
-        )
+        actual_request_count = sum(len(dispatch.items) for dispatch in self.dispatches)
         if self.request_count != actual_request_count:
             raise GenerationDispatchPlanningError(
                 "request_count must equal dispatched item count"
             )
         expected_numbers = tuple(range(1, len(self.dispatches) + 1))
-        actual_numbers = tuple(
-            dispatch.batch_number for dispatch in self.dispatches
-        )
+        actual_numbers = tuple(dispatch.batch_number for dispatch in self.dispatches)
         if actual_numbers != expected_numbers:
             raise GenerationDispatchPlanningError(
                 "dispatch batch_numbers must be contiguous and start at one"
@@ -251,9 +247,7 @@ def _validate_item_order(items: tuple[GenerationDispatchItem, ...]) -> None:
             "items must preserve ascending manifest sequence order"
         )
     if len(sequence_numbers) != len(set(sequence_numbers)):
-        raise GenerationDispatchPlanningError(
-            "item sequence_numbers must be unique"
-        )
+        raise GenerationDispatchPlanningError("item sequence_numbers must be unique")
 
 
 def _canonical_dispatch_material(

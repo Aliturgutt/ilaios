@@ -11,7 +11,6 @@ from services.research_data_http_adapter import (
     register_research_https_source_handler,
 )
 
-
 ResolverResult = list[
     tuple[
         socket.AddressFamily,

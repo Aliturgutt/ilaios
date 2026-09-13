@@ -197,9 +197,13 @@ class ThumbnailGenerationCoordinator:
             raise ThumbnailGenerationError("source_byte_length must be positive")
         source = Path(source_path)
         if source.is_symlink():
-            raise ThumbnailGenerationError("symbolic-link thumbnail sources are prohibited")
+            raise ThumbnailGenerationError(
+                "symbolic-link thumbnail sources are prohibited"
+            )
         if not source.exists() or not source.is_file():
-            raise ThumbnailGenerationError("thumbnail source must be an existing regular file")
+            raise ThumbnailGenerationError(
+                "thumbnail source must be an existing regular file"
+            )
         body = source.read_bytes()
         if not body:
             raise ThumbnailGenerationError("thumbnail source must not be empty")
@@ -215,7 +219,9 @@ class ThumbnailGenerationCoordinator:
 
         output_root = Path(output_directory)
         if output_root.exists() and not output_root.is_dir():
-            raise ThumbnailGenerationError("output_directory must reference a directory")
+            raise ThumbnailGenerationError(
+                "output_directory must reference a directory"
+            )
         output_root.mkdir(parents=True, exist_ok=True)
         material = "|".join(
             (
@@ -232,7 +238,9 @@ class ThumbnailGenerationCoordinator:
         request_digest = sha256(material.encode("utf-8")).hexdigest()
         output = output_root / f"thumbnail-{request_digest[:20]}.jpg"
         if output.resolve() == source.resolve():
-            raise ThumbnailGenerationError("thumbnail output cannot overwrite its source")
+            raise ThumbnailGenerationError(
+                "thumbnail output cannot overwrite its source"
+            )
 
         self._renderer.render(
             source_path=source,
@@ -243,9 +251,13 @@ class ThumbnailGenerationCoordinator:
             safe_text=request.safe_text,
         )
         if output.is_symlink():
-            raise ThumbnailGenerationError("symbolic-link thumbnail outputs are prohibited")
+            raise ThumbnailGenerationError(
+                "symbolic-link thumbnail outputs are prohibited"
+            )
         if not output.exists() or not output.is_file():
-            raise ThumbnailGenerationError("thumbnail renderer did not emit a regular file")
+            raise ThumbnailGenerationError(
+                "thumbnail renderer did not emit a regular file"
+            )
         output_body = output.read_bytes()
         if not output_body:
             raise ThumbnailGenerationError("thumbnail renderer emitted an empty file")
@@ -279,16 +291,15 @@ def _validated_font_path(value: str | Path | None) -> Path | None:
     if path.is_symlink():
         raise ThumbnailGenerationError("symbolic-link thumbnail fonts are prohibited")
     if not path.exists() or not path.is_file():
-        raise ThumbnailGenerationError("thumbnail font must be an existing regular file")
+        raise ThumbnailGenerationError(
+            "thumbnail font must be an existing regular file"
+        )
     return path.resolve()
 
 
 def _escape_filter_path(path: Path) -> str:
     return (
-        str(path.resolve())
-        .replace("\\", "/")
-        .replace(":", "\\:")
-        .replace("'", "\\'")
+        str(path.resolve()).replace("\\", "/").replace(":", "\\:").replace("'", "\\'")
     )
 
 
@@ -297,7 +308,9 @@ def _number(value: float) -> str:
 
 
 def _require_sha256(value: str) -> None:
-    if len(value) != 64 or any(character not in "0123456789abcdef" for character in value):
+    if len(value) != 64 or any(
+        character not in "0123456789abcdef" for character in value
+    ):
         raise ThumbnailGenerationError("SHA-256 values must be lowercase hexadecimal")
 
 

@@ -5,7 +5,9 @@ from hashlib import sha256
 
 import pytest
 
-from services.integrations.video_creative_direction import GovernedCinematographyExecutor
+from services.integrations.video_creative_direction import (
+    GovernedCinematographyExecutor,
+)
 from services.integrations.video_quality import (
     GovernedVideoQaExecutor,
     acceptance_quality_checks,
@@ -20,7 +22,11 @@ from src.video_automation.video_quality import (
     VideoQualityError,
     VideoQualityFoundation,
 )
-from src.video_automation.video_skills import CreativeDirection, QaDomain, VideoSkillError
+from src.video_automation.video_skills import (
+    CreativeDirection,
+    QaDomain,
+    VideoSkillError,
+)
 
 ARTIFACT = sha256(b"finished-video").hexdigest()
 

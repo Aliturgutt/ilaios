@@ -1,18 +1,18 @@
 # ILAIOS — FINOPS
 
-**Document Type:** Canonical FinOps Architecture & Governance Specification  
-**Format:** GitHub Markdown + ASCII control-flow diagrams  
-**Status:** Canonical Baseline v1.0 — Published in Repository  
-**Architecture Authority:** `SYSTEM_ARCHITECTURE.md`  
-**Product Authority:** `PRODUCT_REQUIREMENTS.md`  
-**Implementation Authority:** `IMPLEMENTATION_SPEC.md`  
-**Dependency Authority:** `DEPENDENCY_GRAPH.md`  
-**Security Authority:** `SECURITY_ARCHITECTURE.md`  
-**Data Authority:** `DATA_ARCHITECTURE.md`  
-**API Authority:** `API_CONTRACTS.md`  
-**Threat Model Companion:** `THREAT_MODEL.md`  
-**Testing Authority:** `TESTING_AND_EVALUATION.md`  
-**Deployment Authority:** `DEPLOYMENT_ARCHITECTURE.md`  
+**Document Type:** Canonical FinOps Architecture & Governance Specification
+**Format:** GitHub Markdown + ASCII control-flow diagrams
+**Status:** Canonical Baseline v1.0 — Published in Repository
+**Architecture Authority:** `SYSTEM_ARCHITECTURE.md`
+**Product Authority:** `PRODUCT_REQUIREMENTS.md`
+**Implementation Authority:** `IMPLEMENTATION_SPEC.md`
+**Dependency Authority:** `DEPENDENCY_GRAPH.md`
+**Security Authority:** `SECURITY_ARCHITECTURE.md`
+**Data Authority:** `DATA_ARCHITECTURE.md`
+**API Authority:** `API_CONTRACTS.md`
+**Threat Model Companion:** `THREAT_MODEL.md`
+**Testing Authority:** `TESTING_AND_EVALUATION.md`
+**Deployment Authority:** `DEPLOYMENT_ARCHITECTURE.md`
 **Core FinOps Principle:** **COST IS A GOVERNED EXECUTION CONSTRAINT — NEVER A BYPASS AROUND SECURITY, PRIVACY, QUALITY, OR AUTHORITY**
 
 > This document defines the canonical FinOps model for ILAIOS: budget envelopes, provider/resource costing, spend authorization, usage attribution, forecasting, quotas, retry/repair economics, cost-aware routing, deployment cost controls, alerts, showback/chargeback, unit economics, cost evidence, and FinOps Definition of Done. It defines target financial-governance architecture, not current spend, provider pricing, production bills, or live budget status.

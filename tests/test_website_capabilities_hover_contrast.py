@@ -1,6 +1,5 @@
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 CAPABILITIES = ROOT / "apps" / "website" / "app" / "CapabilitiesPage.tsx"
 TUNING = ROOT / "apps" / "website" / "app" / "website-v2-tuning.css"

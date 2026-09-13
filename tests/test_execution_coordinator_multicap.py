@@ -21,7 +21,10 @@ from services.execution_coordinator import (
     classify_execution_plan,
 )
 from services.governance import GovernedRuntimeGateway
-from services.integrations import DeterministicLocalVideoRuntime, DurableVideoProductRuntime
+from services.integrations import (
+    DeterministicLocalVideoRuntime,
+    DurableVideoProductRuntime,
+)
 from services.integrations.web_product_runtime import DurableWebProductRuntime
 from services.runtime import DurableGrantPolicy, DurableWorkerScheduler, GovernedRuntime
 from src.video_automation.models import JobState

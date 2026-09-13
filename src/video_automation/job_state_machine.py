@@ -13,10 +13,28 @@ class JobStateTransitionError(ValueError):
 
 _ALLOWED: dict[JobState, frozenset[JobState]] = {
     JobState.PENDING: frozenset({JobState.RUNNING, JobState.CANCELLED}),
-    JobState.RUNNING: frozenset({JobState.WAITING_PROVIDER, JobState.VALIDATING, JobState.FAILED, JobState.CANCELLED}),
-    JobState.WAITING_PROVIDER: frozenset({JobState.RUNNING, JobState.RETRY_PENDING, JobState.FAILED, JobState.CANCELLED}),
-    JobState.VALIDATING: frozenset({JobState.COMPLETED, JobState.RETRY_PENDING, JobState.FAILED, JobState.CANCELLED}),
-    JobState.RETRY_PENDING: frozenset({JobState.RUNNING, JobState.FAILED, JobState.CANCELLED}),
+    JobState.RUNNING: frozenset(
+        {
+            JobState.WAITING_PROVIDER,
+            JobState.VALIDATING,
+            JobState.FAILED,
+            JobState.CANCELLED,
+        }
+    ),
+    JobState.WAITING_PROVIDER: frozenset(
+        {JobState.RUNNING, JobState.RETRY_PENDING, JobState.FAILED, JobState.CANCELLED}
+    ),
+    JobState.VALIDATING: frozenset(
+        {
+            JobState.COMPLETED,
+            JobState.RETRY_PENDING,
+            JobState.FAILED,
+            JobState.CANCELLED,
+        }
+    ),
+    JobState.RETRY_PENDING: frozenset(
+        {JobState.RUNNING, JobState.FAILED, JobState.CANCELLED}
+    ),
     JobState.COMPLETED: frozenset(),
     JobState.FAILED: frozenset(),
     JobState.CANCELLED: frozenset(),

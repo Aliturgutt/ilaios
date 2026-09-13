@@ -1,17 +1,17 @@
 # ILAIOS — DEPLOYMENT ARCHITECTURE
 
-**Document Type:** Canonical Deployment Architecture  
-**Format:** GitHub Markdown + ASCII deployment diagrams  
-**Status:** Canonical Baseline v1.0 — Published in Repository  
-**Architecture Authority:** `SYSTEM_ARCHITECTURE.md`  
-**Product Authority:** `PRODUCT_REQUIREMENTS.md`  
-**Implementation Authority:** `IMPLEMENTATION_SPEC.md`  
-**Dependency Authority:** `DEPENDENCY_GRAPH.md`  
-**Security Authority:** `SECURITY_ARCHITECTURE.md`  
-**Data Authority:** `DATA_ARCHITECTURE.md`  
-**API Authority:** `API_CONTRACTS.md`  
-**Threat Model Companion:** `THREAT_MODEL.md`  
-**Testing Authority:** `TESTING_AND_EVALUATION.md`  
+**Document Type:** Canonical Deployment Architecture
+**Format:** GitHub Markdown + ASCII deployment diagrams
+**Status:** Canonical Baseline v1.0 — Published in Repository
+**Architecture Authority:** `SYSTEM_ARCHITECTURE.md`
+**Product Authority:** `PRODUCT_REQUIREMENTS.md`
+**Implementation Authority:** `IMPLEMENTATION_SPEC.md`
+**Dependency Authority:** `DEPENDENCY_GRAPH.md`
+**Security Authority:** `SECURITY_ARCHITECTURE.md`
+**Data Authority:** `DATA_ARCHITECTURE.md`
+**API Authority:** `API_CONTRACTS.md`
+**Threat Model Companion:** `THREAT_MODEL.md`
+**Testing Authority:** `TESTING_AND_EVALUATION.md`
 **Core Deployment Principle:** **DEPLOYMENT MUST PRESERVE ONE CONTROL PLANE, TENANT ISOLATION, BOUNDED EXECUTION, AND PROVABLE RELEASE LINEAGE**
 
 > This document defines the canonical target deployment topology of ILAIOS: environments, trust zones, service boundaries, ingress, Control Plane, queues, workers, data stores, provider adapters, secrets, scaling, high availability, disaster recovery, release promotion, rollback, health verification, and deployment evidence. It does **not** claim that any particular environment is currently deployed, healthy, or production-active unless current runtime/deployment evidence independently proves it.

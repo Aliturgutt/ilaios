@@ -1,12 +1,12 @@
 # ILAIOS — IMPLEMENTATION SPECIFICATION
 
-**Document Type:** Canonical Implementation Specification  
-**Format:** GitHub Markdown  
-**Status:** Canonical Baseline v1.0 — Published in Repository  
-**Architecture Authority:** `SYSTEM_ARCHITECTURE.md`  
-**Autonomous Execution View:** `AUTONOMOUS_NODE_ARCHITECTURE.md`  
-**Product Authority:** `PRODUCT_REQUIREMENTS.md`  
-**Repository Orientation:** `README.md`  
+**Document Type:** Canonical Implementation Specification
+**Format:** GitHub Markdown
+**Status:** Canonical Baseline v1.0 — Published in Repository
+**Architecture Authority:** `SYSTEM_ARCHITECTURE.md`
+**Autonomous Execution View:** `AUTONOMOUS_NODE_ARCHITECTURE.md`
+**Product Authority:** `PRODUCT_REQUIREMENTS.md`
+**Repository Orientation:** `README.md`
 **Core Product Principle:** **SIGN IN → ONE PROMPT → GOVERNED AUTONOMOUS EXECUTION → VERIFIED FINISHED PRODUCT**
 
 > This document defines **how ILAIOS must be implemented**. It translates the canonical architecture and product requirements into code ownership, contracts, state transitions, execution boundaries, persistence rules, testing obligations, evidence obligations, and Definition of Done criteria. It must not create a second architecture.

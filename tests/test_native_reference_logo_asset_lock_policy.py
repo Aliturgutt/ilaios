@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from services.integrations.native_reference_verified_runtime import _logo_only_repairable
+from services.integrations.native_reference_verified_runtime import (
+    _logo_only_repairable,
+)
 from src.video_automation.reference_consistency_review import ReferenceConsistencyReview
 
 

@@ -218,7 +218,9 @@ def _parse_payload(
     try:
         parsed = json.loads(items_json)
     except json.JSONDecodeError as exc:
-        raise OpenRouterManagedVideoProviderError("items_json is not valid JSON") from exc
+        raise OpenRouterManagedVideoProviderError(
+            "items_json is not valid JSON"
+        ) from exc
     if not isinstance(parsed, list) or len(parsed) != 1:
         raise OpenRouterManagedVideoProviderError(
             "items_json must contain exactly one generation item"

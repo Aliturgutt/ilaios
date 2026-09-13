@@ -34,7 +34,8 @@ class FinalMasteringReceipt:
 
 
 class FinalMasteringMediaEngine(Protocol):
-    def probe(self, path: str | Path) -> MediaProbe: ...
+    def probe(self, path: str | Path) -> MediaProbe:
+        ...
 
     def normalize_video(
         self,
@@ -46,7 +47,8 @@ class FinalMasteringMediaEngine(Protocol):
         fps: int,
         video_codec: str,
         audio_codec: str,
-    ) -> MediaCommandResult: ...
+    ) -> MediaCommandResult:
+        ...
 
 
 class Final1080pMasterer:
@@ -90,7 +92,9 @@ class Final1080pMasterer:
 
         output = Path(output_path)
         if output.resolve() == source.resolve():
-            raise FinalMasteringError("upscale output must not overwrite source artifact")
+            raise FinalMasteringError(
+                "upscale output must not overwrite source artifact"
+            )
 
         self._engine.normalize_video(
             input_path=source,

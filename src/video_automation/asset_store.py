@@ -42,14 +42,10 @@ class AssetProvenanceRecord:
         _require_non_blank("provider_job_id", self.provider_job_id)
 
         if self.batch_number <= 0:
-            raise AssetStoreError(
-                "batch_number must be greater than zero"
-            )
+            raise AssetStoreError("batch_number must be greater than zero")
 
         if self.output_index <= 0:
-            raise AssetStoreError(
-                "output_index must be greater than zero"
-            )
+            raise AssetStoreError("output_index must be greater than zero")
 
 
 class PersistentAssetStore:
@@ -59,9 +55,7 @@ class PersistentAssetStore:
         path = Path(registry_path)
 
         if path.exists() and not path.is_file():
-            raise AssetStoreError(
-                f"registry_path must reference a file: {path}"
-            )
+            raise AssetStoreError(f"registry_path must reference a file: {path}")
 
         self._registry_path = path
         self._records: dict[str, AssetProvenanceRecord] = {}
@@ -100,14 +94,10 @@ class PersistentAssetStore:
         local_path = Path(retrieved.local_path)
 
         if not local_path.exists():
-            raise AssetStoreError(
-                f"retrieved asset file does not exist: {local_path}"
-            )
+            raise AssetStoreError(f"retrieved asset file does not exist: {local_path}")
 
         if not local_path.is_file():
-            raise AssetStoreError(
-                f"retrieved asset path is not a file: {local_path}"
-            )
+            raise AssetStoreError(f"retrieved asset path is not a file: {local_path}")
 
         try:
             body = local_path.read_bytes()
@@ -117,9 +107,7 @@ class PersistentAssetStore:
             ) from exc
 
         if not body:
-            raise AssetStoreError(
-                "retrieved asset file must not be empty"
-            )
+            raise AssetStoreError("retrieved asset file must not be empty")
 
         actual_sha256 = sha256(body).hexdigest()
 
@@ -186,9 +174,7 @@ class PersistentAssetStore:
         try:
             return self._records[asset_id]
         except KeyError as exc:
-            raise AssetStoreError(
-                f"asset is not registered: {asset_id}"
-            ) from exc
+            raise AssetStoreError(f"asset is not registered: {asset_id}") from exc
 
     def contains(self, asset_id: str) -> bool:
         """Return whether one asset identifier is registered."""
@@ -205,8 +191,7 @@ class PersistentAssetStore:
         """Return registered assets in deterministic identifier order."""
 
         return tuple(
-            self._records[asset_id].asset
-            for asset_id in self.list_asset_ids()
+            self._records[asset_id].asset for asset_id in self.list_asset_ids()
         )
 
     def require_registered_path(self, asset_id: str) -> Path:
@@ -220,9 +205,7 @@ class PersistentAssetStore:
         path = Path(asset.file_path)
 
         if not path.exists() or not path.is_file():
-            raise AssetStoreError(
-                f"registered asset file is unavailable: {asset_id}"
-            )
+            raise AssetStoreError(f"registered asset file is unavailable: {asset_id}")
 
         try:
             actual_sha256 = sha256(path.read_bytes()).hexdigest()
@@ -232,9 +215,7 @@ class PersistentAssetStore:
             ) from exc
 
         if actual_sha256 != asset.checksum_sha256:
-            raise AssetStoreError(
-                f"registered asset checksum changed: {asset_id}"
-            )
+            raise AssetStoreError(f"registered asset checksum changed: {asset_id}")
 
         return path
 
@@ -287,10 +268,7 @@ class PersistentAssetStore:
         """Return an immutable deterministic provenance mapping."""
 
         return MappingProxyType(
-            {
-                asset_id: self._records[asset_id]
-                for asset_id in self.list_asset_ids()
-            }
+            {asset_id: self._records[asset_id] for asset_id in self.list_asset_ids()}
         )
 
     def _persist(self) -> None:
@@ -317,9 +295,7 @@ class PersistentAssetStore:
             + "\n"
         )
 
-        temporary = self._registry_path.with_name(
-            f"{self._registry_path.name}.tmp"
-        )
+        temporary = self._registry_path.with_name(f"{self._registry_path.name}.tmp")
 
         try:
             temporary.write_text(encoded, encoding="utf-8")
@@ -342,48 +318,35 @@ class PersistentAssetStore:
         try:
             parsed = json.loads(raw)
         except json.JSONDecodeError as exc:
-            raise AssetStoreError(
-                "asset registry is not valid JSON"
-            ) from exc
+            raise AssetStoreError("asset registry is not valid JSON") from exc
 
         if not isinstance(parsed, dict):
-            raise AssetStoreError(
-                "asset registry root must be an object"
-            )
+            raise AssetStoreError("asset registry root must be an object")
 
         schema_version = parsed.get("schema_version")
 
         if schema_version != 1:
             raise AssetStoreError(
-                f"unsupported asset registry schema_version: "
-                f"{schema_version}"
+                f"unsupported asset registry schema_version: " f"{schema_version}"
             )
 
         assets = parsed.get("assets")
 
         if not isinstance(assets, list):
-            raise AssetStoreError(
-                "asset registry assets must be a list"
-            )
+            raise AssetStoreError("asset registry assets must be a list")
 
         loaded: dict[str, AssetProvenanceRecord] = {}
 
         for item in assets:
             if not isinstance(item, dict):
-                raise AssetStoreError(
-                    "asset registry item must be an object"
-                )
+                raise AssetStoreError("asset registry item must be an object")
 
-            record = _record_from_json(
-                cast(dict[str, object], item)
-            )
+            record = _record_from_json(cast(dict[str, object], item))
 
             asset_id = record.asset.asset_id
 
             if asset_id in loaded:
-                raise AssetStoreError(
-                    f"duplicate asset_id in registry: {asset_id}"
-                )
+                raise AssetStoreError(f"duplicate asset_id in registry: {asset_id}")
 
             loaded[asset_id] = record
 
@@ -428,16 +391,13 @@ def _record_from_json(
     output_index = _json_int(item, "output_index")
 
     if not isinstance(validated, bool):
-        raise AssetStoreError(
-            "asset registry validated must be boolean"
-        )
+        raise AssetStoreError("asset registry validated must be boolean")
 
     try:
         media_type = MediaType(media_type_value)
     except ValueError as exc:
         raise AssetStoreError(
-            f"unsupported media_type in asset registry: "
-            f"{media_type_value}"
+            f"unsupported media_type in asset registry: " f"{media_type_value}"
         ) from exc
 
     return AssetProvenanceRecord(
@@ -465,9 +425,7 @@ def _json_string(
     value = item.get(key)
 
     if not isinstance(value, str):
-        raise AssetStoreError(
-            f"asset registry {key} must be a string"
-        )
+        raise AssetStoreError(f"asset registry {key} must be a string")
 
     _require_non_blank(key, value)
     return value
@@ -480,9 +438,7 @@ def _json_int(
     value = item.get(key)
 
     if not isinstance(value, int) or isinstance(value, bool):
-        raise AssetStoreError(
-            f"asset registry {key} must be an integer"
-        )
+        raise AssetStoreError(f"asset registry {key} must be an integer")
 
     return value
 
@@ -492,11 +448,7 @@ def _require_non_blank(
     value: str,
 ) -> None:
     if not value or not value.strip():
-        raise AssetStoreError(
-            f"{name} must not be blank"
-        )
+        raise AssetStoreError(f"{name} must not be blank")
 
     if value != value.strip():
-        raise AssetStoreError(
-            f"{name} must not contain surrounding whitespace"
-        )
+        raise AssetStoreError(f"{name} must not contain surrounding whitespace")

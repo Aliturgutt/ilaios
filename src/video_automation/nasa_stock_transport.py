@@ -171,7 +171,9 @@ def _creator(metadata: dict[str, Any]) -> str:
 
 
 def _fetch_json(url: str) -> dict[str, Any]:
-    request = Request(url, headers={"User-Agent": _USER_AGENT, "Accept": "application/json"})
+    request = Request(
+        url, headers={"User-Agent": _USER_AGENT, "Accept": "application/json"}
+    )
     try:
         with urlopen(request, timeout=15) as response:  # noqa: S310 - fixed HTTPS host
             payload = json.load(response)

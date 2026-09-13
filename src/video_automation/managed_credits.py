@@ -10,7 +10,7 @@ accounting errors.
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from hashlib import sha256
 
 _MICRO_USD_PER_USD = 1_000_000
@@ -96,7 +96,9 @@ class ProviderCostQuote:
             if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
                 raise ManagedCreditError(f"{name} must be a positive integer")
         if self.estimated_cost_microusd > self.max_cost_microusd:
-            raise ManagedCreditError("estimated cost cannot exceed maximum authorized cost")
+            raise ManagedCreditError(
+                "estimated cost cannot exceed maximum authorized cost"
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -174,7 +176,9 @@ class ManagedCreditAuthorizer:
     ) -> CreditAuthorizationOutcome:
         _require_text("request_id", request_id)
         if account.available_microusd < quote.max_cost_microusd:
-            raise ManagedCreditError("insufficient ILAIOS credits for provider authorization")
+            raise ManagedCreditError(
+                "insufficient ILAIOS credits for provider authorization"
+            )
 
         material = "\n".join(
             (
@@ -220,7 +224,9 @@ class ManagedCreditAuthorizer:
         if actual_cost_microusd < 0:
             raise ManagedCreditError("actual provider cost must be non-negative")
         if account.tenant_id != authorization.tenant_id:
-            raise ManagedCreditError("authorization tenant does not match credit account")
+            raise ManagedCreditError(
+                "authorization tenant does not match credit account"
+            )
         if account.user_id != authorization.user_id:
             raise ManagedCreditError("authorization user does not match credit account")
         if account.reserved_microusd < authorization.reserved_microusd:

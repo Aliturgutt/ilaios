@@ -20,7 +20,6 @@ from services.store_release_certification import (
     validate_certification_evidence,
 )
 
-
 _SHA = "a" * 64
 _SOURCE_SHA = "b" * 40
 

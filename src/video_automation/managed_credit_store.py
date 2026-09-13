@@ -173,12 +173,8 @@ class ManagedCreditLedgerStore:
             ).fetchone()
             if existing is not None:
                 existing_row = _row(existing)
-                _same_authorization(
-                    existing_row, current, quote, routing_decision_id
-                )
-                return CreditAuthorizationOutcome(
-                    current, _authorization(existing_row)
-                )
+                _same_authorization(existing_row, current, quote, routing_decision_id)
+                return CreditAuthorizationOutcome(current, _authorization(existing_row))
             outcome = ManagedCreditAuthorizer().authorize(
                 account=current, request_id=request_id, quote=quote
             )
@@ -318,7 +314,9 @@ class ManagedCreditLedgerStore:
                     f"authorization cannot release from state {persistent.state.value}"
                 )
             if account.reserved_microusd < auth.reserved_microusd:
-                raise ManagedCreditError("reserved balance does not cover authorization")
+                raise ManagedCreditError(
+                    "reserved balance does not cover authorization"
+                )
             released = ManagedCreditAccount(
                 tenant_id=account.tenant_id,
                 user_id=account.user_id,
@@ -387,7 +385,9 @@ class ProviderSideEffectLedger:
         digest = provider_request_payload_sha256(request)
         persistent = self._store.get_authorization(authorization.authorization_id)
         if persistent.state is not CreditAuthorizationState.RESERVED:
-            raise ManagedCreditError("provider dispatch requires a reserved authorization")
+            raise ManagedCreditError(
+                "provider dispatch requires a reserved authorization"
+            )
         if persistent.routing_decision_id != routing_decision_id:
             raise ManagedCreditError("routing decision does not match authorization")
         if authorization.request_id != request.request_id:

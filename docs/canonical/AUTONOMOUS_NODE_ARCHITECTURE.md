@@ -1,10 +1,10 @@
 # ILAIOS — AUTONOMOUS NODE ARCHITECTURE
 
-**Document Type:** Canonical Autonomous Node / Execution Topology  
-**Format:** GitHub Markdown + Mermaid  
-**Status:** Proposed Canonical Companion to `SYSTEM_ARCHITECTURE.md`  
-**Purpose:** Show how ILAIOS components connect, delegate, execute, validate, repair, checkpoint, and complete work as an autonomous governed system.  
-**Core Principle:** **SIGN IN → ONE PROMPT → GOVERNED AUTONOMOUS EXECUTION → VERIFIED FINISHED PRODUCT**  
+**Document Type:** Canonical Autonomous Node / Execution Topology
+**Format:** GitHub Markdown + Mermaid
+**Status:** Proposed Canonical Companion to `SYSTEM_ARCHITECTURE.md`
+**Purpose:** Show how ILAIOS components connect, delegate, execute, validate, repair, checkpoint, and complete work as an autonomous governed system.
+**Core Principle:** **SIGN IN → ONE PROMPT → GOVERNED AUTONOMOUS EXECUTION → VERIFIED FINISHED PRODUCT**
 **Authority Rule:** This document visualizes node relationships and autonomous execution topology. It does not override `SYSTEM_ARCHITECTURE.md`; any conflict must be resolved in favor of the canonical system architecture.
 
 ---

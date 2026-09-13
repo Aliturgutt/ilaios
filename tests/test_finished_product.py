@@ -6,8 +6,8 @@ from pathlib import Path
 import pytest
 
 from src.media_quality import (
-    MediaAcceptanceGate,
     MediaAcceptanceEvidence,
+    MediaAcceptanceGate,
     MediaKind,
     MediaQualityDomain,
     MediaQualityObservation,

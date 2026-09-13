@@ -10,7 +10,6 @@ import pytest
 from services.commercial_access import CommercialAccessError
 from services.commercial_webhook import CommercialWebhookVerifier
 
-
 _SECRET = b"s" * 32
 _NOW = datetime(2026, 8, 27, 0, 20, tzinfo=timezone.utc)
 

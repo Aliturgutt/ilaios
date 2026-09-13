@@ -28,7 +28,6 @@ from src.core.evidence_chain import EvidenceChain
 from src.core.immutable_context import ExecutionContext
 from src.core.tool_gateway import ToolGateway
 
-
 CAPABILITY = "text.transform"
 AGENT_ID = "ilaios.agent.external-skill-test.v1"
 PROVIDER_ID = "test.external-provider"

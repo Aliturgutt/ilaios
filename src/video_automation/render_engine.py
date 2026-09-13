@@ -108,9 +108,7 @@ class LocalFfmpegRenderExecutor:
         )
 
         if timeout_seconds <= 0:
-            raise RenderEngineError(
-                "timeout_seconds must be greater than zero"
-            )
+            raise RenderEngineError("timeout_seconds must be greater than zero")
 
         self._ffmpeg_executable = ffmpeg_executable
         self._runner = runner or SubprocessCommandRunner()
@@ -120,16 +118,10 @@ class LocalFfmpegRenderExecutor:
         self,
         request: RenderExecutionRequest,
     ) -> RenderExecutionResult:
-        manifest_path = Path(
-            request.composition.manifest_path
-        )
+        manifest_path = Path(request.composition.manifest_path)
 
         try:
-            payload = json.loads(
-                manifest_path.read_text(
-                    encoding="utf-8"
-                )
-            )
+            payload = json.loads(manifest_path.read_text(encoding="utf-8"))
         except (
             OSError,
             json.JSONDecodeError,
@@ -143,9 +135,7 @@ class LocalFfmpegRenderExecutor:
                 "Remotion composition manifest root must be an object"
             )
 
-        composition_payload = payload.get(
-            "composition"
-        )
+        composition_payload = payload.get("composition")
 
         if not isinstance(composition_payload, dict):
             raise RenderEngineError(
@@ -169,33 +159,20 @@ class LocalFfmpegRenderExecutor:
             "height",
         )
 
-        if (
-            abs(
-                duration_seconds
-                - request.composition.duration_seconds
-            )
-            > 1e-9
-        ):
+        if abs(duration_seconds - request.composition.duration_seconds) > 1e-9:
             raise RenderEngineError(
                 "manifest duration does not match composition artifact"
             )
 
         if fps != request.composition.fps:
-            raise RenderEngineError(
-                "manifest FPS does not match composition artifact"
-            )
+            raise RenderEngineError("manifest FPS does not match composition artifact")
 
-        if (
-            width != request.composition.width
-            or height != request.composition.height
-        ):
+        if width != request.composition.width or height != request.composition.height:
             raise RenderEngineError(
                 "manifest dimensions do not match composition artifact"
             )
 
-        output_path = Path(
-            request.output_path
-        )
+        output_path = Path(request.output_path)
         output_path.parent.mkdir(
             parents=True,
             exist_ok=True,
@@ -220,11 +197,7 @@ class LocalFfmpegRenderExecutor:
             "-f",
             "lavfi",
             "-i",
-            (
-                "anullsrc="
-                "channel_layout=stereo:"
-                "sample_rate=48000"
-            ),
+            ("anullsrc=" "channel_layout=stereo:" "sample_rate=48000"),
             "-t",
             _format_number(duration_seconds),
             "-shortest",
@@ -249,19 +222,13 @@ class LocalFfmpegRenderExecutor:
         )
 
         if not output_path.exists():
-            raise RenderEngineError(
-                "local FFmpeg renderer did not create output"
-            )
+            raise RenderEngineError("local FFmpeg renderer did not create output")
 
         if not output_path.is_file():
-            raise RenderEngineError(
-                "local FFmpeg renderer output is not a file"
-            )
+            raise RenderEngineError("local FFmpeg renderer output is not a file")
 
         if output_path.stat().st_size <= 0:
-            raise RenderEngineError(
-                "local FFmpeg renderer output must not be empty"
-            )
+            raise RenderEngineError("local FFmpeg renderer output must not be empty")
 
         return RenderExecutionResult(
             output_path=str(output_path),
@@ -304,9 +271,7 @@ class RenderEngine:
         requested_output = Path(output_path)
 
         if requested_output.exists() and requested_output.is_dir():
-            raise RenderEngineError(
-                "output_path must reference a file"
-            )
+            raise RenderEngineError("output_path must reference a file")
 
         requested_output.parent.mkdir(
             parents=True,
@@ -323,9 +288,7 @@ class RenderEngine:
             request,
         )
 
-        rendered_path = Path(
-            result.output_path
-        )
+        rendered_path = Path(result.output_path)
 
         if rendered_path != requested_output:
             raise RenderEngineError(
@@ -333,30 +296,20 @@ class RenderEngine:
             )
 
         if not rendered_path.exists():
-            raise RenderEngineError(
-                "renderer output does not exist"
-            )
+            raise RenderEngineError("renderer output does not exist")
 
         if not rendered_path.is_file():
-            raise RenderEngineError(
-                "renderer output is not a file"
-            )
+            raise RenderEngineError("renderer output is not a file")
 
         try:
             body = rendered_path.read_bytes()
         except OSError as exc:
-            raise RenderEngineError(
-                "renderer output is unreadable"
-            ) from exc
+            raise RenderEngineError("renderer output is unreadable") from exc
 
         if not body:
-            raise RenderEngineError(
-                "renderer output must not be empty"
-            )
+            raise RenderEngineError("renderer output must not be empty")
 
-        probe = self._probe_engine.probe(
-            rendered_path
-        )
+        probe = self._probe_engine.probe(rendered_path)
 
         video_stream = _require_stream(
             probe.streams,
@@ -393,17 +346,11 @@ class RenderEngine:
         )
 
         if probe.duration_seconds <= 0:
-            raise RenderEngineError(
-                "rendered media duration must be greater than zero"
-            )
+            raise RenderEngineError("rendered media duration must be greater than zero")
 
-        digest = sha256(
-            body
-        ).hexdigest()
+        digest = sha256(body).hexdigest()
 
-        resolution = (
-            f"{width}x{height}"
-        )
+        resolution = f"{width}x{height}"
 
         aspect_ratio = _aspect_ratio(
             width,
@@ -428,17 +375,13 @@ class RenderEngine:
 
         artifact_id = (
             "render-artifact-"
-            + sha256(
-                identity_material.encode("utf-8")
-            ).hexdigest()[:24]
+            + sha256(identity_material.encode("utf-8")).hexdigest()[:24]
         )
 
         return RenderArtifact(
             artifact_id=artifact_id,
             job_id=job_id,
-            file_path=str(
-                rendered_path.resolve()
-            ),
+            file_path=str(rendered_path.resolve()),
             checksum_sha256=digest,
             codec=video_codec,
             resolution=resolution,
@@ -457,21 +400,15 @@ def _manifest_positive_float(
     value = payload.get(key)
 
     if isinstance(value, bool):
-        raise RenderEngineError(
-            f"manifest field {key} must be numeric"
-        )
+        raise RenderEngineError(f"manifest field {key} must be numeric")
 
     if not isinstance(value, (int, float)):
-        raise RenderEngineError(
-            f"manifest field {key} must be numeric"
-        )
+        raise RenderEngineError(f"manifest field {key} must be numeric")
 
     normalized = float(value)
 
     if normalized <= 0:
-        raise RenderEngineError(
-            f"manifest field {key} must be greater than zero"
-        )
+        raise RenderEngineError(f"manifest field {key} must be greater than zero")
 
     return normalized
 
@@ -483,14 +420,10 @@ def _manifest_positive_int(
     value = payload.get(key)
 
     if isinstance(value, bool) or not isinstance(value, int):
-        raise RenderEngineError(
-            f"manifest field {key} must be an integer"
-        )
+        raise RenderEngineError(f"manifest field {key} must be an integer")
 
     if value <= 0:
-        raise RenderEngineError(
-            f"manifest field {key} must be greater than zero"
-        )
+        raise RenderEngineError(f"manifest field {key} must be greater than zero")
 
     return value
 
@@ -517,25 +450,17 @@ def _verify_composition_artifacts(
         path = Path(path_value)
 
         if not path.exists() or not path.is_file():
-            raise RenderEngineError(
-                f"composition {label} does not exist"
-            )
+            raise RenderEngineError(f"composition {label} does not exist")
 
         try:
             body = path.read_bytes()
         except OSError as exc:
-            raise RenderEngineError(
-                f"composition {label} is unreadable"
-            ) from exc
+            raise RenderEngineError(f"composition {label} is unreadable") from exc
 
-        actual_digest = sha256(
-            body
-        ).hexdigest()
+        actual_digest = sha256(body).hexdigest()
 
         if actual_digest != expected_digest:
-            raise RenderEngineError(
-                f"composition {label} checksum changed"
-            )
+            raise RenderEngineError(f"composition {label} checksum changed")
 
 
 def _require_stream(
@@ -546,9 +471,7 @@ def _require_stream(
         if stream.get("codec_type") == codec_type:
             return stream
 
-    raise RenderEngineError(
-        f"rendered media requires {codec_type} stream"
-    )
+    raise RenderEngineError(f"rendered media requires {codec_type} stream")
 
 
 def _require_stream_text(
@@ -558,9 +481,7 @@ def _require_stream_text(
     value = stream.get(key)
 
     if not isinstance(value, str):
-        raise RenderEngineError(
-            f"stream field {key} must be a string"
-        )
+        raise RenderEngineError(f"stream field {key} must be a string")
 
     _require_non_blank(
         f"stream field {key}",
@@ -577,14 +498,10 @@ def _require_positive_int(
     value = stream.get(key)
 
     if not isinstance(value, int):
-        raise RenderEngineError(
-            f"stream field {key} must be an integer"
-        )
+        raise RenderEngineError(f"stream field {key} must be an integer")
 
     if value <= 0:
-        raise RenderEngineError(
-            f"stream field {key} must be greater than zero"
-        )
+        raise RenderEngineError(f"stream field {key} must be greater than zero")
 
     return value
 
@@ -592,36 +509,24 @@ def _require_positive_int(
 def _parse_frame_rate(
     stream: Mapping[str, object],
 ) -> float:
-    raw = stream.get(
-        "avg_frame_rate"
-    )
+    raw = stream.get("avg_frame_rate")
 
     if not isinstance(raw, str):
-        raw = stream.get(
-            "r_frame_rate"
-        )
+        raw = stream.get("r_frame_rate")
 
     if not isinstance(raw, str):
-        raise RenderEngineError(
-            "video stream requires frame rate"
-        )
+        raise RenderEngineError("video stream requires frame rate")
 
     try:
-        value = float(
-            Fraction(raw)
-        )
+        value = float(Fraction(raw))
     except (
         ValueError,
         ZeroDivisionError,
     ) as exc:
-        raise RenderEngineError(
-            "video stream frame rate is invalid"
-        ) from exc
+        raise RenderEngineError("video stream frame rate is invalid") from exc
 
     if value <= 0:
-        raise RenderEngineError(
-            "video stream frame rate must be greater than zero"
-        )
+        raise RenderEngineError("video stream frame rate must be greater than zero")
 
     return value
 
@@ -635,10 +540,7 @@ def _aspect_ratio(
         height,
     )
 
-    return (
-        f"{width // divisor}:"
-        f"{height // divisor}"
-    )
+    return f"{width // divisor}:" f"{height // divisor}"
 
 
 def _require_non_blank(
@@ -646,11 +548,7 @@ def _require_non_blank(
     value: str,
 ) -> None:
     if not value or not value.strip():
-        raise RenderEngineError(
-            f"{name} must not be blank"
-        )
+        raise RenderEngineError(f"{name} must not be blank")
 
     if value != value.strip():
-        raise RenderEngineError(
-            f"{name} must not contain surrounding whitespace"
-        )
+        raise RenderEngineError(f"{name} must not contain surrounding whitespace")

@@ -13,7 +13,10 @@ from services.app_auth_rbac_plan import (
     RoleRequirement,
     build_auth_rbac_plan,
 )
-from services.app_data_migration_plan import DataMigrationPlan, build_data_migration_plan
+from services.app_data_migration_plan import (
+    DataMigrationPlan,
+    build_data_migration_plan,
+)
 from services.app_domain_model import DomainModelPlan, build_domain_model
 from services.app_product_spec import (
     ProductSpec,

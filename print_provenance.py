@@ -1,0 +1,1 @@
+print(open('tools/web-factory/skills/PROVENANCE.md').read())

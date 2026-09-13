@@ -6,12 +6,15 @@ from pathlib import Path
 
 import pytest
 
-from services.commercial_access import CommercialAccessError, CommercialAccessStore, ProviderSubscriptionState
+from services.commercial_access import (
+    CommercialAccessError,
+    CommercialAccessStore,
+    ProviderSubscriptionState,
+)
 from services.commercial_webhook import VerifiedCommercialWebhookEvent
 from services.control_plane.migrations import migrate_database
 from services.identity_commercial_access import IdentityBoundCommercialAccess
 from src.video_automation.managed_credit_store import ManagedCreditLedgerStore
-
 
 NOW = datetime(2026, 8, 28, 6, 0, tzinfo=timezone.utc)
 

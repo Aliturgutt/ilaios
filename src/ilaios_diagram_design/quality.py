@@ -57,9 +57,13 @@ def validate_spec(spec: DiagramSpec) -> None:
     if len(spec.description) > 320:
         raise DiagramValidationError("description must be at most 320 characters")
     if spec.width < 640 or spec.width > 1920 or spec.width % 8:
-        raise DiagramValidationError("width must be an 8px-grid value between 640 and 1920")
+        raise DiagramValidationError(
+            "width must be an 8px-grid value between 640 and 1920"
+        )
     if spec.height < 480 or spec.height > 1200 or spec.height % 8:
-        raise DiagramValidationError("height must be an 8px-grid value between 480 and 1200")
+        raise DiagramValidationError(
+            "height must be an 8px-grid value between 480 and 1200"
+        )
     if not spec.nodes:
         raise DiagramValidationError("at least one node is required")
 

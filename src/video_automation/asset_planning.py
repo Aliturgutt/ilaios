@@ -91,9 +91,7 @@ class AssetPlanner:
                     metadata={
                         "scene_id": shot.scene_id,
                         "shot_type": shot.shot_type,
-                        "estimated_duration_seconds": (
-                            shot.estimated_duration_seconds
-                        ),
+                        "estimated_duration_seconds": (shot.estimated_duration_seconds),
                         "planning_sha256": digest,
                     },
                 )
@@ -125,6 +123,4 @@ def _require_non_blank(name: str, value: str) -> None:
         raise AssetPlanningError(f"{name} must not be blank")
 
     if value != value.strip():
-        raise AssetPlanningError(
-            f"{name} must not contain surrounding whitespace"
-        )
+        raise AssetPlanningError(f"{name} must not contain surrounding whitespace")

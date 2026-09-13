@@ -10,7 +10,12 @@ import pytest
 from services.agent_governance import AgentInvocation
 from services.control_plane.migrations import migrate_database
 from services.named_agent_executor import NamedAgentExecutor
-from services.runtime import BlastRadiusBudget, ExecutionGrant, GovernedRuntime, GrantPolicy
+from services.runtime import (
+    BlastRadiusBudget,
+    ExecutionGrant,
+    GovernedRuntime,
+    GrantPolicy,
+)
 from services.skill_engineering_catalog import default_skill_engineering_root
 from services.skill_engineering_runtime import (
     SKILL_ENGINEERING_RUNTIME_BINDINGS,

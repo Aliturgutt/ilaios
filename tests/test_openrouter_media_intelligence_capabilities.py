@@ -9,7 +9,9 @@ from services.ai_governance import GovernanceError
 from services.media_intelligence_agent_execution import (
     MEDIA_INTELLIGENCE_GOVERNED_AI_CAPABILITIES,
 )
-from services.openrouter_agent_catalog import discover_free_openrouter_agent_configuration
+from services.openrouter_agent_catalog import (
+    discover_free_openrouter_agent_configuration,
+)
 
 
 class _Response:

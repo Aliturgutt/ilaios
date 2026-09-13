@@ -9,7 +9,12 @@ from pathlib import Path
 
 import pytest
 
-from services.ai_governance import GovernanceError, ModelRecord, ProviderRecord, RoutingPolicy
+from services.ai_governance import (
+    GovernanceError,
+    ModelRecord,
+    ProviderRecord,
+    RoutingPolicy,
+)
 from services.evidence import EvidenceStore
 from services.provider_catalog import ModelQualityRecord, ProviderCatalogSnapshot
 from services.provider_state import (

@@ -132,19 +132,13 @@ class PostPublishVerificationManifest:
             for item in self.evidence
         )
         if self.verified_count != verified:
-            raise PostPublishVerificationError(
-                "verified_count is inconsistent"
-            )
+            raise PostPublishVerificationError("verified_count is inconsistent")
         if self.failed_count != failed:
             raise PostPublishVerificationError("failed_count is inconsistent")
         if self.verified_count + self.failed_count != self.publication_count:
-            raise PostPublishVerificationError(
-                "verification counts are inconsistent"
-            )
+            raise PostPublishVerificationError("verification counts are inconsistent")
         if self.all_verified != (self.failed_count == 0):
-            raise PostPublishVerificationError(
-                "all_verified is inconsistent"
-            )
+            raise PostPublishVerificationError("all_verified is inconsistent")
         package_ids = tuple(item.package_id for item in self.evidence)
         if len(package_ids) != len(set(package_ids)):
             raise PostPublishVerificationError(
@@ -191,8 +185,7 @@ class PostPublishVerificationCoordinator:
             for package_id in sorted(package_by_id)
         )
         verified_count = sum(
-            item.status is PublicationVerificationStatus.VERIFIED
-            for item in evidence
+            item.status is PublicationVerificationStatus.VERIFIED for item in evidence
         )
         failed_count = len(evidence) - verified_count
 
@@ -231,9 +224,7 @@ class PostPublishVerificationCoordinator:
             all_verified=failed_count == 0,
             metadata={
                 "artifact_id": publishing_manifest.artifact_id,
-                "acceptance_decision_id": (
-                    publishing_manifest.acceptance_decision_id
-                ),
+                "acceptance_decision_id": (publishing_manifest.acceptance_decision_id),
             },
         )
 

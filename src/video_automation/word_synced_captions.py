@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from .caption_subtitle import CaptionExportManifest, CaptionCue, CaptionSubtitleEngine
+from .caption_subtitle import CaptionCue, CaptionExportManifest, CaptionSubtitleEngine
 
 
 class WordSyncedCaptionError(ValueError):
@@ -48,7 +48,9 @@ class WordSyncedCaptionManifest:
         if self.export.job_id != self.job_id:
             raise WordSyncedCaptionError("caption export job_id mismatch")
         if self.export.timing_source not in {"voice_alignment", "transcription"}:
-            raise WordSyncedCaptionError("word-synced captions require aligned timing evidence")
+            raise WordSyncedCaptionError(
+                "word-synced captions require aligned timing evidence"
+            )
 
 
 def export_word_synced_captions(

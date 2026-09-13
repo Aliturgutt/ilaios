@@ -5,11 +5,11 @@ from pathlib import Path
 import pytest
 
 from services.software_factory_assurance import (
+    CANONICAL_DOCUMENTS,
+    RED_TEAM_SCENARIOS,
     AssuranceDisposition,
     AssuranceError,
-    CANONICAL_DOCUMENTS,
     DocumentationState,
-    RED_TEAM_SCENARIOS,
     SkillEvalOutcome,
     SoftwareFactoryAssurance,
 )

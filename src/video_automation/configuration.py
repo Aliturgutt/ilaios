@@ -112,7 +112,10 @@ class ProviderPolicy:
         _validate_text("provider_name", provider_name)
         if provider_name in self.blocked_provider_names:
             return False
-        if self.allowed_provider_names and provider_name not in self.allowed_provider_names:
+        if (
+            self.allowed_provider_names
+            and provider_name not in self.allowed_provider_names
+        ):
             return False
         return not (is_paid and not self.allow_paid_providers)
 

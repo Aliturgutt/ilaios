@@ -25,7 +25,6 @@ from services.web_app_preview_sandbox_observer import (
     PreviewRuntimeBoundaryObservation,
 )
 
-
 SOURCE_SHA256 = "a" * 64
 ARTIFACT_SHA256 = "b" * 64
 COMMIT_SHA = "c" * 40

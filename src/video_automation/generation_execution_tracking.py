@@ -180,8 +180,7 @@ class EpisodeGenerationExecutionState:
             for record in self.records
         )
         expected_failed = sum(
-            record.status is GenerationExecutionStatus.FAILED
-            for record in self.records
+            record.status is GenerationExecutionStatus.FAILED for record in self.records
         )
         expected_cancelled = sum(
             record.status is GenerationExecutionStatus.CANCELLED
@@ -246,7 +245,9 @@ class EpisodeGenerationExecutionTracker:
 
         _validate_state_matches_plan(dispatch_plan, current)
         matching = tuple(
-            record for record in current.records if record.dispatch_id == update.dispatch_id
+            record
+            for record in current.records
+            if record.dispatch_id == update.dispatch_id
         )
         if not matching:
             raise GenerationExecutionTrackingError(
@@ -325,11 +326,15 @@ def _validate_status_payload(
     error_code: str | None,
     error_message: str | None,
 ) -> None:
-    if status in {
-        GenerationExecutionStatus.SUBMITTED,
-        GenerationExecutionStatus.RUNNING,
-        GenerationExecutionStatus.SUCCEEDED,
-    } and provider_job_id is None:
+    if (
+        status
+        in {
+            GenerationExecutionStatus.SUBMITTED,
+            GenerationExecutionStatus.RUNNING,
+            GenerationExecutionStatus.SUCCEEDED,
+        }
+        and provider_job_id is None
+    ):
         raise GenerationExecutionTrackingError(
             f"provider_job_id is required for {status.value} status"
         )

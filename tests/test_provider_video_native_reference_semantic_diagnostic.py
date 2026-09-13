@@ -11,8 +11,8 @@ from apps.desktop.e2e.provider_video_native_reference_semantic_diagnostic_e2e im
     semantic_review_evidence,
 )
 from src.video_automation.perceptual_review import (
-    PerceptualReviewSubmission,
     PerceptualReviewerKind,
+    PerceptualReviewSubmission,
 )
 from src.video_automation.video_skills import QaDomain
 

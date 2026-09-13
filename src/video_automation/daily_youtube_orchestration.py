@@ -80,13 +80,15 @@ class CanonicalDailyVideoExecution:
 class CanonicalDailyVideoExecutor(Protocol):
     """Adapter to the existing Video generation/QA authority, not a new runtime."""
 
-    def execute(self, candidate: DailyTopicCandidate) -> CanonicalDailyVideoExecution: ...
+    def execute(self, candidate: DailyTopicCandidate) -> CanonicalDailyVideoExecution:
+        ...
 
 
 class DailyEditorialPlanner(Protocol):
     """Channel-bound editorial planner; factual claims remain source-bound."""
 
-    def plan(self, candidate: DailyTopicCandidate) -> DailyEpisodeEditorial: ...
+    def plan(self, candidate: DailyTopicCandidate) -> DailyEpisodeEditorial:
+        ...
 
 
 class DurableDailyVideoHistory:

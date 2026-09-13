@@ -8,7 +8,6 @@ from services.security_external_tool_adapters import (
     retest_external_tool_result,
 )
 
-
 SHA1 = "1" * 40
 SHA2 = "2" * 40
 

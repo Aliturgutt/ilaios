@@ -64,9 +64,7 @@ class ShotGenerationRequest:
         _require_non_blank("prompt_text", self.prompt_text)
         _require_non_blank("aspect_ratio", self.aspect_ratio)
         if self.duration_seconds <= 0:
-            raise ShotRequestPlanningError(
-                "duration_seconds must be greater than zero"
-            )
+            raise ShotRequestPlanningError("duration_seconds must be greater than zero")
         if self.frames_per_second <= 0:
             raise ShotRequestPlanningError(
                 "frames_per_second must be greater than zero"
@@ -97,9 +95,7 @@ class ShotGenerationRequestPlanner:
         metadata = {
             "shot_id": package.shot_id,
             "source_beat_id": package.source_beat_id,
-            "prompt_sha256": sha256(
-                package.prompt_text.encode("utf-8")
-            ).hexdigest(),
+            "prompt_sha256": sha256(package.prompt_text.encode("utf-8")).hexdigest(),
         }
         return ShotGenerationRequest(
             request_id=request_id,

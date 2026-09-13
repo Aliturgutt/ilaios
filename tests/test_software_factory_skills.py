@@ -8,7 +8,14 @@ from pathlib import Path
 import pytest
 
 from services.software_factory import SoftwareFactoryError
-from services.software_factory_skills import CANONICAL_DENY_SET, REQUIRED_SKILL_IDS, SkillExecutionRequest, SkillExecutor, SkillRegistry, default_skills_root
+from services.software_factory_skills import (
+    CANONICAL_DENY_SET,
+    REQUIRED_SKILL_IDS,
+    SkillExecutionRequest,
+    SkillExecutor,
+    SkillRegistry,
+    default_skills_root,
+)
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 SKILLS_ROOT = default_skills_root(REPOSITORY_ROOT)

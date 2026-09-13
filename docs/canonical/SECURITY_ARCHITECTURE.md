@@ -1,13 +1,13 @@
 # ILAIOS — SECURITY ARCHITECTURE
 
-**Document Type:** Canonical Security Architecture  
-**Format:** GitHub Markdown + ASCII architecture diagrams  
-**Status:** Canonical Baseline v1.0 — Published in Repository  
-**Architecture Authority:** `SYSTEM_ARCHITECTURE.md`  
-**Product Authority:** `PRODUCT_REQUIREMENTS.md`  
-**Implementation Authority:** `IMPLEMENTATION_SPEC.md`  
-**Dependency Authority:** `DEPENDENCY_GRAPH.md`  
-**Threat Analysis Companion:** `THREAT_MODEL.md`  
+**Document Type:** Canonical Security Architecture
+**Format:** GitHub Markdown + ASCII architecture diagrams
+**Status:** Canonical Baseline v1.0 — Published in Repository
+**Architecture Authority:** `SYSTEM_ARCHITECTURE.md`
+**Product Authority:** `PRODUCT_REQUIREMENTS.md`
+**Implementation Authority:** `IMPLEMENTATION_SPEC.md`
+**Dependency Authority:** `DEPENDENCY_GRAPH.md`
+**Threat Analysis Companion:** `THREAT_MODEL.md`
 **Core Security Principle:** **NO PRIVILEGED EXECUTION WITHOUT VERIFIED IDENTITY, TENANT SCOPE, POLICY, AND EVIDENCE**
 
 > This document defines **where security authority lives in ILAIOS, how trust boundaries are enforced, and which controls are mandatory before data, tools, providers, workers, or external side effects can be used**. It defines target security architecture, not current deployment status.

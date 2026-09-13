@@ -475,7 +475,9 @@ class ProviderResult:
             value = getattr(self, name)
             if value is not None:
                 _validate_text(name, value)
-        if self.success and (self.error_code is not None or self.error_message is not None):
+        if self.success and (
+            self.error_code is not None or self.error_message is not None
+        ):
             raise ValueError("successful provider result must not contain an error")
         if not self.success and self.error_message is None:
             raise ValueError("failed provider result requires error_message")

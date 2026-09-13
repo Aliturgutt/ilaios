@@ -1,23 +1,23 @@
 # ILAIOS — FAILURE RECOVERY
 
-**Document Type:** Canonical Failure Recovery & Resilience Standard  
-**Format:** GitHub Markdown + ASCII recovery diagrams  
-**Status:** Canonical Baseline v1.0 — Published in Repository  
-**Architecture Authority:** `SYSTEM_ARCHITECTURE.md`  
-**Product Authority:** `PRODUCT_REQUIREMENTS.md`  
-**Implementation Authority:** `IMPLEMENTATION_SPEC.md`  
-**Dependency Authority:** `DEPENDENCY_GRAPH.md`  
-**API Authority:** `API_CONTRACTS.md`  
-**Security Authority:** `SECURITY_ARCHITECTURE.md`  
-**Data Authority:** `DATA_ARCHITECTURE.md`  
-**Threat Model Companion:** `THREAT_MODEL.md`  
-**Testing Authority:** `TESTING_AND_EVALUATION.md`  
-**Deployment Authority:** `DEPLOYMENT_ARCHITECTURE.md`  
-**FinOps Authority:** `FINOPS.md`  
-**Engineering Authority:** `ENGINEERING_STANDARDS.md`  
-**Governance Authority:** `docs/governance/GOVERNANCE.md`  
-**Milestone Companion:** `MILESTONES.md`  
-**Observability Companion:** `OBSERVABILITY.md`  
+**Document Type:** Canonical Failure Recovery & Resilience Standard
+**Format:** GitHub Markdown + ASCII recovery diagrams
+**Status:** Canonical Baseline v1.0 — Published in Repository
+**Architecture Authority:** `SYSTEM_ARCHITECTURE.md`
+**Product Authority:** `PRODUCT_REQUIREMENTS.md`
+**Implementation Authority:** `IMPLEMENTATION_SPEC.md`
+**Dependency Authority:** `DEPENDENCY_GRAPH.md`
+**API Authority:** `API_CONTRACTS.md`
+**Security Authority:** `SECURITY_ARCHITECTURE.md`
+**Data Authority:** `DATA_ARCHITECTURE.md`
+**Threat Model Companion:** `THREAT_MODEL.md`
+**Testing Authority:** `TESTING_AND_EVALUATION.md`
+**Deployment Authority:** `DEPLOYMENT_ARCHITECTURE.md`
+**FinOps Authority:** `FINOPS.md`
+**Engineering Authority:** `ENGINEERING_STANDARDS.md`
+**Governance Authority:** `docs/governance/GOVERNANCE.md`
+**Milestone Companion:** `MILESTONES.md`
+**Observability Companion:** `OBSERVABILITY.md`
 **Core Recovery Principle:** **FAIL SAFELY, RECOVER BOUNDEDLY, RESUME FROM VERIFIED STATE, AND NEVER TURN UNCERTAINTY INTO FALSE SUCCESS**
 
 > This document defines the canonical ILAIOS failure and recovery model: failure taxonomy, retry and repair semantics, checkpointing, durable resume, cancellation, stale-worker fencing, compensation, degraded modes, rollback, disaster recovery, provider/tool failure handling, evidence continuity, incident linkage, and recovery Definition of Done. It defines target resilience behavior and must not be used to claim that any current environment is healthy, recovered, or production-ready without direct current evidence.

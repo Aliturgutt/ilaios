@@ -1,7 +1,7 @@
 # ADR-0002 — Core Frozen by Default, Evolvable by Proof
 
-**Status:** Accepted — Canonical Rationale  
-**Date:** 2026-08-13  
+**Status:** Accepted — Canonical Rationale
+**Date:** 2026-08-13
 **Authority:** This ADR records rationale only and does not override canonical documents.
 
 ## Context

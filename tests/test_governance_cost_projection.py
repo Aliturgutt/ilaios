@@ -4,7 +4,10 @@ import json
 
 import pytest
 
-from services.governance.cost_projection import CostProjectionError, project_explicit_costs
+from services.governance.cost_projection import (
+    CostProjectionError,
+    project_explicit_costs,
+)
 
 
 def _stored(result: dict[str, object]) -> str:
