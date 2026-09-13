@@ -10,6 +10,8 @@ import '../../control_plane/projection.dart';
 import '../../identity/desktop_identity_action_scope.dart';
 import '../../identity/identity_client.dart';
 import '../../presentation/desktop_runtime_status.dart';
+import '../assistant/assistant_overlay.dart';
+import '../assistant/assistant_symbol.dart';
 import '../create/governed_lifecycle_projection.dart';
 import '../create/reference_asset_picker.dart';
 import '../deliveries/deliveries_view.dart';
@@ -48,6 +50,7 @@ class ReferenceDesktopShellV11 extends StatefulWidget {
     this.onFetchLiState,
     this.onFetchLiMemories,
     this.onRememberLiMemory,
+    this.onAssistantRequest,
     this.onRefreshRequested,
     this.onProvisionAgent,
     this.onGovernanceDecision,
@@ -77,6 +80,7 @@ class ReferenceDesktopShellV11 extends StatefulWidget {
   final Future<DesktopLiMemory> Function(String kind, String content)?
       onRememberLiMemory;
   final VoidCallback? onRefreshRequested;
+  final Future<Map<String, dynamic>> Function(Map<String, Object?>)? onAssistantRequest;
   final Future<void> Function(String agentId)? onProvisionAgent;
   final Future<void> Function(String requestId, GovernanceDecision decision)?
       onGovernanceDecision;
@@ -98,13 +102,45 @@ class _ReferenceDesktopShellV11State extends State<ReferenceDesktopShellV11> {
   ];
 
   DesktopSection _section = DesktopSection.home;
+  final _assistantAnchor = GlobalKey();
+  final _shellAnchor = GlobalKey();
+  bool _assistantOpen = false;
+  bool _assistantMounted = false;
+  double _assistantTop = 592;
+
+  @override
+  void didUpdateWidget(covariant ReferenceDesktopShellV11 oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.userSession?.sessionId != widget.userSession?.sessionId ||
+        oldWidget.userSession?.principalId != widget.userSession?.principalId ||
+        oldWidget.userSession?.tenantId != widget.userSession?.tenantId ||
+        oldWidget.userSession?.liFounder != widget.userSession?.liFounder) {
+      _assistantOpen = false;
+      _assistantMounted = false;
+    }
+  }
+
+  void _toggleAssistant() {
+    if (widget.userSession == null) return;
+    final anchor = _assistantAnchor.currentContext?.findRenderObject();
+    final shell = _shellAnchor.currentContext?.findRenderObject();
+    if (anchor is RenderBox && shell is RenderBox) {
+      _assistantTop = anchor.localToGlobal(Offset(0, anchor.size.height)).dy -
+          shell.localToGlobal(Offset.zero).dy + 8;
+    }
+    setState(() {
+      _assistantOpen = !_assistantOpen;
+      _assistantMounted = true;
+      if (_assistantOpen) _section = DesktopSection.home;
+    });
+  }
 
   bool _isCanonical(DesktopSection section) =>
       _canonicalSections.contains(section);
 
   void _select(DesktopSection section) {
     if (!_isCanonical(section) || _section == section) return;
-    setState(() => _section = section);
+    setState(() { _section = section; _assistantOpen = false; });
   }
 
   Widget _buildSection(String presentedStatus) => switch (_section) {
@@ -178,14 +214,18 @@ class _ReferenceDesktopShellV11State extends State<ReferenceDesktopShellV11> {
               userSession: widget.userSession,
               onPromptSubmit: widget.onPromptSubmit,
               child: Scaffold(
+                key: _shellAnchor,
                 backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-                body: Row(
+                body: Stack(fit: StackFit.expand, children: [
+                  Row(
                   children: [
                     _CanonicalSidebar(
                       selected: _section,
                       projection: widget.projection,
                       snapshot: widget.operationalSnapshot,
                       onSelected: _select,
+                      assistantAnchor: _assistantAnchor,
+                      onAssistant: widget.userSession == null ? null : _toggleAssistant,
                     ),
                     Container(
                       width: 1,
@@ -209,7 +249,21 @@ class _ReferenceDesktopShellV11State extends State<ReferenceDesktopShellV11> {
                       ),
                     ),
                   ],
-                ),
+                  ),
+                  if (_assistantMounted && widget.userSession != null)
+                    Offstage(offstage: !_assistantOpen,
+                      child: AssistantOverlay(
+                        key: ValueKey('assistant-${widget.userSession!.sessionId}'),
+                        session: widget.userSession!,
+                        leftTop: _assistantTop,
+                        onClose: () => setState(() => _assistantOpen = false),
+                        onRequest: widget.onAssistantRequest,
+                        onFetchLiState: widget.onFetchLiState,
+                        onFetchLiMemories: widget.onFetchLiMemories,
+                        onRememberLiMemory: widget.onRememberLiMemory,
+                        onSubmitWork: widget.onPromptSubmit,
+                      )),
+                ]),
               ),
             ),
           ),
@@ -239,6 +293,8 @@ class _CanonicalSidebar extends StatelessWidget {
     required this.projection,
     required this.snapshot,
     required this.onSelected,
+    required this.assistantAnchor,
+    required this.onAssistant,
   });
 
   static const _darkLogo = '../../brand/assets/02-ilaios-primary-horizontal-dark.jpg';
@@ -257,6 +313,8 @@ class _CanonicalSidebar extends StatelessWidget {
   final ControlPlaneProjection projection;
   final OperationalSnapshot snapshot;
   final ValueChanged<DesktopSection> onSelected;
+  final GlobalKey assistantAnchor;
+  final VoidCallback? onAssistant;
 
   Widget _logoWidget(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
@@ -311,6 +369,21 @@ class _CanonicalSidebar extends StatelessWidget {
         ),
         const SizedBox(height: 8),
       ],
+      Material(key: assistantAnchor, color: Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
+        child: InkWell(key: const Key('nav-assistant'), onTap: onAssistant,
+          child: SizedBox(height: 54, child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: Row(children: [
+              const AssistantSymbol(size: 22), const SizedBox(width: 18),
+              Expanded(child: Text(
+                IlaiosLocaleScope.of(context).locale == IlaiosLocale.turkish ? 'Asistan' : 'Assistant',
+                maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 16, height: 1.15, fontWeight: FontWeight.w600),
+              )),
+            ]),
+          )),
+        )),
     ];
 
     if (compactHeight) {
@@ -361,7 +434,7 @@ class _CanonicalSidebar extends StatelessWidget {
         child: LayoutBuilder(
           builder: (context, constraints) => _navigationContent(
             context,
-            compactHeight: constraints.maxHeight < 580,
+            compactHeight: constraints.maxHeight < 650,
           ),
         ),
       ),

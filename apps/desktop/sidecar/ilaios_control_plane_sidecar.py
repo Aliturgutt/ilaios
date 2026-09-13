@@ -478,24 +478,41 @@ def _terminate_frozen_sidecar_parent() -> None:
 
 
 def _wait_for_windows_process_exit(process_id: int) -> None:
-    """Block until the owning Windows Desktop process exits.
+    """Wait until the authoritative Windows Desktop owner is gone.
 
-    The bundled sidecar is detached from the shell that launched the GUI, so
-    stdin EOF is retained only as a fallback. An explicit OS process handle
-    binds crash cleanup to the actual Desktop process without coupling runtime
-    lifetime to PowerShell, Explorer, or another external launcher.
+    Keep ``--desktop-pid`` as the lifetime authority, but avoid an unbounded
+    native wait. Polling a real process handle with an explicit timeout makes
+    owner-loss detection deterministic on hosted Windows runners and still
+    remains independent from the launching shell and stdin EOF.
     """
     if os.name != "nt":
         return
     synchronize = 0x00100000
-    infinite = 0xFFFFFFFF
+    wait_object_0 = 0x00000000
+    wait_timeout = 0x00000102
+    poll_timeout_ms = 250
     kernel32 = ctypes.windll.kernel32
+    kernel32.OpenProcess.argtypes = [ctypes.c_uint32, ctypes.c_int, ctypes.c_uint32]
     kernel32.OpenProcess.restype = ctypes.c_void_p
+    kernel32.WaitForSingleObject.argtypes = [ctypes.c_void_p, ctypes.c_uint32]
+    kernel32.WaitForSingleObject.restype = ctypes.c_uint32
+    kernel32.CloseHandle.argtypes = [ctypes.c_void_p]
+    kernel32.CloseHandle.restype = ctypes.c_int
     handle = kernel32.OpenProcess(synchronize, False, process_id)
     if not handle:
         return
     try:
-        kernel32.WaitForSingleObject(ctypes.c_void_p(handle), infinite)
+        while True:
+            wait_result = kernel32.WaitForSingleObject(
+                ctypes.c_void_p(handle),
+                poll_timeout_ms,
+            )
+            if wait_result == wait_object_0:
+                return
+            if wait_result != wait_timeout:
+                # A failed/invalid owner handle is no longer a trustworthy live
+                # owner. Fail closed into the existing bounded shutdown path.
+                return
     finally:
         kernel32.CloseHandle(ctypes.c_void_p(handle))
 

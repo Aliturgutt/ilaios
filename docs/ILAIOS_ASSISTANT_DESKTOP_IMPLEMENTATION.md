@@ -4,6 +4,50 @@
 
 Implementation specification for the existing foundation PR. This document does not claim runtime completion.
 
+Source integration checkpoint (2026-09-13): PR #1485 at
+`0a9a88bd26337aab7eafcaa21d2100070e2fefbc` is the current Desktop baseline.
+Its 14 changed paths are inherited byte-for-byte into #1521. Assistant-specific
+presentation changes are additive in V11 and its current app/bootstrap/client
+owners; Home, Agents, Pixel Agents, attachments, and their tests are not rewritten.
+Older open PR patches are not implementation sources.
+
+V11 now owns a single localized Assistant trigger and an overlay above the
+unchanged Home subtree. It keeps the overlay state on close/navigation and drops
+it on session/principal/tenant/entitlement changes. Founder panel identity requires
+the existing server-authoritative Li verification; normal users do not instantiate
+the founder memory view. Explicit work submission reuses `onPromptSubmit` and the
+existing governed Desktop intent path. Sending a chat message cannot execute work.
+
+The existing Desktop identity HTTP adapter owns `/v1/assistant`; no second server,
+identity/session authority, memory service, router, or execution gateway is added.
+Account conversations use versioned private JSON documents under the existing
+runtime root, atomically replaced after authenticated writes. Their namespace and
+stored binding include canonical user, tenant, persona, and explicit null project/
+workload scope. User-supplied scope/persona fields are rejected. Reauthentication
+with the same account restores history; a different account/tenant/persona cannot
+read, append, or delete it. Optimistic versions and message IDs reject stale writes
+and mismatched replays. Limits: 100 conversations/account/persona, 200 messages per
+conversation, 8000 characters per input. Explicit authenticated deletion is
+supported; no implicit expiry. These documents are chat history, never Li memory
+or Knowledge records. No existing database schema is changed.
+
+Current grounding is bounded, deterministic public product guidance, with source
+IDs/content versions and UNKNOWN for unconnected live or privileged sources.
+This is not an unrestricted model copilot. User/project/workload-authorized private
+retrieval and live job/CI/price sources remain unconnected. The existing Knowledge
+runtime's service-principal tenant/project policy is not sufficient evidence of a
+particular user's grants; no grant or model context is fabricated to close this gap.
+These acceptance items remain BLOCKED pending canonical authenticated source
+contracts. No private source is fetched on this fallback path.
+
+Geometry reconciliation: preserving today's Settings/menu spacing puts the new
+Assistant trigger bottom near y=584 at 1536x1024. The left arm anchors 8 px below
+that real trigger (approximately y=592), not y=482, which would cover Settings.
+The lower arm targets x=290, y=637, bottom=995. The left-arm y=482 reference target
+is not claimed satisfied. Rendered geometry and Windows acceptance remain
+UNVERIFIED until Flutter/runtime evidence exists. Current Home does not guarantee
+an always-visible fixed nine-card grid; preserve its actual current surfaces.
+
 Authoritative repository: `Aliturgutt/ilaios`
 
 Live master verified before this spec update: `9ac49d9407ff3062260780647220ff94a9890db5`

@@ -291,7 +291,7 @@ class _AgentSection extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    tr ? 'Ajanlar Çalışıyor' : 'Agents',
+                    tr ? 'Ajanlar' : 'Agents',
                     style: const TextStyle(
                       fontSize: 22,
                       height: 1.1,

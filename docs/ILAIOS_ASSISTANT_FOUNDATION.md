@@ -4,6 +4,13 @@
 
 Foundation contract only. This document does not claim production readiness.
 
+Implementation checkpoint: #1521 now contains bounded V11 overlay and authenticated
+account-history integration against the exact current #1485 Desktop baseline.
+The detailed implementation document records the source changes, limits, geometry
+reconciliation, and remaining private-source integration blockers. This does not
+make the full foundation VERIFIED or production-ready; its acceptance requirements
+below remain the target contract.
+
 ## Product split
 
 ### Li — Founder Intelligence
