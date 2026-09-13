@@ -209,6 +209,12 @@ def _cookie_header(cookies: dict[str, str]) -> str:
     return "; ".join(f"{key}={value}" for key, value in cookies.items())
 
 
+def _cross_site_cookie_header(cookies: dict[str, str]) -> str:
+    return _cookie_header(
+        {key: value for key, value in cookies.items() if key != "__Host-ilaios_csrf"}
+    )
+
+
 def _google_login(runtime: AppRuntime) -> tuple[dict[str, str], dict[str, object]]:
     callback = runtime.dispatch(
         RuntimeRequest(
@@ -318,7 +324,7 @@ def test_github_link_flow_binds_to_existing_google_user_and_tenant(
         RuntimeRequest(
             method="GET",
             target="/auth/github/callback?state=link-state-value&code=link-code-value",
-            headers={"Cookie": _cookie_header(cookies)},
+            headers={"Cookie": _cross_site_cookie_header(cookies)},
         ),
         now=_NOW + timedelta(minutes=1, seconds=5),
     )
@@ -328,7 +334,7 @@ def test_github_link_flow_binds_to_existing_google_user_and_tenant(
         RuntimeRequest(
             method="GET",
             target="/auth/session",
-            headers={"Cookie": _cookie_header(cookies)},
+            headers={"Cookie": _cross_site_cookie_header(cookies)},
         ),
         now=_NOW + timedelta(minutes=1, seconds=5),
     )
@@ -390,7 +396,7 @@ def test_github_link_flow_consolidates_existing_isolated_account_into_google(
         RuntimeRequest(
             method="GET",
             target="/auth/github/callback?state=link-state&code=link-code",
-            headers={"Cookie": _cookie_header(google_cookies)},
+            headers={"Cookie": _cross_site_cookie_header(google_cookies)},
         ),
         now=_NOW + timedelta(minutes=1, seconds=5),
     )
@@ -460,7 +466,7 @@ def test_microsoft_link_flow_consolidates_existing_isolated_account_into_google(
         RuntimeRequest(
             method="GET",
             target="/auth/microsoft/callback?state=link-state&code=link-code",
-            headers={"Cookie": _cookie_header(google_cookies)},
+            headers={"Cookie": _cross_site_cookie_header(google_cookies)},
         ),
         now=_NOW + timedelta(minutes=1, seconds=5),
     )

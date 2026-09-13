@@ -56,6 +56,7 @@ def _request(
     origin: str | None = None,
     csrf_header: str | None = None,
     authorization: str | None = None,
+    include_csrf_cookie: bool = True,
 ) -> WebIdentitySessionRequest:
     headers: dict[str, str] = {}
     if origin is not None:
@@ -64,14 +65,16 @@ def _request(
         headers["X-CSRF-Token"] = csrf_header
     if authorization is not None:
         headers["Authorization"] = authorization
+    cookies = {
+        "__Host-ilaios_auth": _AUTH,
+        "__Host-ilaios_session": _SESSION,
+    }
+    if include_csrf_cookie:
+        cookies["__Host-ilaios_csrf"] = _CSRF
     return WebIdentitySessionRequest(
         method=method,
         headers=headers,
-        cookies={
-            "__Host-ilaios_auth": _AUTH,
-            "__Host-ilaios_session": _SESSION,
-            "__Host-ilaios_csrf": _CSRF,
-        },
+        cookies=cookies,
     )
 
 
@@ -116,6 +119,15 @@ def test_mutating_request_requires_exact_origin_and_double_submit_csrf() -> None
         )
     with pytest.raises(WebIdentitySessionError, match="CSRF"):
         boundary.credentials(_request(method="POST", origin=_ORIGIN))
+    with pytest.raises(WebIdentitySessionError, match="csrf cookie"):
+        boundary.credentials(
+            _request(
+                method="POST",
+                origin=_ORIGIN,
+                csrf_header=_CSRF,
+                include_csrf_cookie=False,
+            )
+        )
     with pytest.raises(WebIdentitySessionError, match="CSRF"):
         boundary.credentials(
             _request(method="POST", origin=_ORIGIN, csrf_header="x" * 48)
@@ -130,7 +142,7 @@ def test_browser_boundary_rejects_script_selected_authorization_header() -> None
 
 
 def test_safe_read_uses_host_only_cookies_without_requiring_csrf() -> None:
-    credentials = _boundary().credentials(_request())
+    credentials = _boundary().credentials(_request(include_csrf_cookie=False))
     assert credentials.encoded_token == _AUTH
     assert credentials.session_id == _SESSION
 
