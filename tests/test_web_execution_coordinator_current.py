@@ -81,6 +81,8 @@ def test_web_is_registry_driven_and_accepts_verified_finished_product(tmp_path: 
         token="token",
         principal_id="oidc|web@example.test",
         tenant_id="tenant/web",
+        project_id="project-web-current",
+        workload_id="workload-web-current",
         now=now,
     )
     assert prepared["execution_status"] == ExecutionState.ADMITTED.value
@@ -123,6 +125,8 @@ def test_web_finalizing_crash_recovers_without_false_completion(
         token="token",
         principal_id="oidc|web@example.test",
         tenant_id="tenant/web",
+        project_id="project-web-crash",
+        workload_id="workload-web-crash",
         now=now,
     )
     job_id = str(prepared["job_id"])
@@ -170,6 +174,8 @@ def test_web_high_risk_intent_reaches_human_approval_state(tmp_path: Path) -> No
         token="token",
         principal_id="oidc|owner@example.test",
         tenant_id="tenant/web",
+        project_id="project-web-risk",
+        workload_id="workload-web-risk",
         now=now,
     )
     assert prepared["execution_status"] == ExecutionState.BLOCKED.value

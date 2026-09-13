@@ -12,6 +12,7 @@ import hashlib
 import json
 import re
 import sqlite3
+import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from enum import Enum
@@ -589,6 +590,9 @@ class ExecutionCoordinator:
                 ).fetchall()
             }
             additions = (
+                ("project_id", "TEXT"),
+                ("workload_id", "TEXT"),
+                ("action_instance_id", "TEXT"),
                 ("plan_json", "TEXT"),
                 ("state_version", "INTEGER NOT NULL DEFAULT 0"),
                 ("blocker_code", "TEXT"),
@@ -719,6 +723,8 @@ class ExecutionCoordinator:
         token: str,
         principal_id: str,
         tenant_id: str,
+        project_id: str | None = None,
+        workload_id: str | None = None,
         now: datetime,
     ) -> dict[str, object]:
         _require_identifier(request_id, "request_id")
@@ -752,6 +758,12 @@ class ExecutionCoordinator:
         risk, data_class, budget = classify_execution_policy(objective, plan)
         blockers = _plan_blockers(plan) + _scope_blockers(objective, plan)
         routes = plan.routes
+        is_web = len(routes) == 1 and routes[0].capability_id == _WEB
+        if is_web:
+            _require_identifier(project_id or "", "project_id")
+            _require_identifier(workload_id or "", "workload_id")
+        elif project_id is not None or workload_id is not None:
+            raise ExecutionCoordinatorError("project/workload scope is only supported for Web execution")
 
         if len(routes) > 1 and not blockers:
             return self._prepare_multi(
@@ -856,10 +868,10 @@ class ExecutionCoordinator:
                 connection.execute(
                     "INSERT INTO execution_requests "
                     "(request_id, principal_id, tenant_id, objective, capability_id, "
-                    "adapter_id, goal_id, job_id, proposal_id, status, result_json, "
+                    "adapter_id, goal_id, job_id, proposal_id, project_id, workload_id, action_instance_id, status, result_json, "
                     "created_at, updated_at, plan_json, state_version, blocker_code, "
                     "error_json, attempt, max_attempts, deadline_at, result_sha256, evidence_json) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, 0, ?, NULL, "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, 0, ?, NULL, "
                     "0, ?, ?, NULL, NULL)",
                     (
                         request_id,
@@ -873,6 +885,9 @@ class ExecutionCoordinator:
                         goal_id,
                         job_id,
                         proposal_id,
+                        project_id,
+                        workload_id,
+                        f"act-{uuid.uuid4().hex}",
                         str(status.value),
                         timestamp,
                         timestamp,
@@ -1155,19 +1170,26 @@ class ExecutionCoordinator:
         actor_id: str,
         tenant_id: str,
         now: datetime,
+        project_id: str | None = None,
+        workload_id: str | None = None,
+        job_id: str | None = None,
+        action_instance_id: str | None = None,
+        expected_state_version: int | None = None,
     ) -> str:
         _require_identity_text(actor_id, "actor_id")
         _require_identity_text(tenant_id, "tenant_id")
         _require_aware(now, "cancellation time")
         row = self._request_row(request_id)
         self._require_owner(row, principal_id=actor_id, tenant_id=tenant_id)
+        if str(row["status"]) == ExecutionState.CANCELLED.value:
+            self._require_f14_scope(row, project_id, workload_id, job_id, action_instance_id, int(row["state_version"]))
+            return ExecutionState.CANCELLED.value
+        self._require_f14_scope(row, project_id, workload_id, job_id, action_instance_id, expected_state_version)
         if row["capability_id"] == "ilaios.capability.multi":
             return self._cancel_multi(
                 row, token=token, actor_id=actor_id, now=now
             )
         state = ExecutionState(str(row["status"]))
-        if state is ExecutionState.CANCELLED:
-            return str(state.value)
         if state is ExecutionState.ACCEPTED:
             raise ExecutionCoordinatorError(
                 "accepted execution results are immutable"
@@ -1399,9 +1421,15 @@ class ExecutionCoordinator:
         *,
         principal_id: str | None = None,
         tenant_id: str | None = None,
+        project_id: str | None = None,
+        workload_id: str | None = None,
+        job_id: str | None = None,
+        action_instance_id: str | None = None,
+        expected_state_version: int | None = None,
     ) -> dict[str, object]:
         row = self._request_row(request_id)
         self._require_owner(row, principal_id=principal_id, tenant_id=tenant_id)
+        self._require_f14_scope(row, project_id, workload_id, job_id, action_instance_id, expected_state_version)
         with self._connect() as connection:
             closure: sqlite3.Row | None = connection.execute(
                 "SELECT terminal_status, reason, terminal_at, result_sha256 "
@@ -1416,6 +1444,9 @@ class ExecutionCoordinator:
             "adapter_id": row["adapter_id"],
             "goal_id": row["goal_id"],
             "job_id": row["job_id"],
+            "project_id": row["project_id"],
+            "workload_id": row["workload_id"],
+            "action_instance_id": row["action_instance_id"],
             "proposal_id": row["proposal_id"],
             "execution_status": row["status"],
             "state": row["status"],
@@ -2664,6 +2695,28 @@ class ExecutionCoordinator:
                 "cross-tenant execution access denied"
             )
 
+    @staticmethod
+    def _require_f14_scope(
+        row: sqlite3.Row,
+        project_id: str | None,
+        workload_id: str | None,
+        job_id: str | None,
+        action_instance_id: str | None,
+        expected_state_version: int | None,
+    ) -> None:
+        supplied = (project_id, workload_id, job_id, action_instance_id, expected_state_version)
+        if not any(item is not None for item in supplied):
+            return
+        if any(item is None for item in supplied):
+            raise ExecutionCoordinatorError("full F14 execution scope is required")
+        if not isinstance(expected_state_version, int) or isinstance(expected_state_version, bool):
+            raise ExecutionCoordinatorError("expected state_version is invalid")
+        for name, value in (("project_id", project_id), ("workload_id", workload_id), ("job_id", job_id), ("action_instance_id", action_instance_id)):
+            if row[name] != value:
+                raise ExecutionCoordinatorError(f"execution {name} scope mismatch")
+        if int(row["state_version"]) != expected_state_version:
+            raise ExecutionCoordinatorError("execution state version is stale")
+
     def _transition(
         self,
         request_id: str,
@@ -2896,6 +2949,10 @@ class ExecutionCoordinator:
             "request_id": request_id,
             "principal_id": row["principal_id"],
             "tenant_id": row["tenant_id"],
+            "project_id": row["project_id"],
+            "workload_id": row["workload_id"],
+            "job_id": row["job_id"],
+            "action_instance_id": row["action_instance_id"],
             "state": state.value,
             "capability_id": row["capability_id"],
             "adapter_id": row["adapter_id"],
