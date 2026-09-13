@@ -32,7 +32,7 @@ Desktop reference mockup discussed for this contract is 1536 x 1024 px. Measurem
 
 Reference measurements:
 
-- closed left navigation: approximately 216 px wide
+- canonical closed left navigation: 219 px wide
 - expanded Assistant/Li history area: approximately 290 px wide
 - lower conversation overlay begins at approximately x=289 px
 - lower conversation overlay right edge: approximately x=1524 px
@@ -45,12 +45,13 @@ Reference measurements:
 
 Open behavior is an L-shaped overlay: the left Assistant/Li area expands below the Settings region and the conversation surface overlays the lower Agents area. The `Start work` surface and all nine factory cards remain visible and stationary. The Agents area may be covered while the Assistant/Li surface is open; it MUST NOT be pushed sideways or cause the factory grid to reflow.
 
-Closed behavior restores the normal approximately 216 px navigation without destroying conversation state.
+Closed behavior restores the canonical 219 px navigation without destroying conversation state.
 
-Founder and normal-user presentation MUST be distinct:
+Founder and normal-user presentation MUST be distinct while sharing the same localized sidebar product entry:
 
-- authenticated founder sees `Li` and `Li — Founder Intelligence`
-- normal users see `Asistan` when Desktop UI locale is Turkish and `Assistant` when Desktop UI locale is English
+- founder session: sidebar entry remains localized `Asistan` when Desktop UI locale is Turkish and `Assistant` when Desktop UI locale is English; opening it presents `Li — Founder Intelligence`
+- normal-user session: the same localized `Asistan` / `Assistant` sidebar entry opens `ILAIOS Assistant`
+- founder identity is shown inside the panel, not as a separate sidebar product label
 - normal users MUST NOT receive a rendered Li tab, Li mode, founder-memory control, or founder-only content
 - hiding Li in the client is not an authorization control; founder access MUST also be enforced server-side
 
@@ -148,6 +149,8 @@ The foundation is not DONE until implementation and tests prove at minimum:
 
 - founder principal accepted for Li
 - non-founder principal rejected from Li
+- localized sidebar entry is `Asistan` / `Assistant` for both founder and normal users
+- founder identity appears inside the opened panel as `Li — Founder Intelligence`, not as the sidebar label
 - normal user cannot retrieve founder memory
 - normal-user UI does not render Li/founder controls
 - cross-tenant retrieval rejected
