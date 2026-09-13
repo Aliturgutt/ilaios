@@ -15,6 +15,7 @@ class AssistantOverlay extends StatefulWidget {
   const AssistantOverlay({
     required this.session,
     required this.onClose,
+    this.isOpen = true,
     this.onRequest,
     this.onFetchLiState,
     this.onFetchLiMemories,
@@ -25,6 +26,7 @@ class AssistantOverlay extends StatefulWidget {
 
   final DesktopUserSession session;
   final VoidCallback onClose;
+  final bool isOpen;
   final Future<Map<String, dynamic>> Function(Map<String, Object?>)? onRequest;
   final Future<DesktopLiState> Function()? onFetchLiState;
   final Future<List<DesktopLiMemory>> Function()? onFetchLiMemories;
@@ -37,6 +39,8 @@ class AssistantOverlay extends StatefulWidget {
 
 class _AssistantOverlayState extends State<AssistantOverlay> {
   final _composer = TextEditingController();
+  final _composerFocus = FocusNode(debugLabel: 'Assistant composer');
+  final _closeFocus = FocusNode(debugLabel: 'Assistant close');
   List<Map<String, dynamic>> _history = [];
   Map<String, dynamic>? _conversation;
   bool _founder = false;
@@ -54,13 +58,30 @@ class _AssistantOverlayState extends State<AssistantOverlay> {
   void initState() {
     super.initState();
     _load();
+    _focusPanel();
   }
 
   @override
   void dispose() {
     _stopWaiting();
     _composer.dispose();
+    _composerFocus.dispose();
+    _closeFocus.dispose();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant AssistantOverlay oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!oldWidget.isOpen && widget.isOpen) _focusPanel();
+  }
+
+  void _focusPanel() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && widget.isOpen) {
+        (_busy || _error ? _closeFocus : _composerFocus).requestFocus();
+      }
+    });
   }
 
   void _stopWaiting() {
@@ -161,6 +182,7 @@ class _AssistantOverlayState extends State<AssistantOverlay> {
         _accept(response);
       }
       setState(() { _busy = false; _error = false; });
+      _focusPanel();
     } on Object {
       if (mounted) {
         setState(() {
@@ -186,6 +208,7 @@ class _AssistantOverlayState extends State<AssistantOverlay> {
       if (!mounted) return;
       _history = _maps(listed['conversations']);
       setState(() { _busy = false; _error = false; });
+      _focusPanel();
     } on Object {
       if (mounted) {
         setState(() {
@@ -223,6 +246,7 @@ class _AssistantOverlayState extends State<AssistantOverlay> {
       if (!mounted) return;
       _history = _maps(listed['conversations']);
       setState(() { _busy = false; _error = false; });
+      _focusPanel();
     } on Object {
       if (mounted) {
         setState(() {
@@ -313,7 +337,8 @@ class _AssistantOverlayState extends State<AssistantOverlay> {
     final chatTop = math.max(leftTop + 40, height * 637 / 1024)
         .clamp(0.0, math.max(0.0, height - 220)).toDouble();
     final messages = _conversation?['messages'] as List? ?? const [];
-    return FocusTraversalGroup(
+    return ExcludeFocus(excluding: !widget.isOpen, child: FocusScope(
+      child: FocusTraversalGroup(
       policy: ReadingOrderTraversalPolicy(),
       child: Stack(children: [
       Positioned(left: 0, top: math.min(leftTop, chatTop - 32), bottom: bottom, width: leftWidth,
@@ -321,7 +346,7 @@ class _AssistantOverlayState extends State<AssistantOverlay> {
           Padding(padding: const EdgeInsets.all(12), child: Row(children: [
             const AssistantSymbol(), const SizedBox(width: 8),
             Expanded(child: Text(_copy('Assistant', 'Asistan'), style: const TextStyle(fontWeight: FontWeight.w600))),
-            IconButton(key: const Key('assistant-close'), tooltip: _copy('Close', 'Kapat'),
+            IconButton(key: const Key('assistant-close'), focusNode: _closeFocus, tooltip: _copy('Close', 'Kapat'),
                 onPressed: widget.onClose, icon: const Icon(Icons.close)),
           ])),
           TextButton(key: const Key('assistant-new'), onPressed: _busy ? null : () => _select(null),
@@ -374,6 +399,7 @@ class _AssistantOverlayState extends State<AssistantOverlay> {
                 ])),
           if (!_memory) Padding(padding: const EdgeInsets.all(10), child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
             Expanded(child: TextField(key: const Key('assistant-composer'), controller: _composer,
+              focusNode: _composerFocus,
               enabled: !_busy, minLines: 1, maxLines: 3, maxLength: 8000,
               onChanged: (_) { _pendingMessageId = null; },
               decoration: InputDecoration(hintText: _copy('Message', 'Mesaj'), counterText: ''))),
@@ -388,6 +414,6 @@ class _AssistantOverlayState extends State<AssistantOverlay> {
                 child: Text(_copy('Reload history', 'Geçmişi yenile'))),
           ]),
         ]))),
-    ]));
+    ]))));
   });
 }

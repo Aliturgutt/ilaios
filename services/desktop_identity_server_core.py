@@ -66,6 +66,10 @@ class DesktopIdentityHTTPServer(ThreadingHTTPServer):
         # Conversation documents belong to this existing authenticated adapter,
         # not to Li memory, Knowledge, or an independent Assistant service.
         self.assistant_lock = threading.RLock()
+        # Transport-local occupancy only. Model usage/budget remain owned by
+        # UsageGovernor; this does not mint inference or execution admission.
+        self.assistant_admission_lock = threading.Lock()
+        self.assistant_active_sessions: set[tuple[str, str, str]] = set()
 
     def service_actions(self) -> None:
         """Run bounded crash/orphan reconciliation from the trusted server lifecycle."""
@@ -308,6 +312,23 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
         )
 
     def _assistant(self, body: dict[str, Any]) -> None:
+        session = self._authenticated_session()
+        key = (session.principal_id, session.tenant_id, session.session_id)
+        with self.server.assistant_admission_lock:
+            if key in self.server.assistant_active_sessions:
+                self._send_error(HTTPStatus.TOO_MANY_REQUESTS, "Assistant request already pending")
+                return
+            if len(self.server.assistant_active_sessions) >= 16:
+                self._send_error(HTTPStatus.SERVICE_UNAVAILABLE, "Assistant busy")
+                return
+            self.server.assistant_active_sessions.add(key)
+        try:
+            self._assistant_operation(body)
+        finally:
+            with self.server.assistant_admission_lock:
+                self.server.assistant_active_sessions.discard(key)
+
+    def _assistant_operation(self, body: dict[str, Any]) -> None:
         """Account-scoped chat transport under the existing session authority.
 
         Project/workload grants are not inferred from client context. V1 account

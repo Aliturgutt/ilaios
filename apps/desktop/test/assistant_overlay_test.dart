@@ -2,10 +2,12 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ilaios_desktop/app/desktop_app.dart';
 import 'package:ilaios_desktop/app/ilaios_locale.dart';
 import 'package:ilaios_desktop/control_plane/client.dart';
+import 'package:ilaios_desktop/features/assistant/assistant_overlay.dart';
 import 'package:ilaios_desktop/identity/identity_client.dart';
 
 class _ConversationFixture {
@@ -310,10 +312,13 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('nav-assistant')));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byKey(const Key('assistant-composer')), 'Make a website');
-    await tester.tap(find.byKey(const Key('assistant-send')));
-    await tester.pumpAndSettle();
-    expect(submissions, 0);
+    for (final intent in ['publish it', 'deploy it', 'run it', 'send it',
+      'delete it', 'cancel it', 'use paid model', 'yayınla', 'çalıştır', 'sil', 'iptal et']) {
+      await tester.enterText(find.byKey(const Key('assistant-composer')), intent);
+      await tester.tap(find.byKey(const Key('assistant-send')));
+      await tester.pumpAndSettle();
+      expect(submissions, 0, reason: 'Chat must not dispatch: $intent');
+    }
     await tester.enterText(find.byKey(const Key('assistant-composer')), 'Make a website');
     await tester.tap(find.byKey(const Key('assistant-submit-work')));
     await tester.pumpAndSettle();
@@ -386,6 +391,64 @@ void main() {
       expect(find.byKey(const Key('assistant-error')), findsNothing);
       expect(tester.takeException(), isNull);
     });
+  }
+
+  testWidgets('keyboard composer traversal and close reopen focus restoration', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1536, 1024));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final fixture = _ConversationFixture();
+    await tester.pumpWidget(fixture.app());
+    await tester.pumpAndSettle();
+    final trigger = tester.widget<InkWell>(find.byKey(const Key('nav-assistant')));
+    trigger.focusNode!.requestFocus();
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    final composer = tester.widget<TextField>(find.byKey(const Key('assistant-composer')));
+    expect(composer.focusNode!.hasFocus, isTrue);
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pump();
+    expect(composer.focusNode!.hasFocus, isFalse);
+    final close = tester.widget<IconButton>(find.byKey(const Key('assistant-close')));
+    close.focusNode!.requestFocus();
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(trigger.focusNode!.hasFocus, isTrue);
+    expect(composer.focusNode!.hasFocus, isFalse);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(composer.focusNode!.hasFocus, isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
+  for (final locale in IlaiosLocale.values) {
+    for (final scale in [1.0, 1.25, 1.5]) {
+      for (final brightness in Brightness.values) {
+        testWidgets('Assistant semantics and text scale $locale $scale $brightness', (tester) async {
+          await tester.binding.setSurfaceSize(const Size(1536, 1024));
+          addTearDown(() => tester.binding.setSurfaceSize(null));
+          final semantics = tester.ensureSemantics();
+          addTearDown(semantics.dispose);
+          final fixture = _ConversationFixture();
+          await tester.pumpWidget(MaterialApp(
+            theme: ThemeData(brightness: brightness),
+            home: Builder(builder: (context) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(scale)),
+              child: IlaiosLocaleScope(locale: locale, onChanged: (_) {},
+                child: AssistantOverlay(session: fixture.session, onClose: () {},
+                  onRequest: fixture.request)),
+            )),
+          ));
+          await tester.pumpAndSettle();
+          expect(find.bySemanticsLabel('Li — Founder Intelligence'), findsNothing);
+          expect(find.byKey(const Key('assistant-memory')), findsNothing);
+          expect(find.byTooltip(locale == IlaiosLocale.turkish ? 'Kapat' : 'Close'), findsOneWidget);
+          expect(find.text(locale == IlaiosLocale.turkish ? 'Gönder' : 'Send'), findsOneWidget);
+          expect(tester.takeException(), isNull);
+        });
+      }
+    }
   }
 
 }
