@@ -507,6 +507,42 @@ def validate_android_google_play_certification(certification_sha256: str, expect
         )
 
 
+# Phase 6: ilaios-mobile-android-budget-entitlement
+# Provides canonical SHA256 budget/entitlement validation for Android artifacts.
+# Budget entitlements map certified binary identities to cost centers and
+# must be validated against canonical expectations across Phases 7-10.
+# Budget validation is fail-closed per the truth rule and must cryptographically
+# bind to the certified binary identity chain (golden reference → device receipt → budget).
+_ANDROID_BUDGET_ENTITLEMENT_SHA256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+
+def validate_android_budget_entitlement(entitlement_sha256: str, expected_sha256: str = _ANDROID_BUDGET_ENTITLEMENT_SHA256) -> None:
+    """Validate Android budget/entitlement against golden reference SHA256.
+
+    Fail-closed: raises StoreCertificationError if entitlement SHA256 does not match
+    the canonical golden reference for the budget entitlement type.
+
+    This is a Phase 6 contract: downstream phases (7-10) should replace this
+    placeholder with content-addressed budget entitlement references keyed to actual
+    certified cost center identities per ADR-0004 Runtime Role Separation.
+
+    Args:
+        entitlement_sha256: The SHA256 of the actual budget entitlement bytes
+        expected_sha256: The canonical golden reference SHA256 (Phase 6 placeholder)
+
+    Raises:
+        StoreCertificationError: If entitlement_sha256 != expected_sha256
+    """
+    from services.store_release_certification import StoreCertificationError
+
+    if entitlement_sha256 != expected_sha256:
+        raise StoreCertificationError(
+            f"budget entitlement SHA256 {entitlement_sha256[:16]}... does not match "
+            f"golden reference {expected_sha256[:16]}...; "
+            f"budget entitlement validation failed - see ADR-0004"
+        )
+
+
 # Phase 5: ilaios-mobile-android-device-receipt
 # Provides canonical SHA256 device receipt validation for Android artifacts.
 # Device receipts contain the hardware-bound identity of the installing device
