@@ -31,7 +31,8 @@ void main() {
     expect(find.byKey(const Key('reference-secondary-navigation')), findsNothing);
     expect(find.byKey(const Key('home-command-prompt')), findsOneWidget);
     expect(find.byKey(const Key('home-new-work')), findsOneWidget);
-    expect(find.text('Ajanlar Çalışıyor'), findsOneWidget);
+    expect(find.text('Ajanlar'), findsNWidgets(2));
+    expect(find.text('Ajanlar Çalışıyor'), findsNothing);
     expect(find.text('Doğrulanmış runtime ajan verisi yok'), findsOneWidget);
     expect(find.textContaining('18.362'), findsNothing);
     expect(find.text('96%'), findsNothing);
