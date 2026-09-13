@@ -4,6 +4,83 @@
 
 Implementation specification for the existing foundation PR. This document does not claim runtime completion.
 
+Continuation checkpoint (2026-09-13), based on live-fetched master
+`ddb49269c46ca6fa150976681712b7118ea6b0ca`, which contains merged #1521:
+branch `assistant/full-production-closure-20260913`. This is PARTIAL hardening,
+not full conversational intelligence or production closure. Earlier checkpoints
+below are historical evidence and are not test results for this continuation.
+
+The existing Assistant handler now revalidates session/user/tenant/persona after
+waiting for its existing lock, before saving/deleting, after guidance generation,
+and before responding. The same serialization lock has a two-second acquisition
+limit; timeout returns 503 without mutation. This bounds lock waiting, not the
+number of HTTP threads or a canonical per-session rate quota. No second rate-limit
+authority was introduced. Requests are limited to 65,536 encoded bytes; existing
+8,000-character input, 200-message and 100-conversation limits remain enforced.
+
+Every newly generated deterministic fallback passes an exact-field envelope
+validator, including output length and public-source provenance bounds. It records
+`live=false`, `cost_state=UNKNOWN`, `approval_state=NOT_REQUESTED`, and
+`model_status=ASSISTANT_UNAVAILABLE`. Source observation time, content version and
+evidence ID identify a snapshot, explicitly `SNAPSHOT_NOT_LIVE`. Historical
+responses are not reclassified as live evidence. This validator is NOT evidence
+of a model-output validation path: no conversational model is dispatched.
+
+Desktop adds confirmed deletion through the existing authenticated delete operation
+and 30-second waits for Assistant transport/founder checks. Stop waiting and widget
+disposal discard the pending UI result; they do not claim to abort a server write.
+After an ambiguous write the user must reload the durable conversation before
+retrying. No paid/model dispatch exists on this path. Focus traversal uses Flutter's
+reading-order policy; full keyboard/focus restoration acceptance remains unverified.
+No V11, Home, Agents, attachment, factory, brand, workflow or database schema file
+was changed by this continuation.
+
+Mandatory 28.5 acceptance accounting:
+
+| Area | Current evidence / remaining requirement |
+| --- | --- |
+| A UI / geometry | Existing L-overlay and canonical symbols preserved; new controls need executable Flutter/screenshot evidence. |
+| B Authorization | In-flight logout/user/tenant/founder change tests reject response and leave version/messages unchanged. Rechecks are not a transaction with the separate identity store. |
+| C History | Concurrent writers/replays, send-delete race, restart and account isolation covered by HTTP tests. Confirmed delete UI test added. |
+| D Intelligence | BLOCKED: no admitted Assistant conversational invocation/skill binding in the current canonical provider configuration. No provider SDK or substitute authority added. |
+| E Knowledge | BLOCKED: `DurableKnowledgeRuntime` constructs `IdentityKind.SERVICE`; authenticated human session to revocable project/workload/resource grant identity/provenance is missing from this adapter. Private retrieval remains closed. |
+| F Factories | Add/remove registry regression covers dynamic discovery; names never imply runtime availability. |
+| G Actions | Chat remains read-only. Existing explicit work confirmation/callback preserved; no publish/deploy/paid dispatch added. |
+| H Cost | UNKNOWN. Canonical `GovernedRuntimeGateway.authorize_billable/reconcile_billable` and `GovernedAIProviderAdapter` exist, but no Assistant human-admission/reservation/unknown-result reconciliation binding is proven. Paid and zero-cost real model E2E NOT RUN. |
+| I Security | 26 TR/EN fallback cases plus malformed envelope, bounds and concurrency tests. Pre-model forbidden-context/injected-retrieval tests remain BLOCKED because neither model input nor private retrieval is connected. No claim of model red-team completion. |
+| J UX | Delete, timeout and late-response tests added; Flutter execution pending. Timeout only stops UI waiting, not backend execution. |
+| K Accessibility | Normal-user founder semantics assertions added; reading-order traversal explicit. Keyboard-only navigation, focus restoration, text scaling, Windows 125/150 scaling and screenshots remain UNVERIFIED. |
+| L Quality | See actual validation record below. No exact-head CI result, packaged runtime, production or deployment claim. |
+
+Actual local validation for this continuation: focused/broader HTTP and Li/session
+suite (`test_desktop_assistant_conversations.py`, `test_desktop_li_memory_transport.py`,
+`test_desktop_li_founder_route.py`, `test_desktop_oidc.py`,
+`test_desktop_oidc_persistence.py`, `test_li_app_runtime.py`) passed: **86 tests**.
+Strict Mypy 1.8.0 passed both changed Python files; Ruff 0.1.9 passed both files;
+`git diff --check` passed. These are local source-tree results, not CI evidence.
+Python tools were installed under the scratch workspace after session renewal
+removed the earlier installation. Local PyJWT is 2.14.0 (CI pins 2.13.0), so this is
+not claimed to reproduce the complete locked CI environment.
+
+Pre-commit was run once: end-of-file, whitespace, SF-19 secret scan and SF-20 DB
+migration safety passed; YAML skipped; Ruff/Mypy hooks failed because the hook
+executables were not found. Standalone Ruff/Mypy PASS does not turn that invocation
+into pre-commit PASS. Flutter is not installed: focused/full Flutter tests, analyze,
+pub get, screenshots and Windows scaling/runtime acceptance are ENVIRONMENT BLOCKED.
+No SDK installation was attempted. No real model call, paid expenditure, merge,
+deployment or Windows final acceptance was performed. CI start will be checked once
+after publication; no CI results are claimed in this document.
+
+Other incomplete 28.5 requirements: end-to-end model timeout/cancellation,
+billable reservation/retry reconciliation, context/retrieval token and byte bounds,
+canonical per-session concurrency admission, full sentinel coverage across model
+inputs/logs/audit/serialized state, and live evidence TTL enforcement. These are
+not completed by disabling retrieval or by the deterministic acceptance corpus.
+The corpus proves the currently connected fallback contract only. Existing server
+access logs do not include Assistant request bodies; no new telemetry authority
+or prompt logging was added.
+
+
 Source integration checkpoint (2026-09-13): PR #1485 at
 `0a9a88bd26337aab7eafcaa21d2100070e2fefbc` is the current Desktop baseline.
 Its 14 changed paths are inherited byte-for-byte into #1521. Assistant-specific
