@@ -51,10 +51,15 @@ class _ConversationFixture {
     if (request['operation'] == 'create') created = true;
     document['binding'] = binding;
     if (request['operation'] == 'send') {
-      (document['messages'] as List).addAll([
-        {'role': 'user', 'text': request['text']},
-        {'role': 'assistant', 'text': 'UNKNOWN', 'provenance': []},
-      ]);
+      try {
+        (document['messages'] as List).addAll([
+          {'role': 'user', 'text': request['text']},
+          {'role': 'assistant', 'text': 'UNKNOWN', 'provenance': []},
+        ]);
+      } on Object catch (error) {
+        exchanges.add({'request': request, 'fixture_error': error.toString()});
+        rethrow;
+      }
       document['version'] = (document['version'] as int) + 1;
     }
     return _record(request, {'binding': binding, 'conversation': document});
@@ -231,6 +236,10 @@ void main() {
     await tester.enterText(find.byKey(const Key('assistant-composer')), 'My task');
     await tester.tap(find.byKey(const Key('assistant-send')));
     await tester.pumpAndSettle();
+    expect(fixture.document['version'], 1,
+        reason: 'Initial send must persist: ${jsonEncode(fixture.exchanges)}');
+    expect(tester.widget<TextField>(find.byKey(const Key('assistant-composer')))
+        .controller!.text, isEmpty);
     expect(find.text('My task'), findsOneWidget);
     await tester.tap(find.byKey(const Key('assistant-close')));
     await tester.pumpAndSettle();
