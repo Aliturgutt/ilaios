@@ -247,6 +247,7 @@ def test_inflight_authorization_change_never_commits_or_exposes_answer(
             release.set()
         status, response = future.result(timeout=4)
     assert status == 401
+    assert client.server.assistant_active_sessions == set()
     assert "conversation" not in response
     monkeypatch.undo()
     status, restored = client.call({"operation": "get", "conversation_id": conversation_id}, session)
@@ -263,7 +264,8 @@ def test_simultaneous_writers_and_replays_are_serialized(client: Client) -> None
 
     def send(identifier: str) -> tuple[int, dict[str, Any]]:
         barrier.wait(timeout=3)
-        return client.call(message(conversation_id, message_id=identifier))
+        return client.call(message(conversation_id, message_id=identifier),
+                           "user" if identifier == "first" else "user-new-session")
 
     with ThreadPoolExecutor(max_workers=2) as pool:
         futures = [pool.submit(send, identifier) for identifier in ("first", "second")]
@@ -272,7 +274,8 @@ def test_simultaneous_writers_and_replays_are_serialized(client: Client) -> None
     accepted = next(payload for status, payload in results if status == 200)
     winning_id = accepted["conversation"]["messages"][0]["message_id"]
     with ThreadPoolExecutor(max_workers=2) as pool:
-        replays = [pool.submit(client.call, message(conversation_id, message_id=winning_id)) for _ in range(2)]
+        replays = [pool.submit(client.call, message(conversation_id, message_id=winning_id), session)
+                   for session in ("user", "user-new-session")]
         assert all(future.result(timeout=4) == (200, accepted) for future in replays)
     assert accepted["conversation"]["version"] == 1
     assert len(accepted["conversation"]["messages"]) == 2
@@ -299,7 +302,8 @@ def test_delete_racing_send_cannot_resurrect_conversation(
         send = pool.submit(client.call, message(conversation_id))
         try:
             assert entered.wait(3)
-            delete = pool.submit(client.call, {"operation": "delete", "conversation_id": conversation_id})
+            delete = pool.submit(client.call, {"operation": "delete", "conversation_id": conversation_id},
+                                 "user-new-session")
         finally:
             release.set()
         assert send.result(timeout=4)[0] == 200
@@ -394,6 +398,8 @@ def test_registry_addition_and_removal_are_visible_without_assistant_edits(
 
 @_parametrize("field,value", [
     ("text", "x" * 8001), ("live", True), ("status", "PRODUCTION"),
+    ("status", "APPROVED"), ("status", "BUDGET_OK"), ("status", "FOUNDER"),
+    ("status", "DEPLOYED"), ("status", "VERIFIED"), ("status", "PAID"), ("status", "SUCCESS"),
     ("response_class", "EXECUTED"), ("approval_state", "APPROVED"),
     ("cost_state", "FREE"), ("model_status", "AVAILABLE"),
     ("proposed_action", {"tool": "publish"}), ("user_id", "forged"),
@@ -424,5 +430,38 @@ def test_busy_lock_times_out_without_mutation(client: Client) -> None:
             future = pool.submit(client.call, message(conversation_id))
             status, response = future.result(timeout=4)
     assert status == 503
+    assert client.server.assistant_active_sessions == set()
     assert "conversation" not in response
     assert client.call({"operation": "get", "conversation_id": conversation_id})[1]["conversation"]["version"] == 0
+
+
+
+def test_session_admission_saturation_and_release(client: Client, monkeypatch: pytest.MonkeyPatch) -> None:
+    from concurrent.futures import ThreadPoolExecutor
+
+    from services import desktop_identity_server_core as server
+
+    conversation_id = create(client)
+    entered, release = threading.Event(), threading.Event()
+    original = server._assistant_guidance
+
+    def delayed(text: str, locale: str) -> dict[str, object]:
+        entered.set()
+        assert release.wait(3)
+        return original(text, locale)
+
+    monkeypatch.setattr(server, "_assistant_guidance", delayed)
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        pending = pool.submit(client.call, message(conversation_id))
+        try:
+            assert entered.wait(3)
+            assert client.call({"operation": "list"})[0] == 429
+            # Other user reaches request validation, not the first user's slot.
+            assert client.call({"operation": "invalid"}, "other")[0] == 400
+        finally:
+            release.set()
+        assert pending.result(timeout=4)[0] == 200
+    assert client.server.assistant_active_sessions == set()
+    assert client.call({"operation": "list"})[0] == 200
+    assert client.call({"operation": "invalid"})[0] == 400
+    assert client.server.assistant_active_sessions == set()
