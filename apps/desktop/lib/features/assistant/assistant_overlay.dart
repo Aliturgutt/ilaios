@@ -139,10 +139,12 @@ class _AssistantOverlayState extends State<AssistantOverlay> {
       }
       setState(() { _busy = false; _error = false; });
     } on Object {
-      if (mounted) setState(() {
-        _busy = false; _error = true; _founder = false;
-        _conversation = null; _history = []; _memory = false;
-      });
+      if (mounted) {
+        setState(() {
+          _busy = false; _error = true; _founder = false;
+          _conversation = null; _history = []; _memory = false;
+        });
+      }
     }
   }
 
@@ -162,10 +164,12 @@ class _AssistantOverlayState extends State<AssistantOverlay> {
       _history = _maps(listed['conversations']);
       setState(() { _busy = false; _error = false; });
     } on Object {
-      if (mounted) setState(() {
-        _busy = false; _error = true; _founder = false;
-        _conversation = null; _memory = false;
-      });
+      if (mounted) {
+        setState(() {
+          _busy = false; _error = true; _founder = false;
+          _conversation = null; _memory = false;
+        });
+      }
     }
   }
 
@@ -197,10 +201,12 @@ class _AssistantOverlayState extends State<AssistantOverlay> {
       _history = _maps(listed['conversations']);
       setState(() { _busy = false; _error = false; });
     } on Object {
-      if (mounted) setState(() {
-        _busy = false; _error = true; _founder = false;
-        _conversation = null; _memory = false;
-      });
+      if (mounted) {
+        setState(() {
+          _busy = false; _error = true; _founder = false;
+          _conversation = null; _memory = false;
+        });
+      }
     }
   }
 
