@@ -146,9 +146,7 @@ def _creator(metadata: dict[str, Any]) -> str | None:
         return value.strip()
     if isinstance(value, list):
         creators = [
-            part.strip()
-            for part in value
-            if isinstance(part, str) and part.strip()
+            part.strip() for part in value if isinstance(part, str) and part.strip()
         ]
         if creators:
             return ", ".join(creators)
@@ -188,9 +186,7 @@ def _fetch_json(url: str) -> dict[str, Any]:
         headers={"User-Agent": _USER_AGENT, "Accept": "application/json"},
     )
     try:
-        with urlopen(
-            request, timeout=15
-        ) as response:  # noqa: S310 - fixed HTTPS hosts
+        with urlopen(request, timeout=15) as response:  # noqa: S310 - fixed HTTPS hosts
             raw_payload: object = json.load(response)
     except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as exc:
         raise StockSourceError("Internet Archive HTTP request failed closed") from exc

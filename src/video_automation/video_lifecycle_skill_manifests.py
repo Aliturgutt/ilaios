@@ -9,7 +9,6 @@ from __future__ import annotations
 
 from .video_skills import SkillRisk, VideoSkillManifest
 
-
 VIDEO_LIFECYCLE_SKILLS: tuple[VideoSkillManifest, ...] = (
     VideoSkillManifest(
         "ilaios.skill.video.generation.execute",

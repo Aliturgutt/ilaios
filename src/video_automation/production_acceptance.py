@@ -73,7 +73,10 @@ class ProviderProductionProof:
                 raise VideoProductionAcceptanceError(
                     "fallback provider must be distinct from primary provider"
                 )
-        elif self.fallback_provider_name is not None or self.fallback_receipt_ref is not None:
+        elif (
+            self.fallback_provider_name is not None
+            or self.fallback_receipt_ref is not None
+        ):
             raise VideoProductionAcceptanceError(
                 "non-exercised fallback must not carry fallback identity"
             )
@@ -245,9 +248,7 @@ class OperationsSloProductionProof:
             ("quality_target_ratio", self.quality_target_ratio),
         ):
             if not 0.0 <= ratio_value <= 1.0:
-                raise VideoProductionAcceptanceError(
-                    f"{ratio_name} must be normalized"
-                )
+                raise VideoProductionAcceptanceError(f"{ratio_name} must be normalized")
         for reference_name, reference_value in (
             ("telemetry_evidence_ref", self.telemetry_evidence_ref),
             ("alert_evidence_ref", self.alert_evidence_ref),
@@ -449,8 +450,12 @@ def _evaluate_provider(
     if proof is None:
         blockers.append("missing credentialed production-provider proof")
         return
-    if not _same_identity(bundle, proof.revision_sha, proof.product_id, proof.artifact_sha256):
-        blockers.append("provider proof identity does not match exact production artifact")
+    if not _same_identity(
+        bundle, proof.revision_sha, proof.product_id, proof.artifact_sha256
+    ):
+        blockers.append(
+            "provider proof identity does not match exact production artifact"
+        )
     if not proof.succeeded:
         blockers.append("production provider generation did not succeed")
     if proof.fallback_required and not proof.fallback_exercised:
@@ -464,8 +469,12 @@ def _evaluate_perceptual(
     if proof is None:
         blockers.append("missing independent VISUAL/AUDIO/BRAND production QA proof")
         return
-    if not _same_identity(bundle, proof.revision_sha, proof.product_id, proof.artifact_sha256):
-        blockers.append("perceptual QA proof identity does not match exact production artifact")
+    if not _same_identity(
+        bundle, proof.revision_sha, proof.product_id, proof.artifact_sha256
+    ):
+        blockers.append(
+            "perceptual QA proof identity does not match exact production artifact"
+        )
     failed = sorted(review.domain for review in proof.reviews if not review.passed)
     if failed:
         blockers.append("perceptual QA failed domains: " + ",".join(failed))
@@ -478,8 +487,12 @@ def _evaluate_publication(
     if proof is None:
         blockers.append("missing real OAuth publication and reconciliation proof")
         return
-    if not _same_identity(bundle, proof.revision_sha, proof.product_id, proof.artifact_sha256):
-        blockers.append("publication proof identity does not match exact production artifact")
+    if not _same_identity(
+        bundle, proof.revision_sha, proof.product_id, proof.artifact_sha256
+    ):
+        blockers.append(
+            "publication proof identity does not match exact production artifact"
+        )
 
 
 def _evaluate_operations(
@@ -487,45 +500,66 @@ def _evaluate_operations(
 ) -> None:
     proof = bundle.operations
     if proof is None:
-        blockers.append("missing production cost/latency/availability/quality SLO proof")
+        blockers.append(
+            "missing production cost/latency/availability/quality SLO proof"
+        )
         return
-    if not _same_identity(bundle, proof.revision_sha, proof.product_id, proof.artifact_sha256):
-        blockers.append("operations proof identity does not match exact production artifact")
+    if not _same_identity(
+        bundle, proof.revision_sha, proof.product_id, proof.artifact_sha256
+    ):
+        blockers.append(
+            "operations proof identity does not match exact production artifact"
+        )
     if not proof.passed:
-        blockers.append("production operations SLO evidence is outside accepted thresholds")
+        blockers.append(
+            "production operations SLO evidence is outside accepted thresholds"
+        )
 
 
-def _evaluate_legal(
-    bundle: VideoProductionEvidenceBundle, blockers: list[str]
-) -> None:
+def _evaluate_legal(bundle: VideoProductionEvidenceBundle, blockers: list[str]) -> None:
     proof = bundle.legal_provenance
     if proof is None:
         blockers.append("missing copyright/license/consent production evidence")
         return
-    if not _same_identity(bundle, proof.revision_sha, proof.product_id, proof.artifact_sha256):
-        blockers.append("legal provenance proof identity does not match exact production artifact")
+    if not _same_identity(
+        bundle, proof.revision_sha, proof.product_id, proof.artifact_sha256
+    ):
+        blockers.append(
+            "legal provenance proof identity does not match exact production artifact"
+        )
     if not proof.passed:
-        blockers.append("legal provenance inventory is incomplete or not commercially cleared")
+        blockers.append(
+            "legal provenance inventory is incomplete or not commercially cleared"
+        )
 
 
-def _evaluate_e2e(
-    bundle: VideoProductionEvidenceBundle, blockers: list[str]
-) -> None:
+def _evaluate_e2e(bundle: VideoProductionEvidenceBundle, blockers: list[str]) -> None:
     proof = bundle.end_to_end
     if proof is None:
-        blockers.append("missing authenticated one-prompt real-provider production E2E proof")
+        blockers.append(
+            "missing authenticated one-prompt real-provider production E2E proof"
+        )
         return
-    if not _same_identity(bundle, proof.revision_sha, proof.product_id, proof.artifact_sha256):
+    if not _same_identity(
+        bundle, proof.revision_sha, proof.product_id, proof.artifact_sha256
+    ):
         blockers.append("E2E proof identity does not match exact production artifact")
     if not proof.succeeded:
         blockers.append("production end-to-end run did not succeed")
-    if bundle.provider is not None and proof.provider_request_id != bundle.provider.request_id:
-        blockers.append("E2E provider request is not bound to provider production proof")
+    if (
+        bundle.provider is not None
+        and proof.provider_request_id != bundle.provider.request_id
+    ):
+        blockers.append(
+            "E2E provider request is not bound to provider production proof"
+        )
     if (
         bundle.publication is not None
         and proof.publication_receipt_ref != bundle.publication.publication_receipt_ref
     ):
-        blockers.append("E2E publication receipt is not bound to publication production proof")
+        blockers.append(
+            "E2E publication receipt is not bound to publication production proof"
+        )
 
 
 def _same_identity(
@@ -560,7 +594,9 @@ def _timestamp(name: str, value: str) -> datetime:
 
 def _text(name: str, value: str) -> None:
     if not value or value != value.strip():
-        raise VideoProductionAcceptanceError(f"{name} must be non-blank normalized text")
+        raise VideoProductionAcceptanceError(
+            f"{name} must be non-blank normalized text"
+        )
 
 
 def _optional_text(name: str, value: str | None) -> None:
@@ -569,10 +605,14 @@ def _optional_text(name: str, value: str | None) -> None:
 
 
 def _sha256(name: str, value: str) -> None:
-    if len(value) != 64 or any(character not in "0123456789abcdef" for character in value):
+    if len(value) != 64 or any(
+        character not in "0123456789abcdef" for character in value
+    ):
         raise VideoProductionAcceptanceError(f"{name} must be lowercase SHA-256")
 
 
 def _git_sha(name: str, value: str) -> None:
-    if len(value) != 40 or any(character not in "0123456789abcdef" for character in value):
+    if len(value) != 40 or any(
+        character not in "0123456789abcdef" for character in value
+    ):
         raise VideoProductionAcceptanceError(f"{name} must be lowercase 40-hex Git SHA")

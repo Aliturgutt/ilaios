@@ -63,7 +63,8 @@ class NativeGenerationBackend(Protocol):
         *,
         manifest: MediaModelManifest,
         hardware: NativeWorkerHardware,
-    ) -> NativeGenerationReceipt: ...
+    ) -> NativeGenerationReceipt:
+        ...
 
 
 class NativeVideoWorker(VideoGenerationProvider):
@@ -79,8 +80,13 @@ class NativeVideoWorker(VideoGenerationProvider):
     ) -> None:
         if manifest.eligibility is not ModelEligibility.APPROVED_NATIVE:
             raise ValueError("native worker requires APPROVED_NATIVE model manifest")
-        if manifest.checkpoint_revision is None or manifest.checkpoint_digest_sha256 is None:
-            raise ValueError("approved native model must bind exact checkpoint evidence")
+        if (
+            manifest.checkpoint_revision is None
+            or manifest.checkpoint_digest_sha256 is None
+        ):
+            raise ValueError(
+                "approved native model must bind exact checkpoint evidence"
+            )
         self._manifest = manifest
         self._hardware = hardware
         self._requirements = requirements
@@ -129,7 +135,9 @@ class NativeVideoWorker(VideoGenerationProvider):
                 hardware=self._hardware,
             )
         except NativeOutOfMemoryError as exc:
-            return self._failure(request, "NATIVE_OOM", str(exc) or "native backend OOM")
+            return self._failure(
+                request, "NATIVE_OOM", str(exc) or "native backend OOM"
+            )
         except NativeVideoWorkerError as exc:
             return self._failure(
                 request,

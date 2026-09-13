@@ -1,12 +1,12 @@
 # ILAIOS — DEPENDENCY GRAPH
 
-**Document Type:** Canonical Dependency Graph  
-**Format:** GitHub Markdown + ASCII dependency diagrams  
-**Status:** Canonical Baseline v1.0 — Published in Repository  
-**Architecture Authority:** `SYSTEM_ARCHITECTURE.md`  
-**Autonomous Execution View:** `AUTONOMOUS_NODE_ARCHITECTURE.md`  
-**Product Authority:** `PRODUCT_REQUIREMENTS.md`  
-**Implementation Authority:** `IMPLEMENTATION_SPEC.md`  
+**Document Type:** Canonical Dependency Graph
+**Format:** GitHub Markdown + ASCII dependency diagrams
+**Status:** Canonical Baseline v1.0 — Published in Repository
+**Architecture Authority:** `SYSTEM_ARCHITECTURE.md`
+**Autonomous Execution View:** `AUTONOMOUS_NODE_ARCHITECTURE.md`
+**Product Authority:** `PRODUCT_REQUIREMENTS.md`
+**Implementation Authority:** `IMPLEMENTATION_SPEC.md`
 **Core Principle:** **NO DEPENDENCY BYPASS — NO PARALLEL AUTHORITY**
 
 > This document defines **what depends on what** across ILAIOS documents, platform capabilities, factories, runtime execution, data/evidence planes, maturity gates, and the currently adopted post-v1 workstream graph. It does not replace architecture, implementation specification, milestones, or runtime evidence.

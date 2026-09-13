@@ -57,9 +57,7 @@ class MediaAcquisitionGenerationResult:
             )
 
         if self.poll_rounds < 0:
-            raise MediaAcquisitionOrchestrationError(
-                "poll_rounds must not be negative"
-            )
+            raise MediaAcquisitionOrchestrationError("poll_rounds must not be negative")
 
         if self.execution_report.dispatch_plan_id != self.dispatch_plan_id:
             raise MediaAcquisitionOrchestrationError(
@@ -237,7 +235,9 @@ class MediaAcquisitionGenerationOrchestrator:
 def _submission_failure_detail(submission: object) -> str:
     dispatch_id = str(getattr(submission, "dispatch_id", "unknown"))
     code = str(getattr(submission, "error_code", None) or "provider_error")
-    message = str(getattr(submission, "error_message", None) or "provider submission failed")
+    message = str(
+        getattr(submission, "error_message", None) or "provider submission failed"
+    )
     return f"{dispatch_id}[{code}]={_bounded(message)}"
 
 

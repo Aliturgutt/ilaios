@@ -46,9 +46,7 @@ class DailySourceObservation:
             raise DailyYouTubePlanningError("published_at must be timezone-aware")
         parsed = urlparse(self.source_url)
         if parsed.scheme != "https" or not parsed.hostname:
-            raise DailyYouTubePlanningError(
-                "source_url must be an absolute HTTPS URL"
-            )
+            raise DailyYouTubePlanningError("source_url must be an absolute HTTPS URL")
         for name in (
             "relevance_score",
             "advertiser_value_score",
@@ -56,9 +54,7 @@ class DailySourceObservation:
         ):
             score = float(getattr(self, name))
             if score < 0.0 or score > 1.0:
-                raise DailyYouTubePlanningError(
-                    f"{name} must be between 0 and 1"
-                )
+                raise DailyYouTubePlanningError(f"{name} must be between 0 and 1")
 
     @property
     def source_origin(self) -> str:
@@ -119,9 +115,7 @@ class DailySourceAggregator:
                         item.advertiser_value_score for item in group
                     ),
                     freshness_score=max(item.freshness_score for item in group),
-                    content_fingerprint=sha256(
-                        material.encode("utf-8")
-                    ).hexdigest(),
+                    content_fingerprint=sha256(material.encode("utf-8")).hexdigest(),
                 )
             )
         return tuple(candidates)
@@ -190,9 +184,7 @@ def prepare_youtube_target(
     if not clean_description:
         raise DailyYouTubePlanningError("YouTube description must not be blank")
     if len(hashtags) < 3 or len(hashtags) > 5:
-        raise DailyYouTubePlanningError(
-            "YouTube description must carry 3-5 hashtags"
-        )
+        raise DailyYouTubePlanningError("YouTube description must carry 3-5 hashtags")
 
     normalized_hashtags: list[str] = []
     seen_hashtags: set[str] = set()
@@ -216,17 +208,13 @@ def prepare_youtube_target(
     if len(normalized_tags) != len(set(normalized_tags)):
         raise DailyYouTubePlanningError("YouTube tags must be unique")
     if any(any(ch.isspace() for ch in tag) for tag in normalized_tags):
-        raise DailyYouTubePlanningError(
-            "YouTube tags must not contain whitespace"
-        )
+        raise DailyYouTubePlanningError("YouTube tags must not contain whitespace")
 
     if len(candidate.independent_source_refs) < 2:
         raise DailyTopicSelectionError(
             "YouTube factual episode requires at least two source references"
         )
-    sources = "\n".join(
-        f"- {ref}" for ref in candidate.independent_source_refs
-    )
+    sources = "\n".join(f"- {ref}" for ref in candidate.independent_source_refs)
     final_description = (
         f"{clean_description}\n\nSources:\n{sources}\n\n"
         f"{' '.join(normalized_hashtags)}"
@@ -240,9 +228,7 @@ def prepare_youtube_target(
     thumb_sha = thumbnail_sha256.strip().lower()
     if not thumb_path:
         raise DailyYouTubePlanningError("thumbnail_path must not be blank")
-    if len(thumb_sha) != 64 or any(
-        ch not in "0123456789abcdef" for ch in thumb_sha
-    ):
+    if len(thumb_sha) != 64 or any(ch not in "0123456789abcdef" for ch in thumb_sha):
         raise DailyYouTubePlanningError(
             "thumbnail_sha256 must be a lowercase SHA-256 digest"
         )

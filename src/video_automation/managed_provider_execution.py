@@ -69,7 +69,10 @@ class ManagedPaidVideoExecutionCoordinator:
             raise ManagedPaidVideoExecutionError(
                 "provider quote model does not match provider request"
             )
-        if not routing_decision_id or routing_decision_id != routing_decision_id.strip():
+        if (
+            not routing_decision_id
+            or routing_decision_id != routing_decision_id.strip()
+        ):
             raise ManagedPaidVideoExecutionError(
                 "paid provider execution requires canonical routing_decision_id"
             )

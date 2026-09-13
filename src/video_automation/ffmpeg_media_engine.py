@@ -77,7 +77,8 @@ class CommandRunner(Protocol):
         argv: tuple[str, ...],
         *,
         timeout_seconds: float,
-    ) -> MediaCommandResult: ...
+    ) -> MediaCommandResult:
+        ...
 
 
 class SubprocessCommandRunner:

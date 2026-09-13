@@ -124,15 +124,12 @@ class ScriptGenerationPipeline:
                 reasons.append("research source references are required")
 
         total_duration = sum(
-            section.estimated_duration_seconds
-            for section in draft.sections
+            section.estimated_duration_seconds for section in draft.sections
         )
         if total_duration <= 0:
             reasons.append("script section durations must total more than 0 seconds")
         elif total_duration > job.desired_duration_seconds:
-            reasons.append(
-                "script section duration exceeds requested video duration"
-            )
+            reasons.append("script section duration exceeds requested video duration")
 
         return ScriptValidation(
             passed=not reasons,
@@ -168,10 +165,7 @@ class ScriptGenerationPipeline:
             for index, section in enumerate(draft.sections, start=1)
         )
 
-        total_duration = sum(
-            section.estimated_duration_seconds
-            for section in sections
-        )
+        total_duration = sum(section.estimated_duration_seconds for section in sections)
 
         return VideoScript(
             job_id=job.job_id,

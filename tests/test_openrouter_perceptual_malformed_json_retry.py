@@ -8,8 +8,8 @@ import pytest
 
 import src.video_automation.openrouter_perceptual_reviewer as reviewer_module
 from src.video_automation.openrouter_perceptual_reviewer import (
-    OpenRouterPerceptualReviewError,
     OpenRouterPerceptualReviewer,
+    OpenRouterPerceptualReviewError,
     OpenRouterReviewResponse,
 )
 from src.video_automation.perceptual_review import PerceptualReviewSubmission

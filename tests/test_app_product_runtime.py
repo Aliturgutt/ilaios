@@ -21,7 +21,10 @@ from services.execution_coordinator import (
     ExecutionState,
 )
 from services.governance import GovernedRuntimeGateway
-from services.integrations import DeterministicLocalVideoRuntime, DurableVideoProductRuntime
+from services.integrations import (
+    DeterministicLocalVideoRuntime,
+    DurableVideoProductRuntime,
+)
 from services.integrations.app_product_runtime import (
     AppProductRuntimeError,
     DurableAppProductRuntime,

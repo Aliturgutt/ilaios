@@ -69,25 +69,15 @@ class MediaTechnicalProfile:
         if self.min_width > self.max_width:
             raise MediaTechnicalValidationError("min_width must not exceed max_width")
         if self.min_height > self.max_height:
-            raise MediaTechnicalValidationError(
-                "min_height must not exceed max_height"
-            )
-        _validate_positive_float(
-            "min_frames_per_second", self.min_frames_per_second
-        )
-        _validate_positive_float(
-            "max_frames_per_second", self.max_frames_per_second
-        )
+            raise MediaTechnicalValidationError("min_height must not exceed max_height")
+        _validate_positive_float("min_frames_per_second", self.min_frames_per_second)
+        _validate_positive_float("max_frames_per_second", self.max_frames_per_second)
         if self.min_frames_per_second > self.max_frames_per_second:
             raise MediaTechnicalValidationError(
                 "min_frames_per_second must not exceed max_frames_per_second"
             )
-        _validate_positive_float(
-            "min_duration_seconds", self.min_duration_seconds
-        )
-        _validate_positive_float(
-            "max_duration_seconds", self.max_duration_seconds
-        )
+        _validate_positive_float("min_duration_seconds", self.min_duration_seconds)
+        _validate_positive_float("max_duration_seconds", self.max_duration_seconds)
         if self.min_duration_seconds > self.max_duration_seconds:
             raise MediaTechnicalValidationError(
                 "min_duration_seconds must not exceed max_duration_seconds"
@@ -128,18 +118,12 @@ class MediaProbeObservation:
         _validate_positive_float("duration_seconds", self.duration_seconds)
         _validate_non_negative_int("width", self.width)
         _validate_non_negative_int("height", self.height)
-        _validate_non_negative_float(
-            "frames_per_second", self.frames_per_second
-        )
+        _validate_non_negative_float("frames_per_second", self.frames_per_second)
         _require_non_blank("video_codec", self.video_codec)
         if self.audio_codec is not None:
             _require_non_blank("audio_codec", self.audio_codec)
-        _validate_non_negative_int(
-            "video_stream_count", self.video_stream_count
-        )
-        _validate_non_negative_int(
-            "audio_stream_count", self.audio_stream_count
-        )
+        _validate_non_negative_int("video_stream_count", self.video_stream_count)
+        _validate_non_negative_int("audio_stream_count", self.audio_stream_count)
         object.__setattr__(self, "metadata", _freeze_metadata(self.metadata))
 
 
@@ -203,9 +187,7 @@ class FfprobeMediaTechnicalProbe:
             raise MediaTechnicalValidationError("ffprobe timed out") from exc
         if completed.returncode != 0:
             detail = completed.stderr.strip() or "unknown ffprobe error"
-            raise MediaTechnicalValidationError(
-                f"ffprobe failed: {detail}"
-            )
+            raise MediaTechnicalValidationError(f"ffprobe failed: {detail}")
         try:
             payload = json.loads(completed.stdout)
         except json.JSONDecodeError as exc:
@@ -213,9 +195,7 @@ class FfprobeMediaTechnicalProbe:
                 "ffprobe returned invalid JSON"
             ) from exc
         if not isinstance(payload, dict):
-            raise MediaTechnicalValidationError(
-                "ffprobe JSON root must be an object"
-            )
+            raise MediaTechnicalValidationError("ffprobe JSON root must be an object")
         return _observation_from_ffprobe_payload(payload)
 
 
@@ -300,9 +280,7 @@ class EpisodeMediaTechnicalValidationManifest:
         ):
             _require_non_blank(name, getattr(self, name))
         if self.asset_count != len(self.assets):
-            raise MediaTechnicalValidationError(
-                "asset_count must equal assets length"
-            )
+            raise MediaTechnicalValidationError("asset_count must equal assets length")
         if self.passed_count + self.failed_count != self.asset_count:
             raise MediaTechnicalValidationError(
                 "passed_count plus failed_count must equal asset_count"
@@ -340,8 +318,7 @@ class MediaTechnicalValidationCoordinator:
             for asset in retrieval_manifest.assets
         )
         passed_count = sum(
-            item.status is MediaTechnicalValidationStatus.PASSED
-            for item in validated
+            item.status is MediaTechnicalValidationStatus.PASSED for item in validated
         )
         failed_count = len(validated) - passed_count
         status = (
@@ -401,7 +378,9 @@ class MediaTechnicalValidationCoordinator:
                 ",".join(issue.code for issue in issues),
             )
         )
-        evidence_id = f"media-evidence-{sha256(canonical.encode('utf-8')).hexdigest()[:16]}"
+        evidence_id = (
+            f"media-evidence-{sha256(canonical.encode('utf-8')).hexdigest()[:16]}"
+        )
         return ValidatedMediaAsset(
             asset_id=asset.asset_id,
             provider_id=asset.provider_id,
@@ -425,13 +404,9 @@ def _verify_retrieval_evidence(
     asset: RetrievedGenerationAsset,
 ) -> None:
     if not path.exists():
-        raise MediaTechnicalValidationError(
-            f"retrieved asset does not exist: {path}"
-        )
+        raise MediaTechnicalValidationError(f"retrieved asset does not exist: {path}")
     if not path.is_file():
-        raise MediaTechnicalValidationError(
-            f"retrieved asset is not a file: {path}"
-        )
+        raise MediaTechnicalValidationError(f"retrieved asset is not a file: {path}")
     body = path.read_bytes()
     if len(body) != asset.byte_length:
         raise MediaTechnicalValidationError(
@@ -439,9 +414,7 @@ def _verify_retrieval_evidence(
         )
     actual_sha = sha256(body).hexdigest()
     if actual_sha != asset.sha256_hex:
-        raise MediaTechnicalValidationError(
-            f"retrieved asset SHA-256 mismatch: {path}"
-        )
+        raise MediaTechnicalValidationError(f"retrieved asset SHA-256 mismatch: {path}")
 
 
 def _evaluate_profile(
@@ -478,9 +451,13 @@ def _evaluate_profile(
             )
         )
     if observation.width < profile.min_width:
-        issues.append(MediaTechnicalIssue("width_below_minimum", "width is below minimum"))
+        issues.append(
+            MediaTechnicalIssue("width_below_minimum", "width is below minimum")
+        )
     if observation.width > profile.max_width:
-        issues.append(MediaTechnicalIssue("width_above_maximum", "width is above maximum"))
+        issues.append(
+            MediaTechnicalIssue("width_above_maximum", "width is above maximum")
+        )
     if observation.height < profile.min_height:
         issues.append(
             MediaTechnicalIssue("height_below_minimum", "height is below minimum")
@@ -502,18 +479,14 @@ def _evaluate_profile(
         < profile.min_duration_seconds
     ):
         issues.append(
-            MediaTechnicalIssue(
-                "duration_below_minimum", "duration is below minimum"
-            )
+            MediaTechnicalIssue("duration_below_minimum", "duration is below minimum")
         )
     if (
         observation.duration_seconds - profile.duration_tolerance_seconds
         > profile.max_duration_seconds
     ):
         issues.append(
-            MediaTechnicalIssue(
-                "duration_above_maximum", "duration is above maximum"
-            )
+            MediaTechnicalIssue("duration_above_maximum", "duration is above maximum")
         )
     return tuple(sorted(issues, key=lambda issue: issue.code))
 
@@ -568,9 +541,7 @@ def _observation_from_ffprobe_payload(
         frames_per_second=fps,
         video_codec=_required_string(video, "codec_name"),
         audio_codec=(
-            _required_string(audio_streams[0], "codec_name")
-            if audio_streams
-            else None
+            _required_string(audio_streams[0], "codec_name") if audio_streams else None
         ),
         video_stream_count=len(video_streams),
         audio_stream_count=len(audio_streams),
@@ -584,9 +555,7 @@ def _parse_frame_rate(value: object) -> float:
     try:
         fraction = Fraction(value)
     except (ValueError, ZeroDivisionError) as exc:
-        raise MediaTechnicalValidationError(
-            "ffprobe frame rate is invalid"
-        ) from exc
+        raise MediaTechnicalValidationError("ffprobe frame rate is invalid") from exc
     result = float(fraction)
     _validate_positive_float("frames_per_second", result)
     return result
@@ -604,9 +573,7 @@ def _required_float(values: Mapping[str, object], key: str) -> float:
     try:
         result = float(value)  # type: ignore[arg-type]
     except (TypeError, ValueError) as exc:
-        raise MediaTechnicalValidationError(
-            f"ffprobe {key} is invalid"
-        ) from exc
+        raise MediaTechnicalValidationError(f"ffprobe {key} is invalid") from exc
     _validate_positive_float(key, result)
     return result
 

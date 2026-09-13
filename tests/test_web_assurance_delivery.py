@@ -14,11 +14,19 @@ from services.evidence import EvidenceStore
 from services.execution_adapters import register_web_runtime
 from services.execution_coordinator import ExecutionCoordinator, ExecutionState
 from services.governance import GovernedRuntimeGateway
-from services.integrations import DeterministicLocalVideoRuntime, DurableVideoProductRuntime
-from services.integrations.web_assurance import WebAssuranceError, certify_with_bounded_repair
+from services.integrations import (
+    DeterministicLocalVideoRuntime,
+    DurableVideoProductRuntime,
+)
+from services.integrations.web_assurance import (
+    WebAssuranceError,
+    certify_with_bounded_repair,
+)
 from services.integrations.web_delivery import LocalWebDeploymentAdapter, tree_sha256
 from services.integrations.web_factory import WebsiteSpec
-from services.integrations.web_product_runtime_recovery import RecoverableWebProductRuntime
+from services.integrations.web_product_runtime_recovery import (
+    RecoverableWebProductRuntime,
+)
 from services.integrations.web_project import materialize_next_project
 from services.runtime import DurableGrantPolicy, DurableWorkerScheduler, GovernedRuntime
 

@@ -167,9 +167,7 @@ class CodeIntelligenceGraphBuilder:
             source_id = symbol_node_ids.get(symbol.parent_symbol_id)
             target_id = symbol_node_ids.get(symbol.symbol_id)
             if source_id is None or target_id is None:
-                unknowns.add(
-                    f"symbol parent could not be resolved: {symbol.symbol_id}"
-                )
+                unknowns.add(f"symbol parent could not be resolved: {symbol.symbol_id}")
                 continue
             _add_edge(
                 edges,
@@ -246,9 +244,7 @@ class CodeIntelligenceGraphBuilder:
         unknowns: set[str],
     ) -> None:
         callable_symbols = tuple(
-            symbol
-            for symbol in symbols
-            if symbol.symbol_type in _CALLABLE_SYMBOL_TYPES
+            symbol for symbol in symbols if symbol.symbol_type in _CALLABLE_SYMBOL_TYPES
         )
         by_name: dict[str, list[SymbolRecord]] = {}
         by_qualified_name: dict[str, list[SymbolRecord]] = {}
@@ -262,9 +258,7 @@ class CodeIntelligenceGraphBuilder:
                 continue
             for reference in caller.references:
                 if reference == "<dynamic>":
-                    unknowns.add(
-                        f"dynamic call cannot be resolved: {caller.symbol_id}"
-                    )
+                    unknowns.add(f"dynamic call cannot be resolved: {caller.symbol_id}")
                     continue
                 target, ambiguous = _resolve_call_reference(
                     caller,
@@ -320,9 +314,7 @@ def _resolve_call_reference(
 
     named = by_name.get(reference, [])
     same_file = [
-        symbol
-        for symbol in named
-        if symbol.location.path == caller.location.path
+        symbol for symbol in named if symbol.location.path == caller.location.path
     ]
     if len(same_file) == 1:
         return same_file[0], False
@@ -346,14 +338,12 @@ def _coverage(snapshot: RepositorySnapshot, unknown_count: int) -> IndexCoverage
     semantic = [
         file_record
         for file_record in analyzable
-        if file_record.language is not None
-        and file_record.language.value == "python"
+        if file_record.language is not None and file_record.language.value == "python"
     ]
     structural = [
         file_record
         for file_record in analyzable
-        if file_record.language is not None
-        and file_record.language.value != "python"
+        if file_record.language is not None and file_record.language.value != "python"
     ]
     return IndexCoverage(
         total_files=len(snapshot.files),
@@ -449,7 +439,5 @@ def _generation_id(
         ],
         "unknowns": list(unknowns),
     }
-    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode(
-        "utf-8"
-    )
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()

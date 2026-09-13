@@ -38,9 +38,7 @@ class LocalTestVideoProvider(VideoGenerationProvider):
         _require_non_blank("provider_name", provider_name)
 
         if not path.exists():
-            raise LocalTestMediaProviderError(
-                f"fixture_path does not exist: {path}"
-            )
+            raise LocalTestMediaProviderError(f"fixture_path does not exist: {path}")
 
         if not path.is_file():
             raise LocalTestMediaProviderError(

@@ -5,7 +5,10 @@ import hashlib
 import pytest
 
 from services.app_mobile_flutter_source import build_flutter_android_project_sources
-from services.mobile_android_executor import AndroidImplementationError, AndroidSourceChange
+from services.mobile_android_executor import (
+    AndroidImplementationError,
+    AndroidSourceChange,
+)
 
 
 def _by_path(changes: tuple[AndroidSourceChange, ...]) -> dict[str, AndroidSourceChange]:

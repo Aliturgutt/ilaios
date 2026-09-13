@@ -17,8 +17,8 @@ from pathlib import Path
 
 from .media_technical_validation import FfprobeMediaTechnicalProbe
 from .openrouter_perceptual_reviewer import (
-    OpenRouterReviewTransport,
     OpenRouterReviewResponse,
+    OpenRouterReviewTransport,
     UrllibOpenRouterReviewTransport,
 )
 from .reference_image_analysis import ReferenceImageInput
@@ -132,11 +132,15 @@ class OpenRouterReferenceConsistencyReviewer:
         references: Sequence[ReferenceImageInput],
     ) -> ReferenceConsistencyReview:
         if not references:
-            raise ReferenceConsistencyReviewError("reference consistency requires references")
+            raise ReferenceConsistencyReviewError(
+                "reference consistency requires references"
+            )
         selected = _select_references(references)
         frames = _sample_video_frames(video_path, _SAMPLE_COUNT)
         boundaries = _sample_boundary_frames(video_path, selected)
-        applicable_roles = frozenset(reference.role for reference in selected) & _CRITICAL_ROLES
+        applicable_roles = (
+            frozenset(reference.role for reference in selected) & _CRITICAL_ROLES
+        )
         content: list[dict[str, object]] = [
             {
                 "type": "text",
@@ -242,7 +246,9 @@ class OpenRouterReferenceConsistencyReviewer:
             )
         result = _extract_result(response)
         _validate_role_scores(result, applicable_roles)
-        boundary_hashes = {role: sha256(frame).hexdigest() for role, frame in boundaries}
+        boundary_hashes = {
+            role: sha256(frame).hexdigest() for role, frame in boundaries
+        }
         return ReferenceConsistencyReview(
             reviewer_id=f"openrouter-reference-consistency:{review_model_id}",
             criteria_version=_CRITERIA_VERSION,
@@ -264,16 +270,24 @@ class OpenRouterReferenceConsistencyReviewer:
 def _select_references(
     references: Sequence[ReferenceImageInput],
 ) -> tuple[ReferenceImageInput, ...]:
-    critical = [reference for reference in references if reference.role in _CRITICAL_ROLES]
-    remaining = [reference for reference in references if reference.role not in _CRITICAL_ROLES]
+    critical = [
+        reference for reference in references if reference.role in _CRITICAL_ROLES
+    ]
+    remaining = [
+        reference for reference in references if reference.role not in _CRITICAL_ROLES
+    ]
     selected = tuple((critical + remaining)[:_MAX_REVIEW_REFERENCES])
     if not selected:
-        raise ReferenceConsistencyReviewError("no reference image is available for review")
+        raise ReferenceConsistencyReviewError(
+            "no reference image is available for review"
+        )
     return selected
 
 
 def _response_schema() -> dict[str, object]:
-    nullable_score = {"anyOf": [{"type": "number", "minimum": 0, "maximum": 1}, {"type": "null"}]}
+    nullable_score = {
+        "anyOf": [{"type": "number", "minimum": 0, "maximum": 1}, {"type": "null"}]
+    }
     return {
         "type": "object",
         "properties": {
@@ -305,13 +319,17 @@ def _extract_result(response: OpenRouterReviewResponse) -> dict[str, object]:
     try:
         result = json.loads(raw)
     except json.JSONDecodeError as error:
-        raise ReferenceConsistencyReviewError("review content is invalid JSON") from error
+        raise ReferenceConsistencyReviewError(
+            "review content is invalid JSON"
+        ) from error
     if not isinstance(result, dict) or frozenset(result) != _RESULT_KEYS:
         raise ReferenceConsistencyReviewError("review content has unexpected keys")
     return result
 
 
-def _validate_role_scores(result: Mapping[str, object], applicable: frozenset[str]) -> None:
+def _validate_role_scores(
+    result: Mapping[str, object], applicable: frozenset[str]
+) -> None:
     mapping = {
         "subject": "subject_score",
         "product": "product_score",
@@ -320,9 +338,13 @@ def _validate_role_scores(result: Mapping[str, object], applicable: frozenset[st
     for role, key in mapping.items():
         value = result.get(key)
         if role in applicable and value is None:
-            raise ReferenceConsistencyReviewError(f"{role} consistency score is missing")
+            raise ReferenceConsistencyReviewError(
+                f"{role} consistency score is missing"
+            )
         if role not in applicable and value is not None:
-            raise ReferenceConsistencyReviewError(f"{role} consistency score must be null")
+            raise ReferenceConsistencyReviewError(
+                f"{role} consistency score must be null"
+            )
         if value is not None:
             _score_value(value, key)
 
@@ -355,7 +377,9 @@ def _required_text(result: Mapping[str, object], key: str) -> str:
 def _image_part(jpeg: bytes) -> dict[str, object]:
     return {
         "type": "image_url",
-        "image_url": {"url": "data:image/jpeg;base64," + base64.b64encode(jpeg).decode("ascii")},
+        "image_url": {
+            "url": "data:image/jpeg;base64," + base64.b64encode(jpeg).decode("ascii")
+        },
     }
 
 
@@ -392,7 +416,8 @@ def _sample_video_frames(path: Path, count: int) -> tuple[bytes, ...]:
         raise ReferenceConsistencyReviewError("review video does not exist")
     observation = FfprobeMediaTechnicalProbe(timeout_seconds=30).probe(path)
     positions = tuple(
-        observation.duration_seconds * (index + 1) / (count + 1) for index in range(count)
+        observation.duration_seconds * (index + 1) / (count + 1)
+        for index in range(count)
     )
     return tuple(_sample_frame(path, position) for position in positions)
 
@@ -441,7 +466,9 @@ def _sample_frame(path: Path, position: float) -> bytes:
     )
 
 
-def _ffmpeg_image(command: tuple[str, ...], *, input_bytes: bytes | None = None) -> bytes:
+def _ffmpeg_image(
+    command: tuple[str, ...], *, input_bytes: bytes | None = None
+) -> bytes:
     try:
         completed = subprocess.run(
             command,
@@ -451,9 +478,13 @@ def _ffmpeg_image(command: tuple[str, ...], *, input_bytes: bytes | None = None)
             timeout=45,
         )
     except (FileNotFoundError, subprocess.TimeoutExpired) as error:
-        raise ReferenceConsistencyReviewError("ffmpeg reference QA sampling failed") from error
+        raise ReferenceConsistencyReviewError(
+            "ffmpeg reference QA sampling failed"
+        ) from error
     if completed.returncode != 0 or not completed.stdout:
-        raise ReferenceConsistencyReviewError("ffmpeg did not produce reference QA image")
+        raise ReferenceConsistencyReviewError(
+            "ffmpeg did not produce reference QA image"
+        )
     if len(completed.stdout) > 1_310_720:
         raise ReferenceConsistencyReviewError("reference QA image remains oversized")
     return completed.stdout

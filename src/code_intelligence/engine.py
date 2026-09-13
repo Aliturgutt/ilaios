@@ -251,7 +251,9 @@ class CodeIntelligenceEngine:
                 continue
             symbol_component = component_by_path.get(node.path)
             if symbol_component is not None:
-                symbol_count[symbol_component] = symbol_count.get(symbol_component, 0) + 1
+                symbol_count[symbol_component] = (
+                    symbol_count.get(symbol_component, 0) + 1
+                )
 
         components = tuple(
             ArchitectureComponent(

@@ -72,7 +72,9 @@ class RemotionCliRenderExecutor:
             raise RenderEngineError("output_path must reference a file")
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        visual_path = output_path.with_suffix(output_path.suffix + ".remotion-video.mp4")
+        visual_path = output_path.with_suffix(
+            output_path.suffix + ".remotion-video.mp4"
+        )
         for stale in (visual_path, output_path):
             if stale.exists():
                 if not stale.is_file():
@@ -137,13 +139,19 @@ def _read_manifest(path: Path) -> Mapping[str, object]:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
-        raise RenderEngineError("Remotion composition manifest is unreadable or invalid") from exc
+        raise RenderEngineError(
+            "Remotion composition manifest is unreadable or invalid"
+        ) from exc
     if not isinstance(payload, dict):
         raise RenderEngineError("Remotion composition manifest root must be an object")
     if payload.get("schema_version") != 1 or payload.get("engine") != "remotion":
         raise RenderEngineError("unsupported Remotion composition manifest")
-    if not isinstance(payload.get("elements"), list) or not isinstance(payload.get("timeline"), list):
-        raise RenderEngineError("Remotion composition manifest requires timeline and elements")
+    if not isinstance(payload.get("elements"), list) or not isinstance(
+        payload.get("timeline"), list
+    ):
+        raise RenderEngineError(
+            "Remotion composition manifest requires timeline and elements"
+        )
     return payload
 
 
@@ -170,8 +178,14 @@ def _require_manifest_match(
     }
     for key, expected_value in expected.items():
         value = composition.get(key)
-        if isinstance(value, bool) or not isinstance(value, int) or value != expected_value:
-            raise RenderEngineError(f"manifest {key} does not match composition artifact")
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, int)
+            or value != expected_value
+        ):
+            raise RenderEngineError(
+                f"manifest {key} does not match composition artifact"
+            )
 
     raw_duration = composition.get("duration_seconds")
     if isinstance(raw_duration, bool) or not isinstance(raw_duration, (int, float)):

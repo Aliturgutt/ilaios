@@ -1,6 +1,5 @@
 from pathlib import Path
 
-
 POLICY_PATH = Path("docs/governance/RELEASE_VERSION_POLICY.md")
 
 
