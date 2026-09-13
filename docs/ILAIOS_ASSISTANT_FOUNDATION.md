@@ -24,6 +24,50 @@ It may answer product-usage questions, explain real job/evidence state, recommen
 
 It MUST NOT create a second router, approval service, policy service, budget authority, ToolGateway, or provider execution path.
 
+## Desktop UX contract
+
+The existing Desktop home layout remains authoritative. Assistant/Li MUST NOT shift, resize, or reflow the nine factory cards when opened.
+
+Desktop reference mockup discussed for this contract is 1536 x 1024 px. Measurements taken from that mockup are approximate visual-reference measurements only and MUST NOT become canonical implementation constants until verified against the current Desktop code and real viewport.
+
+Reference measurements:
+
+- closed left navigation: approximately 216 px wide
+- expanded Assistant/Li history area: approximately 290 px wide
+- lower conversation overlay begins at approximately x=289 px
+- lower conversation overlay right edge: approximately x=1524 px
+- lower conversation overlay width: approximately 1235 px
+- lower conversation overlay top edge: approximately y=637 px
+- lower conversation overlay bottom edge: approximately y=995 px
+- lower conversation overlay height: approximately 358 px
+- reference composer area: approximately 1200 x 120 px
+- reference conversation-history area: approximately 290 x 510 px
+
+Open behavior is an L-shaped overlay: the left Assistant/Li area expands below the Settings region and the conversation surface overlays the lower Agents area. The `Start work` surface and all nine factory cards remain visible and stationary. The Agents area may be covered while the Assistant/Li surface is open; it MUST NOT be pushed sideways or cause the factory grid to reflow.
+
+Closed behavior restores the normal approximately 216 px navigation without destroying conversation state.
+
+Founder and normal-user presentation MUST be distinct:
+
+- authenticated founder sees `Li` and `Li — Founder Intelligence`
+- normal users see `Asistan` when Desktop UI locale is Turkish and `Assistant` when Desktop UI locale is English
+- normal users MUST NOT receive a rendered Li tab, Li mode, founder-memory control, or founder-only content
+- hiding Li in the client is not an authorization control; founder access MUST also be enforced server-side
+
+Conversation history MUST persist across closing the overlay, navigating to another Desktop surface, and restarting the Desktop application, subject to the applicable retention/deletion policy. Chat history and authorized memory/context are separate data concepts and MUST NOT be conflated.
+
+## Desktop localization and attachment contract
+
+Desktop UI locale is the single presentation-language source for Assistant/Li v1.
+
+- Turkish Desktop UI -> Assistant/Li UI and responses are Turkish
+- English Desktop UI -> Assistant/Li UI and responses are English
+- changing the Desktop UI locale updates the Assistant/Li presentation language
+- Assistant/Li MUST NOT render an independent `TR / EN` language selector
+- authorization, policy, approval, budget, cost, UNKNOWN/UNVERIFIED, and other semantic states remain language-independent before localization
+
+Assistant/Li MUST NOT add a separate file-upload/attachment control inside its composer. Existing canonical Desktop file-upload/input mechanisms MUST be reused when an authorized workflow needs files; a second upload authority or duplicate attachment path MUST NOT be introduced.
+
 ## Canonical action path
 
 Assistant responses are advisory until an existing governed execution path accepts a proposal.
@@ -69,18 +113,11 @@ When a source is stale, missing, ambiguous, or inaccessible, the Assistant MUST 
 
 ## Bilingual requirement
 
-ILAIOS Assistant v1 and Li MUST support Turkish and English.
+ILAIOS Assistant v1 and Li MUST support Turkish and English through the Desktop UI locale contract above.
 
 There MUST be one authoritative knowledge model, not duplicated Turkish and English knowledge silos.
 
-Language is a presentation preference:
-
-- Turkish UI defaults to Turkish responses.
-- English UI defaults to English responses.
-- Users may switch language during a conversation.
-- Explicit user language choice overrides UI default for the conversation/session policy selected by the product.
-- Canonical product names and security/policy/cost semantics MUST remain consistent across languages.
-- Authorization MUST be language-independent.
+Canonical product names and security/policy/cost semantics MUST remain consistent across languages. Authorization MUST be language-independent.
 
 Critical states such as free/paid, approval required, unauthorized, failed, blocked, unknown, and unverified MUST be derived from the same semantic state before localization.
 
@@ -95,7 +132,7 @@ Normal-user Assistant context may include only authorized values such as:
 - current product surface/screen identifier
 - current plan/entitlements
 - authorized job/evidence identifiers
-- language preference
+- Desktop UI locale
 
 Context supplied by browser/client input MUST NOT be trusted as proof of authorization. Server-side authenticated context remains authoritative.
 
@@ -112,12 +149,18 @@ The foundation is not DONE until implementation and tests prove at minimum:
 - founder principal accepted for Li
 - non-founder principal rejected from Li
 - normal user cannot retrieve founder memory
+- normal-user UI does not render Li/founder controls
 - cross-tenant retrieval rejected
 - cross-project retrieval rejected
 - cross-workload evidence/result reuse rejected where workload binding is required
 - prompt text cannot elevate user to founder
 - client-forged screen/context cannot elevate authorization
-- language switching cannot change authorization outcome
+- Desktop locale changes presentation language without changing authorization outcome
+- no independent Assistant/Li language selector exists in v1
+- no duplicate Assistant/Li attachment/upload path exists
+- opening Assistant/Li does not shift/reflow the nine factory cards
+- Assistant/Li lower overlay may cover Agents but not the factory grid or Start-work surface
+- closing/reopening and Desktop restart preserve authorized conversation history
 - stale or missing authoritative sources produce UNKNOWN/UNVERIFIED instead of fabricated certainty
 - Assistant action proposals cannot bypass Policy/Approval/Budget/ToolGateway controls
 - paid action cannot bypass quote/entitlement/approval controls
