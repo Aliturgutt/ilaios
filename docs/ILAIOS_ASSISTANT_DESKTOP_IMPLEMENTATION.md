@@ -55,25 +55,35 @@ Current canonical shell geometry facts:
 Important current-state gap:
 
 - `LiView` exists and still enforces founder-only state/memory behavior.
-- The current `DesktopSection` enum and the canonical 7-page `ReferenceDesktopShellV11` navigation do not currently expose Li as a canonical section.
-- Therefore, do not create a second Li authority; restore/integrate the presentation surface into the current canonical shell while reusing existing callbacks and server-side authorization.
+- The current `DesktopSection` enum and the canonical 7-page `ReferenceDesktopShellV11` navigation do not currently expose Assistant/Li as a canonical overlay trigger.
+- Therefore, do not create a second Li authority; integrate the approved presentation into the current canonical shell while reusing existing callbacks and server-side authorization.
 
 ## Final product split
 
+### Shared sidebar product entry
+
+The sidebar product entry is ALWAYS the localized Assistant label:
+
+- Turkish Desktop locale -> `Asistan`
+- English Desktop locale -> `Assistant`
+
+This rule applies to BOTH founder and normal-user sessions.
+
+Founder identity MUST NOT replace the sidebar label with `Li`.
+
 ### Founder experience
 
-Authenticated canonical founder sees `Li` below Settings.
+Authenticated canonical founder sees the same localized `Asistan` / `Assistant` sidebar entry below Settings.
 
-Opening it presents `Li — Founder Intelligence`.
+Opening it presents `Li — Founder Intelligence` inside the panel.
 
 Li uses the existing founder-only authority. Founder status is never inferred from label, email text, prompt text, local environment, or client-selected IDs.
 
 ### Normal-user experience
 
-Normal authenticated users see:
+Normal authenticated users see the same localized `Asistan` / `Assistant` sidebar entry.
 
-- `Asistan` when Desktop locale is Turkish
-- `Assistant` when Desktop locale is English
+Opening it presents `ILAIOS Assistant`.
 
 They MUST NOT see a Li label, Li tab, founder-memory control, founder-only state, or hidden-but-rendered founder content.
 
@@ -119,8 +129,8 @@ There is no independent language selector inside Assistant/Li v1.
 
 Desktop UI locale is authoritative:
 
-- Turkish Desktop -> `Asistan` and Turkish Assistant/Li copy
-- English Desktop -> `Assistant` and English Assistant/Li copy
+- Turkish Desktop -> sidebar `Asistan`; opened normal-user panel copy in Turkish; opened founder Li panel copy in Turkish
+- English Desktop -> sidebar `Assistant`; opened normal-user panel copy in English; opened founder Li panel copy in English
 - changing Desktop locale changes Assistant/Li presentation language
 
 Canonical product names may remain canonical where appropriate, but explanations, errors, guidance and conversation chrome follow the Desktop locale.
@@ -223,7 +233,8 @@ Astra must first verify current master and inspect these files before editing. T
 Primary UI owners likely required:
 
 - `apps/desktop/lib/features/dashboard/reference_desktop_shell_v11.dart`
-  - render Assistant/Li entry below Settings according to authenticated persona
+  - render a localized `Asistan` / `Assistant` entry below Settings for BOTH founder and normal users
+  - choose the opened panel persona from authenticated authorization: founder -> `Li — Founder Intelligence`; normal user -> `ILAIOS Assistant`
   - host the L-shaped overlay without changing Home/factory geometry
   - preserve current canonical shell and top bar
 - `apps/desktop/lib/features/dashboard/reference_home_dashboard_v3.dart`
@@ -231,9 +242,10 @@ Primary UI owners likely required:
   - do not redesign Start Work or factory cards
 - `apps/desktop/lib/features/li/li_view.dart`
   - evolve founder UI from minimal memory screen into the approved Li conversation surface while preserving founder verification/memory authority
+  - do not make this founder-only view responsible for the shared sidebar label
   - do not add an independent locale picker or attachment authority
 - `apps/desktop/lib/features/navigation/desktop_section.dart`
-  - change only if the cleanest canonical integration actually requires a new section identity; an overlay trigger may be preferable if it avoids turning Li/Assistant into a normal page
+  - change only if the cleanest canonical integration actually requires a new section identity; an overlay trigger may be preferable if it avoids turning Assistant/Li into a normal page
 - `apps/desktop/lib/app/ilaios_locale.dart`
   - add only required localized labels/copy; keep Desktop locale authoritative
 - `apps/desktop/lib/app/desktop_app.dart`
@@ -270,9 +282,12 @@ If implementing that backend would cross an unrelated active workstream or requi
 
 Desktop visual/navigation tests:
 
-- founder sees `Li` below Settings
+- founder Turkish session sees `Asistan` below Settings, not `Li`
+- founder English session sees `Assistant` below Settings, not `Li`
+- opening founder Assistant entry presents `Li — Founder Intelligence` inside the panel
 - normal Turkish user sees `Asistan`, never `Li`
 - normal English user sees `Assistant`, never `Li`
+- opening normal-user Assistant entry presents `ILAIOS Assistant`
 - signed-out/non-founder cannot render founder Li controls
 - opening Assistant/Li leaves Start Work and all nine factory cards at the same geometry
 - lower overlay covers the Agents region rather than pushing/reflowing factories
