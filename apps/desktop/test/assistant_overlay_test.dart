@@ -51,15 +51,10 @@ class _ConversationFixture {
     if (request['operation'] == 'create') created = true;
     document['binding'] = binding;
     if (request['operation'] == 'send') {
-      try {
-        (document['messages'] as List).addAll([
-          {'role': 'user', 'text': request['text']},
-          {'role': 'assistant', 'text': 'UNKNOWN', 'provenance': []},
-        ]);
-      } on Object catch (error) {
-        exchanges.add({'request': request, 'fixture_error': error.toString()});
-        rethrow;
-      }
+      (document['messages'] as List<Map<String, dynamic>>).addAll([
+        {'role': 'user', 'text': request['text']},
+        {'role': 'assistant', 'text': 'UNKNOWN', 'provenance': []},
+      ]);
       document['version'] = (document['version'] as int) + 1;
     }
     return _record(request, {'binding': binding, 'conversation': document});
