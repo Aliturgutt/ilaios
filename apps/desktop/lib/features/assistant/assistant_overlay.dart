@@ -14,7 +14,6 @@ class AssistantOverlay extends StatefulWidget {
   const AssistantOverlay({
     required this.session,
     required this.onClose,
-    required this.leftTop,
     this.onRequest,
     this.onFetchLiState,
     this.onFetchLiMemories,
@@ -25,7 +24,6 @@ class AssistantOverlay extends StatefulWidget {
 
   final DesktopUserSession session;
   final VoidCallback onClose;
-  final double leftTop;
   final Future<Map<String, dynamic>> Function(Map<String, Object?>)? onRequest;
   final Future<DesktopLiState> Function()? onFetchLiState;
   final Future<List<DesktopLiMemory>> Function()? onFetchLiMemories;
@@ -245,7 +243,9 @@ class _AssistantOverlayState extends State<AssistantOverlay> {
     final height = constraints.maxHeight;
     final leftWidth = math.min(290.0, width * .38);
     final bottom = math.min(29.0, height * .03);
-    final leftTop = widget.leftTop.clamp(0.0, math.max(0.0, height - 260)).toDouble();
+    // Anchor to the shell viewport, independently of sidebar item spacing.
+    final leftTop = (height * 482 / 1024)
+        .clamp(0.0, math.max(0.0, height - 260)).toDouble();
     final chatTop = math.max(leftTop + 40, height * 637 / 1024)
         .clamp(0.0, math.max(0.0, height - 220)).toDouble();
     final messages = _conversation?['messages'] as List? ?? const [];

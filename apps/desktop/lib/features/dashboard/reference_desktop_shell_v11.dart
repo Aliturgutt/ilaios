@@ -102,11 +102,8 @@ class _ReferenceDesktopShellV11State extends State<ReferenceDesktopShellV11> {
   ];
 
   DesktopSection _section = DesktopSection.home;
-  final _assistantAnchor = GlobalKey();
-  final _shellAnchor = GlobalKey();
   bool _assistantOpen = false;
   bool _assistantMounted = false;
-  double _assistantTop = 592;
 
   @override
   void didUpdateWidget(covariant ReferenceDesktopShellV11 oldWidget) {
@@ -122,16 +119,9 @@ class _ReferenceDesktopShellV11State extends State<ReferenceDesktopShellV11> {
 
   void _toggleAssistant() {
     if (widget.userSession == null) return;
-    final anchor = _assistantAnchor.currentContext?.findRenderObject();
-    final shell = _shellAnchor.currentContext?.findRenderObject();
-    if (anchor is RenderBox && shell is RenderBox) {
-      _assistantTop = anchor.localToGlobal(Offset(0, anchor.size.height)).dy -
-          shell.localToGlobal(Offset.zero).dy + 8;
-    }
     setState(() {
       _assistantOpen = !_assistantOpen;
       _assistantMounted = true;
-      if (_assistantOpen) _section = DesktopSection.home;
     });
   }
 
@@ -214,7 +204,6 @@ class _ReferenceDesktopShellV11State extends State<ReferenceDesktopShellV11> {
               userSession: widget.userSession,
               onPromptSubmit: widget.onPromptSubmit,
               child: Scaffold(
-                key: _shellAnchor,
                 backgroundColor: Theme.of(context).scaffoldBackgroundColor,
                 body: Stack(fit: StackFit.expand, children: [
                   Row(
@@ -224,7 +213,6 @@ class _ReferenceDesktopShellV11State extends State<ReferenceDesktopShellV11> {
                       projection: widget.projection,
                       snapshot: widget.operationalSnapshot,
                       onSelected: _select,
-                      assistantAnchor: _assistantAnchor,
                       onAssistant: widget.userSession == null ? null : _toggleAssistant,
                     ),
                     Container(
@@ -255,7 +243,6 @@ class _ReferenceDesktopShellV11State extends State<ReferenceDesktopShellV11> {
                       child: AssistantOverlay(
                         key: ValueKey('assistant-${widget.userSession!.sessionId}'),
                         session: widget.userSession!,
-                        leftTop: _assistantTop,
                         onClose: () => setState(() => _assistantOpen = false),
                         onRequest: widget.onAssistantRequest,
                         onFetchLiState: widget.onFetchLiState,
@@ -293,7 +280,6 @@ class _CanonicalSidebar extends StatelessWidget {
     required this.projection,
     required this.snapshot,
     required this.onSelected,
-    required this.assistantAnchor,
     required this.onAssistant,
   });
 
@@ -313,7 +299,6 @@ class _CanonicalSidebar extends StatelessWidget {
   final ControlPlaneProjection projection;
   final OperationalSnapshot snapshot;
   final ValueChanged<DesktopSection> onSelected;
-  final GlobalKey assistantAnchor;
   final VoidCallback? onAssistant;
 
   Widget _logoWidget(BuildContext context) {
@@ -369,7 +354,7 @@ class _CanonicalSidebar extends StatelessWidget {
         ),
         const SizedBox(height: 8),
       ],
-      Material(key: assistantAnchor, color: Colors.transparent,
+      Material(color: Colors.transparent,
         borderRadius: BorderRadius.circular(8),
         child: InkWell(key: const Key('nav-assistant'), onTap: onAssistant,
           child: SizedBox(height: 54, child: Padding(

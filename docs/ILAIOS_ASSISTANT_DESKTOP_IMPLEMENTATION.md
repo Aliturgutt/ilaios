@@ -40,13 +40,35 @@ particular user's grants; no grant or model context is fabricated to close this 
 These acceptance items remain BLOCKED pending canonical authenticated source
 contracts. No private source is fetched on this fallback path.
 
-Geometry reconciliation: preserving today's Settings/menu spacing puts the new
-Assistant trigger bottom near y=584 at 1536x1024. The left arm anchors 8 px below
-that real trigger (approximately y=592), not y=482, which would cover Settings.
-The lower arm targets x=290, y=637, bottom=995. The left-arm y=482 reference target
-is not claimed satisfied. Rendered geometry and Windows acceptance remain
-UNVERIFIED until Flutter/runtime evidence exists. Current Home does not guarantee
-an always-visible fixed nine-card grid; preserve its actual current surfaces.
+Geometry reconciliation: the overlay now anchors to V11 viewport constraints,
+independently of sidebar trigger spacing. At 1536x1024 the left arm targets
+(0,482)-(290,995), and the chat arm (290,637)-(1524,995). Opening no longer changes
+the selected page. Home/Agents/top bar remain the same underlying subtree; the
+left arm may cover the lower sidebar while open, with its own close control.
+Focused regression assertions cover these rectangles and preservation of existing
+surfaces. Rendered geometry remains UNVERIFIED until Flutter evidence exists.
+
+Private Knowledge dependency inspection at #1521 HEAD
+`1fa5e3ad1cfbce106d6977446d5732b5dc04e32c`: `services.identity.AuthorizationEngine`
+is the canonical generic authority, but `services/knowledge_runtime.py` constructs
+an `IdentityKind.SERVICE` principal from fixed server policy. Its `_principal_scope`
+and `services/knowledge_rag.py::PrincipalScope` do not resolve authenticated human
+session grants or workload-bound grant identity. `services/app_auth_rbac_plan.py`
+is explicitly planning-only. The missing dependency is a canonical resolver from
+validated human session to revocable user/tenant/project/workload/resource grants,
+with authorization identity/provenance before retrieval. No replacement authority
+or service-principal substitution is introduced; private retrieval remains closed.
+
+Pre-CI bounded follow-up validation (2026-09-13): `git diff --check` and Python
+AST syntax parsing passed. Home, both Agents owner files, and the pixel office
+asset were compared byte-for-byte with the current #1485 HEAD and are unchanged.
+Flutter is unavailable; analyze/test and rendered geometry/theme/no-reflow evidence
+are ENVIRONMENT BLOCKED. One pre-commit invocation returned `No module named
+pre_commit`. The focused pytest invocation returned `No module named pytest`;
+Ruff and strict Mypy modules are also absent. Added tests have not executed in
+this follow-up. Earlier 23-test evidence belongs to the previous checkpoint only.
+No installation/retry loop, CI monitoring, merge, deployment, or Windows final
+acceptance was performed.
 
 Authoritative repository: `Aliturgutt/ilaios`
 

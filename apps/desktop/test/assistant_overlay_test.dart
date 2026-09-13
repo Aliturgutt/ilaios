@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ilaios_desktop/app/desktop_app.dart';
@@ -6,7 +8,11 @@ import 'package:ilaios_desktop/control_plane/client.dart';
 import 'package:ilaios_desktop/identity/identity_client.dart';
 
 class _ConversationFixture {
-  _ConversationFixture({this.founder = false});
+  _ConversationFixture({this.founder = false, this.user = 'usr_user',
+    this.tenant = 'tnt_user', this.sessionId = 'session'});
+  final String user;
+  final String tenant;
+  final String sessionId;
   final bool founder;
   final Map<String, dynamic> document = {
     'conversation_id': 'conversation-1', 'version': 0,
@@ -16,13 +22,13 @@ class _ConversationFixture {
   int founderReads = 0;
 
   DesktopUserSession get session => DesktopUserSession(
-    sessionId: 'session', providerId: 'google', principalId: 'usr_user',
-    tenantId: 'tnt_user', liFounder: founder,
+    sessionId: sessionId, providerId: 'google', principalId: user,
+    tenantId: tenant, liFounder: founder,
   );
 
   Future<Map<String, dynamic>> request(Map<String, Object?> request) async {
     final binding = <String, dynamic>{
-      'user_id': 'usr_user', 'tenant_id': 'tnt_user',
+      'user_id': user, 'tenant_id': tenant,
       'project_id': null, 'workload_id': null,
       'persona': founder ? 'li' : 'assistant',
     };
@@ -45,8 +51,8 @@ class _ConversationFixture {
 
   Future<DesktopLiState> verify() async {
     founderReads++;
-    return const DesktopLiState(name: 'Li', founderOperator: true,
-        userId: 'usr_user', tenantId: 'tnt_user', source: 'canonical_desktop_session');
+    return DesktopLiState(name: 'Li', founderOperator: true,
+        userId: user, tenantId: tenant, source: 'canonical_desktop_session');
   }
 
   Widget app({IlaiosLocale locale = IlaiosLocale.english, ThemeMode theme = ThemeMode.light}) =>
@@ -68,6 +74,7 @@ void main() {
         expect(find.descendant(of: trigger, matching: find.text(
             locale == IlaiosLocale.turkish ? 'Asistan' : 'Assistant')), findsOneWidget);
         expect(find.descendant(of: trigger, matching: find.textContaining('Li')), findsNothing);
+        final topBar = tester.getRect(find.byKey(const Key('canonical-7-page-topbar')));
         final home = tester.element(find.byKey(const Key('command-center-home')));
         final promptRect = tester.getRect(find.byKey(const Key('home-command-prompt')));
         final startRect = tester.getRect(find.byKey(const Key('home-new-work')));
@@ -76,6 +83,18 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.text(founder ? 'Li — Founder Intelligence' : 'ILAIOS Assistant'), findsOneWidget);
         expect(fixture.founderReads, founder ? 1 : 0);
+        final symbolPath = theme == ThemeMode.dark
+            ? '../../brand/assets/05-ilaios-app-icon.jpg'
+            : '../../brand/assets/04-ilaios-symbol-light.jpg';
+        for (final surface in [trigger,
+          find.byKey(const Key('assistant-history-arm')),
+          find.byKey(const Key('assistant-conversation-arm'))]) {
+          final symbols = tester.widgetList<Image>(find.descendant(
+              of: surface, matching: find.byType(Image)));
+          expect(symbols.any((image) => image.image is AssetImage &&
+              (image.image as AssetImage).assetName == symbolPath &&
+              image.fit == BoxFit.contain && image.color == null), isTrue);
+        }
         if (!founder) {
           expect(find.textContaining('Li'), findsNothing);
           expect(find.byKey(const Key('assistant-memory')), findsNothing);
@@ -86,8 +105,10 @@ void main() {
         expect(tester.getRect(find.byKey(const Key('home-prompt-attachments'))), attachmentRect);
         final left = tester.getRect(find.byKey(const Key('assistant-history-arm')));
         final lower = tester.getRect(find.byKey(const Key('assistant-conversation-arm')));
+        expect(tester.getRect(find.byKey(const Key('canonical-7-page-topbar'))), topBar);
         expect(left.width, 290);
-        expect(left.top, greaterThanOrEqualTo(tester.getRect(trigger).bottom));
+        expect(left, const Rect.fromLTRB(0, 482, 290, 995));
+        expect(lower, const Rect.fromLTRB(290, 637, 1524, 995));
         expect(left.top, lessThan(lower.top));
         expect(lower.top, closeTo(637, 1));
         expect(lower.bottom, closeTo(995, 1));
@@ -101,6 +122,92 @@ void main() {
       }
     }
   }
+
+  for (final change in ['user', 'tenant', 'session', 'logout']) {
+    testWidgets('session boundary clears history and draft: $change', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1536, 1024));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final first = _ConversationFixture(founder: true);
+      await tester.pumpWidget(first.app());
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('nav-assistant')));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('assistant-composer')), 'Private history');
+      await tester.tap(find.byKey(const Key('assistant-send')));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('assistant-composer')), 'Private draft');
+      final next = _ConversationFixture(
+        user: change == 'user' ? 'usr_other' : 'usr_user',
+        tenant: change == 'tenant' ? 'tnt_other' : 'tnt_user',
+        sessionId: change == 'session' ? 'new-session' : 'session',
+        founder: true,
+      );
+      await tester.pumpWidget(change == 'logout'
+          ? const IlaiosDesktopApp() : next.app());
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('assistant-composer'), skipOffstage: false), findsNothing);
+      expect(find.text('Private history', skipOffstage: false), findsNothing);
+      expect(find.text('Private draft', skipOffstage: false), findsNothing);
+      if (change != 'logout') {
+        await tester.tap(find.byKey(const Key('nav-assistant')));
+        await tester.pumpAndSettle();
+        expect(find.text('Private history'), findsNothing);
+        expect(find.text('Private draft'), findsNothing);
+      }
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('late old-session response cannot restore private state', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1536, 1024));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final old = _ConversationFixture();
+    final pending = Completer<Map<String, dynamic>>();
+    var oldRequests = 0;
+    await tester.pumpWidget(IlaiosDesktopApp(userSession: old.session,
+        onAssistantRequest: (_) { oldRequests++; return pending.future; }));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('nav-assistant')));
+    await tester.pump();
+    final next = _ConversationFixture(user: 'usr_other', sessionId: 'other-session');
+    await tester.pumpWidget(next.app());
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('nav-assistant')));
+    await tester.pumpAndSettle();
+    pending.complete({'binding': {
+      'user_id': 'usr_user', 'tenant_id': 'tnt_user', 'project_id': null,
+      'workload_id': null, 'persona': 'assistant'},
+      'conversations': [{'conversation_id': 'private-old-history'}]});
+    await tester.pumpAndSettle();
+    expect(oldRequests, 1);
+    expect(find.text('private-old-history', skipOffstage: false), findsNothing);
+    expect(find.byKey(const Key('assistant-error')), findsNothing);
+    expect(find.byKey(const Key('assistant-composer')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('opening over Agents preserves page and pixel workspace', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1536, 1024));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(_ConversationFixture().app());
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('nav-agents')));
+    await tester.pumpAndSettle();
+    final workspace = find.byKey(const Key('agents-pixel-workspace'));
+    final element = tester.element(workspace);
+    final rect = tester.getRect(workspace);
+    await tester.tap(find.byKey(const Key('nav-assistant')));
+    await tester.pumpAndSettle();
+    expect(identical(element, tester.element(workspace)), isTrue);
+    expect(tester.getRect(workspace), rect);
+    expect(tester.getRect(find.byKey(const Key('assistant-history-arm'))),
+        const Rect.fromLTRB(0, 482, 290, 995));
+    await tester.tap(find.byKey(const Key('assistant-close')));
+    await tester.pumpAndSettle();
+    expect(identical(element, tester.element(workspace)), isTrue);
+    expect(tester.getRect(workspace), rect);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('conversation survives close, navigation and UI restart', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1536, 1024));
