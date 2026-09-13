@@ -472,6 +472,42 @@ def _sha256_json(payload: dict[str, object]) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
+# Phase 5: ilaios-mobile-android-device-receipt
+# Provides canonical SHA256 device receipt validation for Android artifacts.
+# Device receipts contain the hardware-bound identity of the installing device
+# and must be validated against canonical expectations across Phases 6-10.
+# Device receipt validation is fail-closed per the truth rule and must cryptographically
+# bind to the certified binary identity via the golden reference chain.
+_ANDROID_DEVICE_RECEIPT_SHA256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+
+def validate_android_device_receipt(receipt_sha256: str, expected_sha256: str = _ANDROID_DEVICE_RECEIPT_SHA256) -> None:
+    """Validate Android device receipt against golden reference SHA256.
+
+    Fail-closed: raises StoreCertificationError if receipt SHA256 does not match
+    the canonical golden reference for the device receipt type.
+
+    This is a Phase 5 contract: downstream phases (6-10) should replace this
+    placeholder with content-addressed device receipt references keyed to actual
+    certified hardware identities per ADR-0004 Runtime Role Separation.
+
+    Args:
+        receipt_sha256: The SHA256 of the actual device receipt bytes
+        expected_sha256: The canonical golden reference SHA256 (Phase 5 placeholder)
+
+    Raises:
+        StoreCertificationError: If receipt_sha256 != expected_sha256
+    """
+    from services.store_release_certification import StoreCertificationError
+
+    if receipt_sha256 != expected_sha256:
+        raise StoreCertificationError(
+            f"device receipt SHA256 {receipt_sha256[:16]}... does not match "
+            f"golden reference {expected_sha256[:16]}...; "
+            f"device receipt validation failed - see ADR-0004"
+        )
+
+
 # Phase 4: ilaios-mobile-android-golden-reference
 # Provides canonical SHA256 golden references for Android artifact validation.
 # These references serve as authoritative byte-exact expectations for downstream
