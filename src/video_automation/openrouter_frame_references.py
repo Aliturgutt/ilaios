@@ -81,7 +81,9 @@ def validate_bound_frame_fields(
             )
 
 
-def build_openrouter_frame_images(item: Mapping[str, object]) -> list[dict[str, object]]:
+def build_openrouter_frame_images(
+    item: Mapping[str, object],
+) -> list[dict[str, object]]:
     """Translate already capability-validated fields to OpenRouter API shape."""
 
     result: list[dict[str, object]] = []

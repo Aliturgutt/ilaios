@@ -20,7 +20,6 @@ from services.creative_document_factory import (
 )
 from services.research_data_factory import ResearchDataFactory
 
-
 _PNG_1X1 = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4//8/AAX+Av4N70a4AAAAAElFTkSuQmCC"
 )

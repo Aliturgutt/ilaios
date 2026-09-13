@@ -69,12 +69,18 @@ class VideoQaObservation:
             _require_text(name, getattr(self, name))
         _require_sha256(self.artifact_sha256)
         if self.observer_id == self.producer_id:
-            raise VideoQualityError("QA observer must be independent from artifact producer")
+            raise VideoQualityError(
+                "QA observer must be independent from artifact producer"
+            )
         if not 0 <= self.score <= 1 or not 0 <= self.threshold <= 1:
-            raise VideoQualityError("QA observation score and threshold must be normalized")
+            raise VideoQualityError(
+                "QA observation score and threshold must be normalized"
+            )
         if not self.passed:
             if self.repair_target is None:
-                raise VideoQualityError("failed QA observation requires a repair target")
+                raise VideoQualityError(
+                    "failed QA observation requires a repair target"
+                )
             _require_text("repair_target", self.repair_target)
         elif self.repair_target is not None:
             raise VideoQualityError("passed QA observation must not request repair")
@@ -175,13 +181,19 @@ def _validate_observations(
         raise VideoQualityError("QA observation IDs must be unique")
     for item in observations:
         if item.artifact_sha256 != artifact_sha256:
-            raise VideoQualityError("QA observation artifact identity does not match target")
+            raise VideoQualityError(
+                "QA observation artifact identity does not match target"
+            )
     producer_ids = {item.producer_id for item in observations}
     observer_ids = {item.observer_id for item in observations}
     if evaluator_id in producer_ids:
-        raise VideoQualityError("final evaluator cannot certify its own produced artifact")
+        raise VideoQualityError(
+            "final evaluator cannot certify its own produced artifact"
+        )
     if evaluator_id in observer_ids:
-        raise VideoQualityError("final evaluator must aggregate externally produced observations")
+        raise VideoQualityError(
+            "final evaluator must aggregate externally produced observations"
+        )
 
 
 def _run_id(

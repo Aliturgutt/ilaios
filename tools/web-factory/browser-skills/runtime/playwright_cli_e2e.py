@@ -12,7 +12,9 @@ from services.control_plane.migrations import migrate_database
 from services.governance.runtime import GovernedRuntimeGateway
 from services.named_agent_executor import NamedAgentExecutor
 from services.runtime import GovernedRuntime, GrantPolicy
-from services.runtime.browser_egress_playwright import PlaywrightDockerBrowserEgressBoundary
+from services.runtime.browser_egress_playwright import (
+    PlaywrightDockerBrowserEgressBoundary,
+)
 from services.runtime.browser_tool_adapter import (
     BROWSER_AGENT_ID,
     BROWSER_AUTOMATION_SKILL_ID,

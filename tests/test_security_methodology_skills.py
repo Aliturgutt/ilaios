@@ -10,6 +10,7 @@ from services.runtime.security_agent_adapters import (
     SUPPLY_CHAIN_ADAPTER_KIND,
     SecurityAgentRuntimeAdapters,
 )
+from services.security_factory import SecurityScope
 from services.security_methodology_analysis import (
     SecurityMethodologyAnalysisError,
     SecurityMethodologyAnalyzer,
@@ -23,7 +24,6 @@ from services.security_methodology_skills import (
     default_security_methodology_skills_root,
     definition_for,
 )
-from services.security_factory import SecurityScope
 
 ROOT = Path(__file__).resolve().parents[1]
 _SHA_A = "a" * 40

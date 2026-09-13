@@ -229,9 +229,7 @@ def _evaluate_observation(
         )
 
     observed_audio_codec = (
-        observation.audio_codec.lower()
-        if observation.audio_codec is not None
-        else None
+        observation.audio_codec.lower() if observation.audio_codec is not None else None
     )
     if observed_audio_codec != artifact.audio_codec.lower():
         issues.append(
@@ -314,6 +312,4 @@ def _validate_sha256(value: str) -> None:
 
 def _require_non_blank(name: str, value: str) -> None:
     if not value or not value.strip():
-        raise AssembledOutputTechnicalValidationError(
-            f"{name} must not be blank"
-        )
+        raise AssembledOutputTechnicalValidationError(f"{name} must not be blank")

@@ -315,17 +315,11 @@ class PublishingExecutionCoordinator:
         publisher = self._registry.get(package.platform)
         observation = publisher.publish(package)
         if observation.package_id != package.package_id:
-            raise PublishingExecutionError(
-                "publisher observation package_id mismatch"
-            )
+            raise PublishingExecutionError("publisher observation package_id mismatch")
         if observation.platform != package.platform:
-            raise PublishingExecutionError(
-                "publisher observation platform mismatch"
-            )
+            raise PublishingExecutionError("publisher observation platform mismatch")
         if observation.account_id != package.account_id:
-            raise PublishingExecutionError(
-                "publisher observation account_id mismatch"
-            )
+            raise PublishingExecutionError("publisher observation account_id mismatch")
         return observation
 
 
@@ -333,9 +327,7 @@ def _normalize_platform(value: str) -> str:
     _require_non_blank("platform", value)
     normalized = value.strip().lower()
     if any(character.isspace() for character in normalized):
-        raise PublishingExecutionError(
-            "platform must not contain whitespace"
-        )
+        raise PublishingExecutionError("platform must not contain whitespace")
     return normalized
 
 

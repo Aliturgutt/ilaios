@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import pytest
 
-from services.integrations.desktop_video_composition import _reference_relay_from_environment
+from services.integrations.desktop_video_composition import (
+    _reference_relay_from_environment,
+)
 from services.integrations.video_runtime import VideoRuntimeError
 from services.reference_relay import HttpReferenceRelayClient
 from services.source_media_desktop import _native_frame_relay_configured

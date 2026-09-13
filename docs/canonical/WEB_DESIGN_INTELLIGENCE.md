@@ -1,8 +1,8 @@
 # ILAIOS — WEB DESIGN INTELLIGENCE
 
-**Document Type:** Scoped Canonical Product / Architecture Invariant  
-**Status:** Canonical Web Factory Design Invariants v1.0  
-**Parent Product Authority:** `PRODUCT_REQUIREMENTS.md`  
+**Document Type:** Scoped Canonical Product / Architecture Invariant
+**Status:** Canonical Web Factory Design Invariants v1.0
+**Parent Product Authority:** `PRODUCT_REQUIREMENTS.md`
 **Parent Architecture Authority:** `SYSTEM_ARCHITECTURE.md`
 
 This scoped document makes the existing Web Factory design requirements explicit. It does not replace the parent product or architecture authorities and does not state current runtime maturity.

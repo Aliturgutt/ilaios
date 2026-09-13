@@ -7,8 +7,9 @@ from http.cookies import SimpleCookie
 from pathlib import Path
 from typing import cast
 
-import apps.web_app_runtime.server as runtime_server
 import pytest
+
+import apps.web_app_runtime.server as runtime_server
 from apps.web_app_runtime.server import (
     AppRuntime,
     AppRuntimeEnvironment,

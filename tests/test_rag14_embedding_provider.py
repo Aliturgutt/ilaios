@@ -19,7 +19,6 @@ from services.rag14_embedding_provider import (
     query_embedding_context,
 )
 
-
 _REPOSITORY = Path(__file__).resolve().parents[1]
 _MANIFEST = _REPOSITORY / "infra/rag/multilingual-e5-small-qint8.candidate.json"
 _PROVIDER_SOURCE = _REPOSITORY / "services/rag14_embedding_provider.py"

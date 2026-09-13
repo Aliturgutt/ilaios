@@ -4,7 +4,11 @@ from pathlib import Path
 
 import pytest
 
-from services.security_factory import SecurityFactory, SecurityFactoryError, SecurityScope
+from services.security_factory import (
+    SecurityFactory,
+    SecurityFactoryError,
+    SecurityScope,
+)
 
 
 def _scope(root: Path) -> SecurityScope:

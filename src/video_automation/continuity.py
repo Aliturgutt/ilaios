@@ -160,9 +160,7 @@ class ContinuityTracker:
             ),
             objects=previous.objects if change.objects is None else change.objects,
             technology=(
-                previous.technology
-                if change.technology is None
-                else change.technology
+                previous.technology if change.technology is None else change.technology
             ),
             timeline=_next_optional(
                 previous.timeline, change.timeline, change.clear_timeline
@@ -235,9 +233,7 @@ def _changed_fields(
         "scene_state",
     )
     return tuple(
-        field
-        for field in fields
-        if getattr(previous, field) != getattr(current, field)
+        field for field in fields if getattr(previous, field) != getattr(current, field)
     )
 
 

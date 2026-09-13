@@ -26,7 +26,9 @@ from src.video_automation.publishing_execution import (
     PlatformPublishingObservation,
     PublishingExecutionStatus,
 )
-from src.video_automation.publishing_package_preparation import PlatformPublishingPackage
+from src.video_automation.publishing_package_preparation import (
+    PlatformPublishingPackage,
+)
 
 
 class _Publisher:
