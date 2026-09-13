@@ -258,7 +258,7 @@ void main() {
     expect(fixture.exchanges[1]['request']['conversation_id'], 'conversation-1',
         reason: 'Restart get target: $trace');
     final restored = fixture.exchanges[1]['response']['conversation'];
-    expect(restored['messages'], contains({'role': 'user', 'text': 'My task'}),
+    expect(restored['messages'], contains(equals({'role': 'user', 'text': 'My task'})),
         reason: 'Restart get payload: $trace');
     expect(find.byKey(const Key('assistant-error')), findsNothing,
         reason: 'Restart load/accept rejected transport: $trace');
