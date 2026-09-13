@@ -59,6 +59,18 @@ Conversation history MUST persist across closing the overlay, navigating to anot
 
 ## Desktop localization and attachment contract
 
+Assistant and founder Li use the same canonical ILAIOS symbol system for the
+shared sidebar entry and authorized panel identity. `brand/manifest.yaml` and
+`brand/README.md` remain authoritative: dark surfaces use
+`brand/assets/05-ilaios-app-icon.jpg`; light surfaces use
+`brand/assets/04-ilaios-symbol-light.jpg`. Select through the existing Desktop
+theme authority. Consume the existing bundled assets without duplicate raster
+files, recoloring, redrawing, cropping, effects, or a separate Li/chat/AI icon.
+If a horizontal logo is required, use canonical 02 (dark) / 13 (light).
+Normal users must never receive Li-specific labels or branding. Theme-switch
+tests and real screenshots are required; asset-path inspection is not visual
+runtime evidence.
+
 Desktop UI locale is the single presentation-language source for Assistant/Li v1.
 
 - Turkish Desktop UI -> Assistant/Li UI and responses are Turkish

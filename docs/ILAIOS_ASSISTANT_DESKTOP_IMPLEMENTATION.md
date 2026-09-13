@@ -123,6 +123,18 @@ The shape is intentionally an L-shaped overlay, not one large rectangle:
 
 The visual must use the existing Desktop theme, spacing system, radius, typography, logos and monochrome UI rules. Do not introduce a parallel visual system.
 
+The shared Assistant sidebar entry and authorized panel must consume the same
+canonical symbol: `brand/assets/05-ilaios-app-icon.jpg` on dark surfaces and
+`brand/assets/04-ilaios-symbol-light.jpg` on light surfaces. The existing
+`Theme.of(context)` brightness and Desktop asset bundle remain the presentation
+and loading authorities. Both symbols are already declared in Desktop
+`pubspec.yaml`; do not copy raster files or edit that manifest for this feature.
+Use scale-only `BoxFit.contain`, without tint, crop, gradient, glow, shadow, or
+3D treatment. Do not introduce a Li-specific, robot, chat, star, or sparkle icon.
+If genuinely needed, horizontal logos remain canonical 02 (dark) / 13 (light).
+Verify against `brand/manifest.yaml` and `brand/README.md` before implementation.
+Include both themes and runtime theme switching in tests and screenshot evidence.
+
 ## Language contract
 
 There is no independent language selector inside Assistant/Li v1.
