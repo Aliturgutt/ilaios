@@ -6,7 +6,9 @@ from typing import Any
 import pytest
 
 from services.ai_governance import GovernanceError
-from services.openrouter_agent_catalog import discover_free_openrouter_agent_configuration
+from services.openrouter_agent_catalog import (
+    discover_free_openrouter_agent_configuration,
+)
 from services.web_agent_execution import WEB_GOVERNED_AI_CAPABILITIES
 
 

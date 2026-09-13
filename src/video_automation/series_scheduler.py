@@ -34,7 +34,8 @@ class SeriesScheduler(Protocol):
         capability: str,
         *,
         now: datetime,
-    ) -> SeriesLease: ...
+    ) -> SeriesLease:
+        ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,7 +50,9 @@ class ScheduledSeriesEpisode:
 class SeriesEpisodeScheduler:
     """Create a governed episode job without directly invoking any provider."""
 
-    def __init__(self, *, state_store: SeriesStateStore, scheduler: SeriesScheduler) -> None:
+    def __init__(
+        self, *, state_store: SeriesStateStore, scheduler: SeriesScheduler
+    ) -> None:
         self._state_store = state_store
         self._scheduler = scheduler
 

@@ -48,7 +48,9 @@ def _ranks(spec: DiagramSpec) -> dict[str, int]:
         outgoing[edge.source].append(edge.target)
         indegree[edge.target] += 1
 
-    queue: deque[str] = deque(sorted(node_id for node_id in ids if indegree[node_id] == 0))
+    queue: deque[str] = deque(
+        sorted(node_id for node_id in ids if indegree[node_id] == 0)
+    )
     visited: set[str] = set()
     while queue:
         source = queue.popleft()
@@ -85,7 +87,9 @@ def build_graph_layout(spec: DiagramSpec) -> GraphLayout:
     max_rank = max(by_rank, default=0)
     rank_count = max_rank + 1
     preferred_gap = 56
-    available_for_nodes = spec.width - margin_x * 2 - preferred_gap * max(rank_count - 1, 0)
+    available_for_nodes = (
+        spec.width - margin_x * 2 - preferred_gap * max(rank_count - 1, 0)
+    )
     node_width = max(128, min(192, _snap(available_for_nodes / max(rank_count, 1))))
 
     boxes: dict[str, NodeBox] = {}
@@ -100,7 +104,9 @@ def build_graph_layout(spec: DiagramSpec) -> GraphLayout:
             gap = max(24, _snap((usable_h - total_h) / max(len(members) + 1, 1)))
             y = margin_top + gap
             for node_id, height in zip(members, heights, strict=True):
-                boxes[node_id] = NodeBox(x=x, y=_snap(y), width=node_width, height=height)
+                boxes[node_id] = NodeBox(
+                    x=x, y=_snap(y), width=node_width, height=height
+                )
                 y += height + gap
     else:
         usable_h = spec.height - margin_top - margin_bottom - 80

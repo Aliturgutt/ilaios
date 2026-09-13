@@ -13,7 +13,10 @@ from src.video_automation.perceptual_review import (
     PerceptualReviewSubmission,
     admit_perceptual_reviews,
 )
-from src.video_automation.video_quality import QaObservationSource, VideoQualityFoundation
+from src.video_automation.video_quality import (
+    QaObservationSource,
+    VideoQualityFoundation,
+)
 from src.video_automation.video_quality_observations import (
     technical_observation_from_assembled_validation,
 )

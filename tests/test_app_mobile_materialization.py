@@ -10,9 +10,13 @@ from services.app_mobile_materialization import (
     build_flutter_android_materialization_plan,
     build_flutter_android_release_plan,
 )
-from services.app_product_spec import AppPlatform, ProductSpec, admit_project, build_product_spec
+from services.app_product_spec import (
+    AppPlatform,
+    ProductSpec,
+    admit_project,
+    build_product_spec,
+)
 from services.mobile_android_executor import AndroidSourceChange
-
 
 OBJECTIVE = "Materialize the governed ILAIOS mobile client"
 

@@ -3,13 +3,13 @@ from __future__ import annotations
 import json
 import logging
 import sqlite3
-
-import pytest
 from datetime import UTC, datetime, timedelta
 from http import HTTPStatus
 from http.cookies import SimpleCookie
 from pathlib import Path
 from typing import cast
+
+import pytest
 
 from apps.web_app_runtime.server import (
     AppRuntime,

@@ -47,9 +47,7 @@ class PublishingDispatchResult:
                     "accepted dispatch must not contain error_message"
                 )
         elif self.error_message is None or not self.error_message.strip():
-            raise PublishingQueueError(
-                "rejected dispatch requires error_message"
-            )
+            raise PublishingQueueError("rejected dispatch requires error_message")
 
 
 class PublishJobDispatcher(Protocol):
@@ -79,11 +77,7 @@ class PublishingQueue:
 
         if now.tzinfo is None:
             raise PublishingQueueError("now must be timezone-aware")
-        ready = [
-            item
-            for item in self._jobs.values()
-            if item.job.scheduled_at <= now
-        ]
+        ready = [item for item in self._jobs.values() if item.job.scheduled_at <= now]
         return tuple(
             sorted(
                 ready,

@@ -13,7 +13,10 @@ from services.web_app_sandbox_evidence import (
     GeneratedPreviewSandboxObservation,
     produce_generated_sandbox_evidence,
 )
-from services.web_generated_sandbox_gate import SandboxVerdict, evaluate_generated_sandbox
+from services.web_generated_sandbox_gate import (
+    SandboxVerdict,
+    evaluate_generated_sandbox,
+)
 
 
 def _policy() -> ExecutionPolicy:

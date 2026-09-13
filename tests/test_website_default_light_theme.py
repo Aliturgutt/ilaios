@@ -1,6 +1,5 @@
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 LAYOUT = ROOT / "apps" / "website" / "app" / "layout.tsx"
 TOGGLE = ROOT / "apps" / "website" / "app" / "ThemeToggle.tsx"

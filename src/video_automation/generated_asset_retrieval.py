@@ -220,13 +220,9 @@ class RetrievedGenerationAsset:
         ):
             _require_non_blank(name, getattr(self, name))
         if self.batch_number <= 0:
-            raise GeneratedAssetRetrievalError(
-                "batch_number must be greater than zero"
-            )
+            raise GeneratedAssetRetrievalError("batch_number must be greater than zero")
         if self.output_index <= 0:
-            raise GeneratedAssetRetrievalError(
-                "output_index must be greater than zero"
-            )
+            raise GeneratedAssetRetrievalError("output_index must be greater than zero")
         if self.byte_length <= 0:
             raise GeneratedAssetRetrievalError("byte_length must be greater than zero")
         if len(self.sha256_hex) != 64 or any(
@@ -259,9 +255,7 @@ class EpisodeGeneratedAssetRetrievalManifest:
         ):
             _require_non_blank(name, getattr(self, name))
         if self.asset_count != len(self.assets):
-            raise GeneratedAssetRetrievalError(
-                "asset_count must equal assets length"
-            )
+            raise GeneratedAssetRetrievalError("asset_count must equal assets length")
         asset_ids = tuple(asset.asset_id for asset in self.assets)
         if len(asset_ids) != len(set(asset_ids)):
             raise GeneratedAssetRetrievalError("retrieved asset_ids must be unique")

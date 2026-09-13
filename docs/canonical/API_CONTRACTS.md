@@ -1,14 +1,14 @@
 # ILAIOS — API CONTRACTS
 
-**Document Type:** Canonical API & Cross-Boundary Contract Specification  
-**Format:** GitHub Markdown + YAML/JSON-style contract examples  
-**Status:** Canonical Baseline v1.0 — Published in Repository  
-**Architecture Authority:** `SYSTEM_ARCHITECTURE.md`  
-**Product Authority:** `PRODUCT_REQUIREMENTS.md`  
-**Implementation Authority:** `IMPLEMENTATION_SPEC.md`  
-**Dependency Authority:** `DEPENDENCY_GRAPH.md`  
-**Security Authority:** `SECURITY_ARCHITECTURE.md`  
-**Data Authority:** `DATA_ARCHITECTURE.md`  
+**Document Type:** Canonical API & Cross-Boundary Contract Specification
+**Format:** GitHub Markdown + YAML/JSON-style contract examples
+**Status:** Canonical Baseline v1.0 — Published in Repository
+**Architecture Authority:** `SYSTEM_ARCHITECTURE.md`
+**Product Authority:** `PRODUCT_REQUIREMENTS.md`
+**Implementation Authority:** `IMPLEMENTATION_SPEC.md`
+**Dependency Authority:** `DEPENDENCY_GRAPH.md`
+**Security Authority:** `SECURITY_ARCHITECTURE.md`
+**Data Authority:** `DATA_ARCHITECTURE.md`
 **Core API Principle:** **CLIENTS EXPRESS INTENT; THE CONTROL PLANE OWNS AUTHORITY**
 
 > This document defines the **canonical public API boundaries and internal cross-boundary contracts** of ILAIOS. It defines schemas, invariants, compatibility rules, idempotency, errors, asynchronous job/event behavior, authorization context, and the contract surfaces between Control Plane, policy, routing, scheduler, workers, tools, providers, Knowledge/RAG, factories, artifacts, evaluation, and evidence. It does not claim that every endpoint described here is currently implemented or deployed.

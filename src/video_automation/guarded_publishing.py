@@ -34,9 +34,13 @@ class PublicationAuthorization:
         ):
             _text(name, value)
         if not self.scopes:
-            raise GuardedPublishingError("publication authorization requires OAuth scopes")
+            raise GuardedPublishingError(
+                "publication authorization requires OAuth scopes"
+            )
         if len(self.scopes) != len(set(self.scopes)):
-            raise GuardedPublishingError("publication authorization scopes must be unique")
+            raise GuardedPublishingError(
+                "publication authorization scopes must be unique"
+            )
         for scope in self.scopes:
             _text("OAuth scope", scope)
 
@@ -45,13 +49,16 @@ class PublicationAuthorityAwarePublisher(PlatformPublisher, Protocol):
     """Publisher that is explicitly bound to one OAuth account reference."""
 
     @property
-    def account_id(self) -> str: ...
+    def account_id(self) -> str:
+        ...
 
     @property
-    def oauth_authorization_ref(self) -> str: ...
+    def oauth_authorization_ref(self) -> str:
+        ...
 
     @property
-    def required_oauth_scopes(self) -> tuple[str, ...]: ...
+    def required_oauth_scopes(self) -> tuple[str, ...]:
+        ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -139,19 +146,33 @@ class DurablePublishingCoordinator:
         publisher: PublicationAuthorityAwarePublisher,
     ) -> None:
         if package.media_sha256_hex != product.final_sha256:
-            raise GuardedPublishingError("package is not bound to exact finished product SHA")
+            raise GuardedPublishingError(
+                "package is not bound to exact finished product SHA"
+            )
         normalized_platform = authorization.platform.strip().lower()
         if normalized_platform != package.platform:
-            raise GuardedPublishingError("OAuth authorization platform does not match package")
+            raise GuardedPublishingError(
+                "OAuth authorization platform does not match package"
+            )
         if authorization.account_id != package.account_id:
-            raise GuardedPublishingError("OAuth authorization account does not match package")
+            raise GuardedPublishingError(
+                "OAuth authorization account does not match package"
+            )
         if publisher.platform.strip().lower() != package.platform:
-            raise GuardedPublishingError("publisher adapter platform does not match package")
+            raise GuardedPublishingError(
+                "publisher adapter platform does not match package"
+            )
         if publisher.account_id != package.account_id:
-            raise GuardedPublishingError("publisher adapter account does not match package")
+            raise GuardedPublishingError(
+                "publisher adapter account does not match package"
+            )
         if publisher.oauth_authorization_ref != authorization.oauth_authorization_ref:
-            raise GuardedPublishingError("publisher OAuth reference does not match authorization")
-        missing_scopes = set(publisher.required_oauth_scopes) - set(authorization.scopes)
+            raise GuardedPublishingError(
+                "publisher OAuth reference does not match authorization"
+            )
+        missing_scopes = set(publisher.required_oauth_scopes) - set(
+            authorization.scopes
+        )
         if missing_scopes:
             raise GuardedPublishingError(
                 "publication authorization is missing required OAuth scopes: "

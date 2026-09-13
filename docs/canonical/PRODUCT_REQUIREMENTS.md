@@ -1,11 +1,11 @@
 # ILAIOS — PRODUCT REQUIREMENTS
 
-**Document Type:** Canonical Product Requirements Document  
-**Format:** GitHub Markdown  
-**Status:** Canonical Baseline v1.0 — Published in Repository  
-**Architecture Authority:** `SYSTEM_ARCHITECTURE.md`  
-**Autonomous Execution View:** `AUTONOMOUS_NODE_ARCHITECTURE.md`  
-**Repository Orientation:** `README.md`  
+**Document Type:** Canonical Product Requirements Document
+**Format:** GitHub Markdown
+**Status:** Canonical Baseline v1.0 — Published in Repository
+**Architecture Authority:** `SYSTEM_ARCHITECTURE.md`
+**Autonomous Execution View:** `AUTONOMOUS_NODE_ARCHITECTURE.md`
+**Repository Orientation:** `README.md`
 **Core Product Principle:** **SIGN IN → ONE PROMPT → VERIFIED FINISHED PRODUCT**
 
 > This document defines **what the ILAIOS product must do and what experience it must provide**. It does not define implementation details, repository paths, deployment topology, or current implementation status. Those belong to downstream canonical documents.

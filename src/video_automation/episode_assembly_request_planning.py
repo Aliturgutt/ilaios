@@ -38,7 +38,9 @@ class EpisodeAssemblyOutputPolicy:
         if self.width <= 0:
             raise EpisodeAssemblyRequestPlanningError("width must be greater than zero")
         if self.height <= 0:
-            raise EpisodeAssemblyRequestPlanningError("height must be greater than zero")
+            raise EpisodeAssemblyRequestPlanningError(
+                "height must be greater than zero"
+            )
         if self.frame_rate <= 0:
             raise EpisodeAssemblyRequestPlanningError(
                 "frame_rate must be greater than zero"

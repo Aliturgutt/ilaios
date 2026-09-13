@@ -154,16 +154,10 @@ def analyze_capacity(data: CapacityInput) -> CapacityEstimate:
     peak_rps = base_rps * data.peak_factor if base_rps is not None else None
     read_rps = peak_rps * data.read_ratio if peak_rps is not None else None
     write_rps = peak_rps * data.write_ratio if peak_rps is not None else None
-    ingress = (
-        peak_rps * data.avg_request_bytes * 8 if peak_rps is not None else None
-    )
-    egress = (
-        peak_rps * data.avg_response_bytes * 8 if peak_rps is not None else None
-    )
+    ingress = peak_rps * data.avg_request_bytes * 8 if peak_rps is not None else None
+    egress = peak_rps * data.avg_response_bytes * 8 if peak_rps is not None else None
 
-    average_write_rps = (
-        base_rps * data.write_ratio if base_rps is not None else None
-    )
+    average_write_rps = base_rps * data.write_ratio if base_rps is not None else None
     write_storage = (
         average_write_rps * data.avg_write_bytes * _SECONDS_PER_DAY
         if average_write_rps is not None
@@ -181,9 +175,7 @@ def analyze_capacity(data: CapacityInput) -> CapacityEstimate:
                 )
             )
         else:
-            effective_rps = (
-                data.sustainable_rps_per_instance * data.target_utilization
-            )
+            effective_rps = data.sustainable_rps_per_instance * data.target_utilization
             minimum_instances = max(1, ceil(peak_rps / effective_rps))
             assumptions.append("instance_count_uses_sustainable_measured_rps")
     elif peak_rps is not None:

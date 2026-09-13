@@ -173,9 +173,7 @@ def _require_sha256(name: str, value: str) -> None:
     if len(value) != 64 or any(
         character not in "0123456789abcdef" for character in value
     ):
-        raise PerceptualReviewError(
-            f"{name} must be a lowercase SHA-256 digest"
-        )
+        raise PerceptualReviewError(f"{name} must be a lowercase SHA-256 digest")
 
 
 def _require_text(name: str, value: str) -> None:

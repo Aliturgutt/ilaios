@@ -19,9 +19,7 @@ class ConfidenceResult:
     def __post_init__(self) -> None:
         """Validate the confidence score boundary."""
         if not 0 <= self.score <= 100:
-            raise ValueError(
-                "Confidence score must be between 0 and 100"
-            )
+            raise ValueError("Confidence score must be between 0 and 100")
 
 
 class ConfidenceScorer:
@@ -36,9 +34,7 @@ class ConfidenceScorer:
     ) -> ConfidenceResult:
         """Calculate confidence from one validation result."""
         if not isinstance(validation_result, ValidationResult):
-            raise TypeError(
-                "validation_result must be a ValidationResult"
-            )
+            raise TypeError("validation_result must be a ValidationResult")
 
         score = 100
         reasons: list[str] = []
@@ -47,10 +43,7 @@ class ConfidenceScorer:
             score -= self.ERROR_PENALTY
             reasons.append(f"validation_error: {error}")
 
-        if (
-            not validation_result.passed
-            and not validation_result.errors
-        ):
+        if not validation_result.passed and not validation_result.errors:
             score -= self.FAILED_WITHOUT_ERRORS_PENALTY
             reasons.append("validation_failed_without_errors")
 

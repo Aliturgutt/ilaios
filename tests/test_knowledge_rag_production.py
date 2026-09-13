@@ -23,7 +23,6 @@ from services.knowledge_rag_production import (
     SQLiteVectorIndex,
 )
 
-
 _EXACT_SCOPE = "source:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@image:sha256:bbbb"
 
 

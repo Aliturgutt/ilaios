@@ -79,12 +79,18 @@ class FinishedProductCertifier:
         ):
             _text(name, value)
         if acceptance.media_kind is not MediaKind.VIDEO:
-            raise FinishedProductError("finished video requires VIDEO acceptance evidence")
+            raise FinishedProductError(
+                "finished video requires VIDEO acceptance evidence"
+            )
         if not acceptance.accepted:
-            raise FinishedProductError("raw or failed-QA artifact cannot be a finished product")
+            raise FinishedProductError(
+                "raw or failed-QA artifact cannot be a finished product"
+            )
         path = Path(final_path)
         if path.is_symlink() or not path.is_file():
-            raise FinishedProductError("finished video must be an existing regular file")
+            raise FinishedProductError(
+                "finished video must be an existing regular file"
+            )
         body = path.read_bytes()
         if not body:
             raise FinishedProductError("finished video must not be empty")
@@ -105,7 +111,9 @@ class FinishedProductCertifier:
         if thumbnail is not None:
             if thumbnail.source_artifact_sha256 != final_sha:
                 raise FinishedProductError("thumbnail is not bound to final video SHA")
-            _verify_file_sha(Path(thumbnail.output_path), thumbnail.sha256_hex, "thumbnail")
+            _verify_file_sha(
+                Path(thumbnail.output_path), thumbnail.sha256_hex, "thumbnail"
+            )
             thumbnail_digest = thumbnail.sha256_hex
 
         product_material = "\n".join(
@@ -121,7 +129,9 @@ class FinishedProductCertifier:
                 f"description={description}",
             )
         )
-        product_id = "finished-video-" + sha256(product_material.encode()).hexdigest()[:24]
+        product_id = (
+            "finished-video-" + sha256(product_material.encode()).hexdigest()[:24]
+        )
         return FinishedVideoProduct(
             product_id=product_id,
             job_id=job_id,
@@ -140,7 +150,11 @@ class FinishedProductCertifier:
 
 def _verify_caption_manifest(manifest: CaptionExportManifest) -> str:
     artifacts = (
-        (Path(manifest.structured_json_path), manifest.structured_json_sha256, "caption JSON"),
+        (
+            Path(manifest.structured_json_path),
+            manifest.structured_json_sha256,
+            "caption JSON",
+        ),
         (Path(manifest.srt_path), manifest.srt_sha256, "caption SRT"),
         (Path(manifest.vtt_path), manifest.vtt_sha256, "caption VTT"),
     )
@@ -166,5 +180,7 @@ def _text(name: str, value: str) -> None:
 
 
 def _sha256(name: str, value: str) -> None:
-    if len(value) != 64 or any(character not in "0123456789abcdef" for character in value):
+    if len(value) != 64 or any(
+        character not in "0123456789abcdef" for character in value
+    ):
         raise FinishedProductError(f"{name} must be lowercase SHA-256")

@@ -14,7 +14,10 @@ from services.evidence import EvidenceStore
 from services.execution_adapters import register_web_runtime
 from services.execution_coordinator import ExecutionCoordinator, ExecutionState
 from services.governance import GovernedRuntimeGateway
-from services.integrations import DeterministicLocalVideoRuntime, DurableVideoProductRuntime
+from services.integrations import (
+    DeterministicLocalVideoRuntime,
+    DurableVideoProductRuntime,
+)
 from services.integrations.web_product_runtime import (
     DurableWebProductRuntime,
     WebProductFinalizationPending,
