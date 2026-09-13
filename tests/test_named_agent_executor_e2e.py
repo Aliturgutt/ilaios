@@ -13,7 +13,12 @@ from services.agent_registry import (
 )
 from services.control_plane.migrations import migrate_database
 from services.named_agent_executor import NamedAgentExecutor
-from services.runtime import BlastRadiusBudget, ExecutionGrant, GovernedRuntime, GrantPolicy
+from services.runtime import (
+    BlastRadiusBudget,
+    ExecutionGrant,
+    GovernedRuntime,
+    GrantPolicy,
+)
 
 NOW = datetime(2026, 8, 12, tzinfo=timezone.utc)
 CODESEC_ID = "ilaios.agent.security.codesec.v1"

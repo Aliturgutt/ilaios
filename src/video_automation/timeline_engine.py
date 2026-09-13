@@ -55,16 +55,12 @@ class CanonicalTimelineEngine:
         _require_non_blank("job_id", job_id)
 
         if not assets:
-            raise TimelineEngineError(
-                "assets must contain at least one MediaAsset"
-            )
+            raise TimelineEngineError("assets must contain at least one MediaAsset")
 
         asset_ids = tuple(asset.asset_id for asset in assets)
 
         if len(asset_ids) != len(set(asset_ids)):
-            raise TimelineEngineError(
-                "asset identifiers must be unique"
-            )
+            raise TimelineEngineError("asset identifiers must be unique")
 
         expected_ids = set(asset_ids)
 
@@ -92,18 +88,12 @@ class CanonicalTimelineEngine:
                 asset=asset,
             )
 
-            start_seconds = start_seconds_by_asset_id[
-                asset.asset_id
-            ]
-            duration_seconds = duration_seconds_by_asset_id[
-                asset.asset_id
-            ]
+            start_seconds = start_seconds_by_asset_id[asset.asset_id]
+            duration_seconds = duration_seconds_by_asset_id[asset.asset_id]
             layer = layer_by_asset_id[asset.asset_id]
 
             if start_seconds < 0:
-                raise TimelineEngineError(
-                    "timeline start_seconds must be >= 0"
-                )
+                raise TimelineEngineError("timeline start_seconds must be >= 0")
 
             if duration_seconds <= 0:
                 raise TimelineEngineError(
@@ -111,9 +101,7 @@ class CanonicalTimelineEngine:
                 )
 
             if layer < 0:
-                raise TimelineEngineError(
-                    "timeline layer must be >= 0"
-                )
+                raise TimelineEngineError("timeline layer must be >= 0")
 
             identity_material = "\n".join(
                 (
@@ -128,9 +116,7 @@ class CanonicalTimelineEngine:
 
             item_id = (
                 "timeline-item-"
-                + sha256(
-                    identity_material.encode("utf-8")
-                ).hexdigest()[:24]
+                + sha256(identity_material.encode("utf-8")).hexdigest()[:24]
             )
 
             items.append(
@@ -201,11 +187,7 @@ def _require_exact_keys(
 
 def _require_non_blank(name: str, value: str) -> None:
     if not value or not value.strip():
-        raise TimelineEngineError(
-            f"{name} must not be blank"
-        )
+        raise TimelineEngineError(f"{name} must not be blank")
 
     if value != value.strip():
-        raise TimelineEngineError(
-            f"{name} must not contain surrounding whitespace"
-        )
+        raise TimelineEngineError(f"{name} must not contain surrounding whitespace")

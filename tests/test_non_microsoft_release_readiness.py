@@ -13,7 +13,6 @@ from services.non_microsoft_release_readiness import (
     evaluate_non_microsoft_release,
 )
 
-
 _SOURCE_SHA = "a" * 40
 
 

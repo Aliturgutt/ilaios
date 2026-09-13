@@ -82,19 +82,13 @@ class AuditEngine:
         records = self._records
 
         if component is not None:
-            records = [
-                record for record in records if record.component == component
-            ]
+            records = [record for record in records if record.component == component]
 
         if action is not None:
-            records = [
-                record for record in records if record.action == action
-            ]
+            records = [record for record in records if record.action == action]
 
         if status is not None:
-            records = [
-                record for record in records if record.status == status
-            ]
+            records = [record for record in records if record.status == status]
 
         return tuple(records)
 

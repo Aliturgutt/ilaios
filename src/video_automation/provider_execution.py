@@ -260,7 +260,9 @@ def _validate_provider_result(
     result: ProviderResult,
 ) -> None:
     if result.request_id != request.request_id:
-        raise ProviderExecutionError("provider result request_id does not match request")
+        raise ProviderExecutionError(
+            "provider result request_id does not match request"
+        )
     if result.provider_name != dispatch.provider_id:
         raise ProviderExecutionError(
             "provider result provider_name does not match dispatch provider_id"

@@ -1,7 +1,7 @@
 # ADR-0005 — Bounded Factories on the Shared Governed Runtime
 
-**Status:** Accepted — Canonical Rationale  
-**Date:** 2026-08-13  
+**Status:** Accepted — Canonical Rationale
+**Date:** 2026-08-13
 **Authority:** This ADR records rationale only and does not override canonical documents.
 
 ## Context

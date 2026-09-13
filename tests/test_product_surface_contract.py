@@ -5,7 +5,11 @@ import json
 
 import pytest
 
-from scripts.validate_product_surface_contract import CONTRACT, ContractError, validate_contract
+from scripts.validate_product_surface_contract import (
+    CONTRACT,
+    ContractError,
+    validate_contract,
+)
 
 
 def _load() -> dict[str, object]:

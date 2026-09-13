@@ -23,14 +23,18 @@ from services.integrations.software_app_handoff import (
 )
 from services.integrations.software_specialized_handoff import (
     PersonalOperationsPayload,
+    SoftwareToSpecializedFactoryHandoff,
     SpecializedFactoryHandoffArtifact,
     SpecializedFactoryHandoffRequest,
-    SoftwareToSpecializedFactoryHandoff,
 )
 from services.personal_operations_factory import PersonalOperationsFactory
 from services.research_data_factory import ResearchDataFactory
 from services.security_factory import SecurityFactory
-from services.software_factory import EvidenceBundle, PromotionProposal, ValidationResult
+from services.software_factory import (
+    EvidenceBundle,
+    PromotionProposal,
+    ValidationResult,
+)
 from services.software_factory_agents import EngineeringAgentExecution
 from services.software_factory_skills import SkillExecutionResult
 from services.software_factory_validation import (

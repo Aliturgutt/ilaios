@@ -12,7 +12,10 @@ from services.control_plane import ControlPlane, ControlPlaneConfig
 from services.control_plane.workflows import WorkflowStore, WorkflowStoreConfig
 from services.evidence import EvidenceStore
 from services.execution_adapters import register_software_runtime
-from services.execution_coordinator import ExecutionCoordinator, ExecutionCoordinatorError
+from services.execution_coordinator import (
+    ExecutionCoordinator,
+    ExecutionCoordinatorError,
+)
 from services.governance import GovernedRuntimeGateway
 from services.integrations import (
     DeterministicLocalVideoRuntime,

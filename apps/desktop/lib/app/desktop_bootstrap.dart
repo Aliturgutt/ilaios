@@ -503,6 +503,9 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
           _userSession?.liFounder == true ? _fetchLiMemories : null,
       onRememberLiMemory:
           _userSession?.liFounder == true ? _rememberLiMemory : null,
+      onAssistantRequest: _identityClient == null || _userSession == null
+          ? null
+          : (request) => _identityClient!.assistantRequest(_userSession!, request),
       onRefreshRequested: _client == null ? null : _refresh,
       onProvisionAgent: agentProvisionEnabled ? _provisionAgent : null,
       onGovernanceDecision: governanceEnabled ? _decideGovernance : null,

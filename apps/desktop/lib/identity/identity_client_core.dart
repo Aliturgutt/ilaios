@@ -124,6 +124,37 @@ class IdentityClient {
   final ControlPlaneTransport _transport;
   final IdentityRetryDelay _retryDelay;
 
+  Future<Map<String, dynamic>> assistantRequest(
+    DesktopUserSession session,
+    Map<String, Object?> request,
+  ) async {
+    final payload = await _sessionPost('/v1/assistant', request, 'Assistant',
+        session, expectedStatus: HttpStatus.ok);
+    final binding = payload['binding'];
+    if (binding is! Map<String, dynamic> ||
+        binding.length != 5 || !binding.containsKey('project_id') || !binding.containsKey('workload_id') ||
+        binding['user_id'] != session.principalId ||
+        binding['tenant_id'] != session.tenantId ||
+        binding['project_id'] != null || binding['workload_id'] != null ||
+        !const ['assistant', 'li'].contains(binding['persona']) ||
+        (binding['persona'] == 'li' && !session.liFounder)) {
+      throw const IdentityClientException('Assistant scope could not be verified');
+    }
+    final conversation = payload['conversation'];
+    if (conversation != null) {
+      if (conversation is! Map<String, dynamic> ||
+          conversation['binding'] is! Map<String, dynamic>) {
+        throw const IdentityClientException('Assistant conversation binding invalid');
+      }
+      final actual = conversation['binding'] as Map<String, dynamic>;
+      if (actual.length != binding.length ||
+          binding.keys.any((key) => binding[key] != actual[key])) {
+        throw const IdentityClientException('Assistant conversation binding invalid');
+      }
+    }
+    return payload;
+  }
+
   Future<List<IdentityProviderOption>> fetchProviders() async {
     final payload = await _get('/v1/auth/providers', 'identity providers');
     final raw = payload['providers'];

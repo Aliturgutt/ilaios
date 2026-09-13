@@ -101,7 +101,9 @@ class VideoWorkflowOrchestrator:
         current_index = _ORDER.index(progress.stage)
         target_index = _ORDER.index(target)
         if target_index != current_index + 1:
-            raise WorkflowOrchestrationError("workflow stages must advance exactly one step")
+            raise WorkflowOrchestrationError(
+                "workflow stages must advance exactly one step"
+            )
         if not gate.passed:
             raise WorkflowOrchestrationError("workflow gate did not pass")
         return WorkflowProgress(progress.job_id, target)

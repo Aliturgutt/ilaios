@@ -36,6 +36,7 @@ class IlaiosDesktopApp extends StatefulWidget {
     this.onFetchLiState,
     this.onFetchLiMemories,
     this.onRememberLiMemory,
+    this.onAssistantRequest,
     this.onRefreshRequested,
     this.onProvisionAgent,
     this.onGovernanceDecision,
@@ -65,6 +66,8 @@ class IlaiosDesktopApp extends StatefulWidget {
   final Future<DesktopLiMemory> Function(String kind, String content)?
       onRememberLiMemory;
   final VoidCallback? onRefreshRequested;
+  final Future<Map<String, dynamic>> Function(Map<String, Object?> request)?
+      onAssistantRequest;
   final Future<void> Function(String agentId)? onProvisionAgent;
   final Future<void> Function(String requestId, GovernanceDecision decision)?
       onGovernanceDecision;
@@ -247,6 +250,7 @@ class _IlaiosDesktopAppState extends State<IlaiosDesktopApp>
             onFetchLiState: widget.onFetchLiState,
             onFetchLiMemories: widget.onFetchLiMemories,
             onRememberLiMemory: widget.onRememberLiMemory,
+            onAssistantRequest: widget.onAssistantRequest,
             onRefreshRequested: widget.onRefreshRequested,
             onProvisionAgent: widget.onProvisionAgent,
             onGovernanceDecision: widget.onGovernanceDecision,

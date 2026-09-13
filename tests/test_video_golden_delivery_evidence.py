@@ -10,7 +10,6 @@ from src.video_automation.golden_delivery_evidence import (
     GoldenDeliveryReceipt,
 )
 
-
 _REQUIRED_VISUALS = frozenset(
     {"stock_footage", "visual_explainer", "chart", "kinetic_text", "transition"}
 )

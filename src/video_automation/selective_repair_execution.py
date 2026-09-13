@@ -101,9 +101,7 @@ class SelectiveRepairExecutionCoordinator:
         _require_sha256(source_artifact_sha256)
         _require_text("provenance_reference", provenance_reference)
         if source_byte_length <= 0:
-            raise SelectiveRepairExecutionError(
-                "source_byte_length must be positive"
-            )
+            raise SelectiveRepairExecutionError("source_byte_length must be positive")
 
         source = Path(source_path)
         if source.is_symlink():
@@ -147,9 +145,7 @@ class SelectiveRepairExecutionCoordinator:
                 "repair output cannot overwrite its source artifact"
             )
         if output.exists() or output.is_symlink():
-            raise SelectiveRepairExecutionError(
-                "repair output identity already exists"
-            )
+            raise SelectiveRepairExecutionError("repair output identity already exists")
 
         self._action.execute(request, source_path=source, output_path=output)
 
@@ -195,6 +191,4 @@ def _require_sha256(value: str) -> None:
 
 def _require_text(name: str, value: str) -> None:
     if not value or value != value.strip():
-        raise SelectiveRepairExecutionError(
-            f"{name} must be non-blank and trimmed"
-        )
+        raise SelectiveRepairExecutionError(f"{name} must be non-blank and trimmed")

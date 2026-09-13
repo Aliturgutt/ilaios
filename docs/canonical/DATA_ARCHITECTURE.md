@@ -1,13 +1,13 @@
 # ILAIOS — DATA ARCHITECTURE
 
-**Document Type:** Canonical Data Architecture  
-**Format:** GitHub Markdown + ASCII architecture diagrams  
-**Status:** Canonical Baseline v1.0 — Published in Repository  
-**Architecture Authority:** `SYSTEM_ARCHITECTURE.md`  
-**Product Authority:** `PRODUCT_REQUIREMENTS.md`  
-**Implementation Authority:** `IMPLEMENTATION_SPEC.md`  
-**Dependency Authority:** `DEPENDENCY_GRAPH.md`  
-**Security Authority:** `SECURITY_ARCHITECTURE.md`  
+**Document Type:** Canonical Data Architecture
+**Format:** GitHub Markdown + ASCII architecture diagrams
+**Status:** Canonical Baseline v1.0 — Published in Repository
+**Architecture Authority:** `SYSTEM_ARCHITECTURE.md`
+**Product Authority:** `PRODUCT_REQUIREMENTS.md`
+**Implementation Authority:** `IMPLEMENTATION_SPEC.md`
+**Dependency Authority:** `DEPENDENCY_GRAPH.md`
+**Security Authority:** `SECURITY_ARCHITECTURE.md`
 **Core Data Principle:** **EVERY MATERIAL RECORD MUST RESOLVE TO OWNER, SCOPE, PURPOSE, LIFECYCLE, AND PROVENANCE**
 
 > This document defines **the canonical logical data model, store boundaries, ownership rules, lifecycle rules, lineage, consistency model, tenant isolation, knowledge data architecture, artifact/evidence separation, and data movement contracts of ILAIOS**. It defines target data architecture, not current production deployment state.

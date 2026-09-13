@@ -1,7 +1,7 @@
 # ADR-0003 — One RoutingDecision Truth
 
-**Status:** Accepted — Canonical Rationale  
-**Date:** 2026-08-13  
+**Status:** Accepted — Canonical Rationale
+**Date:** 2026-08-13
 **Authority:** This ADR records rationale only and does not override canonical documents.
 
 ## Context

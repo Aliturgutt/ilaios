@@ -11,7 +11,12 @@ from services.account_session_lifecycle import (
     SQLiteAccountSessionAuditStore,
     SQLiteAccountSessionRevocationStore,
 )
-from services.central_identity import CentralIdentityError, CentralIdentityService, IdentityProvider, VerifiedExternalIdentity
+from services.central_identity import (
+    CentralIdentityError,
+    CentralIdentityService,
+    IdentityProvider,
+    VerifiedExternalIdentity,
+)
 from services.central_identity_sqlite import SQLiteCentralIdentityStore
 
 

@@ -35,8 +35,7 @@ class CinematographyExecutionResult:
         if not self.shots:
             raise CinematographyExecutionError("cinematography result requires shots")
         if len(self.execution_sha256) != 64 or any(
-            character not in "0123456789abcdef"
-            for character in self.execution_sha256
+            character not in "0123456789abcdef" for character in self.execution_sha256
         ):
             raise CinematographyExecutionError(
                 "execution_sha256 must be lowercase SHA-256"

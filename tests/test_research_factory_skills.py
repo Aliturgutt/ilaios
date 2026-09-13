@@ -2,8 +2,8 @@ from pathlib import Path
 
 from services.agent_registry import registration_for
 from services.research_factory_skills import (
-    RESEARCH_FACTORY_SKILLS,
     RESEARCH_FACTORY_SKILL_IDS,
+    RESEARCH_FACTORY_SKILLS,
     default_research_skills_root,
     validate_research_factory_skills,
 )

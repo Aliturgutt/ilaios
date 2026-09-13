@@ -37,7 +37,8 @@ class LogoOverlayEngine(Protocol):
         output_path: str | Path,
         x: int = 0,
         y: int = 0,
-    ) -> MediaCommandResult: ...
+    ) -> MediaCommandResult:
+        ...
 
 
 class LogoPlacement(str, Enum):
@@ -105,7 +106,9 @@ class LogoAssetLockCompositor:
             raise LogoAssetLockError("asset-lock output already exists")
 
         margin = max(16, round(min(frame_width, frame_height) * 0.025))
-        if logo.width > frame_width - (2 * margin) or logo.height > frame_height - (2 * margin):
+        if logo.width > frame_width - (2 * margin) or logo.height > frame_height - (
+            2 * margin
+        ):
             raise LogoAssetLockError(
                 "logo asset is too large for exact no-rescale compositing"
             )
@@ -119,7 +122,10 @@ class LogoAssetLockCompositor:
             logo_height=logo.height,
             margin=margin,
         )
-        logo_path = output_path.parent / f"asset-lock-logo-{logo.sha256_hex}{_extension(logo.mime_type)}"
+        logo_path = (
+            output_path.parent
+            / f"asset-lock-logo-{logo.sha256_hex}{_extension(logo.mime_type)}"
+        )
         if logo_path.exists() and logo_path.read_bytes() != logo.content:
             raise LogoAssetLockError("asset-lock temporary logo digest collision")
         logo_path.parent.mkdir(parents=True, exist_ok=True)
@@ -134,7 +140,9 @@ class LogoAssetLockCompositor:
                     y=y,
                 )
             except FfmpegMediaEngineError as error:
-                raise LogoAssetLockError("deterministic logo compositing failed") from error
+                raise LogoAssetLockError(
+                    "deterministic logo compositing failed"
+                ) from error
         finally:
             logo_path.unlink(missing_ok=True)
 

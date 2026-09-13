@@ -176,7 +176,9 @@ def _request_model_id(request: ProviderRequest) -> str:
     return value
 
 
-def _validate_capabilities(request: ProviderRequest, model: OpenRouterVideoModel) -> None:
+def _validate_capabilities(
+    request: ProviderRequest, model: OpenRouterVideoModel
+) -> None:
     if request.payload.get("request_count") != 1:
         raise OpenRouterManagedVideoGatewayError(
             "catalog capability gate requires one generation item"
@@ -188,7 +190,11 @@ def _validate_capabilities(request: ProviderRequest, model: OpenRouterVideoModel
         parsed = json.loads(items_json)
     except json.JSONDecodeError as exc:
         raise OpenRouterManagedVideoGatewayError("items_json is invalid JSON") from exc
-    if not isinstance(parsed, list) or len(parsed) != 1 or not isinstance(parsed[0], dict):
+    if (
+        not isinstance(parsed, list)
+        or len(parsed) != 1
+        or not isinstance(parsed[0], dict)
+    ):
         raise OpenRouterManagedVideoGatewayError(
             "items_json must contain exactly one object"
         )
@@ -212,7 +218,10 @@ def _validate_capabilities(request: ProviderRequest, model: OpenRouterVideoModel
     aspect_ratio = item.get("aspect_ratio")
     if not isinstance(aspect_ratio, str) or not aspect_ratio.strip():
         raise OpenRouterManagedVideoGatewayError("aspect_ratio must be non-empty")
-    if model.supported_aspect_ratios and aspect_ratio not in model.supported_aspect_ratios:
+    if (
+        model.supported_aspect_ratios
+        and aspect_ratio not in model.supported_aspect_ratios
+    ):
         raise OpenRouterManagedVideoGatewayError(
             "requested aspect ratio is not supported by live model capability"
         )

@@ -27,7 +27,6 @@ from services.creative_document_factory import (
 )
 from src.video_automation.managed_credit_store import ManagedCreditLedgerStore
 
-
 _SECRET = b"d" * 32
 
 

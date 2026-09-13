@@ -52,18 +52,12 @@ class EvidenceRecord:
             )
 
         if self.timestamp.utcoffset() != timezone.utc.utcoffset(self.timestamp):
-            raise EvidenceChainValidationError(
-                "Evidence timestamp must use UTC"
-            )
+            raise EvidenceChainValidationError("Evidence timestamp must use UTC")
 
         if not isinstance(self.source, str) or not self.source.strip():
-            raise EvidenceChainValidationError(
-                "Evidence source must not be empty"
-            )
+            raise EvidenceChainValidationError("Evidence source must not be empty")
 
-        if not isinstance(self.data_hash, str) or not _is_sha256_hex(
-            self.data_hash
-        ):
+        if not isinstance(self.data_hash, str) or not _is_sha256_hex(self.data_hash):
             raise EvidenceChainValidationError(
                 "Evidence data_hash must be a lowercase SHA-256 digest"
             )
@@ -104,9 +98,7 @@ class EvidenceChain:
                 "Evidence chain accepts only EvidenceRecord instances"
             )
 
-        expected_prev_hash = (
-            None if not self._records else self._records[-1].chain_hash
-        )
+        expected_prev_hash = None if not self._records else self._records[-1].chain_hash
 
         if record.prev_hash != expected_prev_hash:
             raise EvidenceChainValidationError(
@@ -121,9 +113,7 @@ class EvidenceChain:
         )
 
         if record.chain_hash != expected_chain_hash:
-            raise EvidenceChainValidationError(
-                "Evidence record chain_hash is invalid"
-            )
+            raise EvidenceChainValidationError("Evidence record chain_hash is invalid")
 
         self._records.append(record)
 
