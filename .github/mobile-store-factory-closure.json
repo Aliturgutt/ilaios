@@ -4,7 +4,7 @@
   "checkpoint_protocol": "branch-pr-exact-head-ci-merge-next-master",
   "truth_rule": "NO_EVIDENCE_NO_DONE",
   "base_master_sha": "698204b5b62c37a4a6e08943253042cfd7a33446",
-  "current_phase": 3,
+  "current_phase": 4,
   "automation_mode": "bounded-zero-spend-non-publication",
   "store_submission_requires_explicit_approval": true,
   "external_spend_authorized": false,
