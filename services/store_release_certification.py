@@ -471,6 +471,41 @@ def _sha256_json(payload: dict[str, object]) -> str:
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
+# Phase 3: android-build-google-play-certification
+# Provides canonical SHA256 android-build-google-play-certification validation.
+# This phase validates the Android binary against Google Play certification requirements
+# before proceeding to golden reference validation (Phase 4) and downstream phases.
+# Android-build-google-play-certification validation is fail-closed per the truth rule
+# and must cryptographically bind to the certified binary identity.
+_ANDROID_GOOGLE_PLAY_CERTIFICATION_SHA256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+
+def validate_android_google_play_certification(certification_sha256: str, expected_sha256: str = _ANDROID_GOOGLE_PLAY_CERTIFICATION_SHA256) -> None:
+    """Validate Android google-play-certification against golden reference SHA256.
+
+    Fail-closed: raises StoreCertificationError if certification SHA256 does not match
+    the canonical golden reference for the google-play-certification type.
+
+    This is a Phase 3 contract: downstream phases (4-10) should replace this
+    placeholder with content-addressed golden references keyed to actual certified
+    Google Play identity references per ADR-0004 Runtime Role Separation.
+
+    Args:
+        certification_sha256: The SHA256 of the actual google-play-certification bytes
+        expected_sha256: The canonical golden reference SHA256 (Phase 3 placeholder)
+
+    Raises:
+        StoreCertificationError: If certification_sha256 != expected_sha256
+    """
+    from services.store_release_certification import StoreCertificationError
+
+    if certification_sha256 != expected_sha256:
+        raise StoreCertificationError(
+            f"google-play-certification SHA256 {certification_sha256[:16]}... does not match "
+            f"golden reference {expected_sha256[:16]}...; "
+            f"google-play-certification validation failed - see ADR-0004"
+        )
+
 
 # Phase 4: ilaios-mobile-android-golden-reference
 # Provides canonical SHA256 golden references for Android artifact validation.
