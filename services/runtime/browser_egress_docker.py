@@ -282,7 +282,7 @@ class DockerBrowserEgressBoundary:
             ]
             if hasattr(os, "getuid") and hasattr(os, "getgid"):
                 uid = os.getuid()
-                gid = os.getgid()  # type: ignore[attr-defined]
+                gid = os.getgid()
                 if uid == 0:
                     raise BrowserToolError("browser egress refuses a root host identity")
                 browser_args.extend(("--user", f"{uid}:{gid}"))
