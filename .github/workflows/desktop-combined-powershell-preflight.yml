@@ -1,0 +1,110 @@
+name: Desktop Combined PowerShell Preflight
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/desktop-combined-powershell-preflight.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-combined-powershell-preflight-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  powershell-5-native-boundary:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact source commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Prove Windows PowerShell 5.1 does not treat normal git STDERR as fatal
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Set-StrictMode -Version Latest
+
+          function Invoke-NativeCapture {
+            param(
+              [Parameter(Mandatory=$true)][string]$FilePath,
+              [object[]]$ArgumentList = @()
+            )
+
+            $previousErrorActionPreference = $ErrorActionPreference
+            $output = @()
+            $exitCode = -1
+            try {
+              $ErrorActionPreference = 'Continue'
+              $output = @(& $FilePath @ArgumentList 2>&1)
+              $exitCode = $LASTEXITCODE
+            }
+            finally {
+              $ErrorActionPreference = $previousErrorActionPreference
+            }
+
+            [pscustomobject]@{
+              ExitCode = $exitCode
+              Output = @($output | ForEach-Object { "$_" })
+            }
+          }
+
+          $cloneRoot = Join-Path $env:RUNNER_TEMP 'ilaios-native-stderr-preflight'
+          Remove-Item $cloneRoot -Recurse -Force -ErrorAction SilentlyContinue
+
+          $result = Invoke-NativeCapture -FilePath 'git.exe' -ArgumentList @(
+            'clone',
+            '--depth', '1',
+            '--single-branch',
+            '--branch', 'master',
+            'https://github.com/Aliturgutt/ilaios.git',
+            $cloneRoot
+          )
+
+          $result.Output | ForEach-Object { Write-Host $_ }
+
+          if ($result.ExitCode -ne 0) {
+            throw "Native clone failed with exit $($result.ExitCode)"
+          }
+          if (-not (Test-Path (Join-Path $cloneRoot '.git'))) {
+            throw 'Clone returned success but .git is missing'
+          }
+
+          $head = (& git.exe -C $cloneRoot rev-parse HEAD).Trim().ToLowerInvariant()
+          if ($LASTEXITCODE -ne 0 -or $head.Length -ne 40) {
+            throw 'Unable to prove cloned HEAD'
+          }
+
+          Write-Host "NATIVE_STDERR_BOUNDARY=PASS"
+          Write-Host "CLONED_HEAD=$head"
+
+      - name: Verify combined patch target blobs are still unchanged on current master
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $cloneRoot = Join-Path $env:RUNNER_TEMP 'ilaios-native-stderr-preflight'
+          $expected = @{
+            'apps/desktop/lib/features/dashboard/reference_desktop_shell_v10.dart' = '9555e9552953319c7ef0430bc138568fb9781f28'
+            'apps/desktop/lib/features/deliveries/deliveries_view.dart' = '97277145d907eaebb9005c4db4a8ad41fe16cbd1'
+            'apps/desktop/lib/app/desktop_app.dart' = '0c5955b90f092b30c9211dc3c114532e9b7063b8'
+            'apps/desktop/lib/features/create/create_view.dart' = '116c6c22585246fe683f4e0319ed4cedbc3d1785'
+            'apps/desktop/lib/features/create/reference_asset_picker_core.dart' = 'b7c8d0b3f027d6ac092f5d73eedaa022b5611d2a'
+            'apps/desktop/lib/identity/identity_client.dart' = '49c279fd941bfcc45ae23596da00dd5181e03782'
+          }
+
+          foreach ($rel in $expected.Keys) {
+            $actual = (& git.exe -C $cloneRoot hash-object $rel).Trim().ToLowerInvariant()
+            if ($LASTEXITCODE -ne 0) {
+              throw "git hash-object failed for $rel"
+            }
+            if ($actual -ne $expected[$rel]) {
+              throw "Blob drift for $rel. Expected=$($expected[$rel]) Actual=$actual"
+            }
+          }
+
+          Write-Host 'PATCH_TARGET_BLOBS=PASS'
