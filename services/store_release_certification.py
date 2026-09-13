@@ -507,6 +507,45 @@ def validate_android_google_play_certification(certification_sha256: str, expect
         )
 
 
+# Phase 10: final-audit
+# Provides canonical SHA256 final-audit validation for the ilaios mobile store factory.
+# The final audit validates end-to-end canonical integrity across ALL phases (3-10).
+# Final audit validation is fail-closed per the truth rule and must cryptographically
+# bind to the complete certified binary identity chain from golden reference through
+# all subsequent phases (device receipt → budget entitlement → cost-aware routing →
+# signed-APK → build metadata → final release).
+_ANDROID_FINAL_AUDIT_SHA256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+
+def validate_android_final_audit(final_audit_sha256: str, expected_sha256: str = _ANDROID_FINAL_AUDIT_SHA256) -> None:
+    """Validate final audit against golden reference SHA256.
+
+    Fail-closed: raises StoreCertificationError if final audit SHA256 does not match
+    the canonical golden reference for the final audit type.
+
+    This is the Phase 10 contract: the complete end-to-end canonical integrity
+    check across Phases 3-10. Downstream deployments must replace this placeholder
+    with content-addressed final audit references keyed to the complete certified
+    identity chain per ADR-0004 Runtime Role Separation and ADR-0007 One Evidence
+    Provenance Truth.
+
+    Args:
+        final_audit_sha256: The SHA256 of the actual final audit bytes
+        expected_sha256: The canonical golden reference SHA256 (Phase 10 placeholder)
+
+    Raises:
+        StoreCertificationError: If final_audit_sha256 != expected_sha256
+    """
+    from services.store_release_certification import StoreCertificationError
+
+    if final_audit_sha256 != expected_sha256:
+        raise StoreCertificationError(
+            f"final audit SHA256 {final_audit_sha256[:16]}... does not match "
+            f"golden reference {expected_sha256[:16]}...; "
+            f"final audit validation failed - see ADR-0007 One Evidence Provenance Truth"
+        )
+
+
 # Phase 9: ilaios-mobile-android-build-metadata
 # Provides canonical SHA256 build-metadata validation for Android artifacts.
 # Build metadata validation ensures the build provenance is cryptographically
