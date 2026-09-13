@@ -3,9 +3,10 @@ from __future__ import annotations
 import http.client
 import json
 import threading
+from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, TypeVar, cast
 
 import pytest
 
@@ -13,6 +14,11 @@ from services.desktop_identity_server_core import DesktopIdentityHTTPServer
 from services.desktop_oidc import DesktopIdentityError, DesktopOIDCService
 from services.execution_coordinator import ExecutionCoordinator
 from services.identity import Session
+
+
+_FixtureFn = TypeVar("_FixtureFn", bound=Callable[..., object])
+_fixture = cast(Callable[[_FixtureFn], _FixtureFn], pytest.fixture)
+_parametrize = cast(Callable[..., Callable[[Callable[..., None]], Callable[..., None]]], pytest.mark.parametrize)
 
 
 class Identity:
@@ -62,7 +68,7 @@ class Client:
         return response.status, payload
 
 
-@pytest.fixture
+@_fixture
 def client(tmp_path: Path) -> Any:
     instance = Client(tmp_path)
     try:
@@ -101,7 +107,7 @@ def test_restart_and_reauthentication_preserve_account_history(tmp_path: Path) -
         second.close()
 
 
-@pytest.mark.parametrize("session", ["other", "tenant", "founder"])
+@_parametrize("session", ["other", "tenant", "founder"])
 def test_cross_user_tenant_and_persona_cannot_read_or_write(client: Client, session: str) -> None:
     conversation_id = create(client)
     assert client.call({"operation": "get", "conversation_id": conversation_id}, session)[0] == 403
@@ -109,7 +115,7 @@ def test_cross_user_tenant_and_persona_cannot_read_or_write(client: Client, sess
     assert client.call({"operation": "delete", "conversation_id": conversation_id}, session)[0] == 403
 
 
-@pytest.mark.parametrize("field", ["user_id", "tenant_id", "project_id", "workload_id", "persona", "li_founder"])
+@_parametrize("field", ["user_id", "tenant_id", "project_id", "workload_id", "persona", "li_founder"])
 def test_client_scope_cannot_grant_access(client: Client, field: str) -> None:
     assert client.call({"operation": "create", field: "forged"})[0] == 400
 
@@ -155,7 +161,7 @@ def test_transport_and_expired_session_are_required(client: Client) -> None:
     assert client.call({"operation": "list"}, session="expired")[0] == 401
 
 
-@pytest.mark.parametrize("locale", ["en", "tr"])
+@_parametrize("locale", ["en", "tr"])
 def test_missing_current_evidence_is_unknown(client: Client, locale: str) -> None:
     conversation_id = create(client)
     status, response = client.call(message(conversation_id, text="CI status?", locale=locale))
@@ -171,7 +177,7 @@ def test_delete_removes_only_the_authorized_conversation(client: Client) -> None
     assert client.call({"operation": "get", "conversation_id": other})[0] == 200
 
 
-@pytest.mark.parametrize("session", ["other", "tenant", "founder"])
+@_parametrize("session", ["other", "tenant", "founder"])
 def test_restart_list_excludes_other_account_and_persona(tmp_path: Path, session: str) -> None:
     first = Client(tmp_path)
     try:
