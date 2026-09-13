@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -44,6 +45,7 @@ class _AssistantOverlayState extends State<AssistantOverlay> {
   bool _error = false;
   String? _workState;
   String? _pendingMessageId;
+  Completer<void>? _cancelRequest;
 
   String _copy(String en, String tr) =>
       IlaiosLocaleScope.of(context).locale == IlaiosLocale.turkish ? tr : en;
@@ -56,14 +58,35 @@ class _AssistantOverlayState extends State<AssistantOverlay> {
 
   @override
   void dispose() {
+    _stopWaiting();
     _composer.dispose();
     super.dispose();
+  }
+
+  void _stopWaiting() {
+    final cancel = _cancelRequest;
+    if (cancel != null && !cancel.isCompleted) cancel.complete();
+  }
+
+  Future<T> _bounded<T>(Future<T> request) async {
+    final cancel = Completer<void>();
+    _cancelRequest = cancel;
+    try {
+      return await Future.any<T>([
+        request,
+        cancel.future.then<T>((_) =>
+            throw const IdentityClientException('Assistant request cancelled')),
+      ]).timeout(const Duration(seconds: 30));
+    } finally {
+      if (identical(_cancelRequest, cancel)) _cancelRequest = null;
+    }
   }
 
   Future<Map<String, dynamic>> _request(Map<String, Object?> body) async {
     final request = widget.onRequest;
     if (request == null) throw const IdentityClientException('Assistant unavailable');
-    final response = await request(body);
+    final response = await _bounded(request(body));
+    if (!mounted) throw const IdentityClientException('Assistant closed');
     final binding = response['binding'];
     if (binding is! Map<String, dynamic> ||
         binding.length != 5 || !binding.containsKey('project_id') || !binding.containsKey('workload_id') ||
@@ -78,7 +101,7 @@ class _AssistantOverlayState extends State<AssistantOverlay> {
       if (!widget.session.liFounder || verify == null) {
         throw const IdentityClientException('Access unavailable');
       }
-      final state = await verify();
+      final state = await _bounded(verify());
       if (!state.founderOperator || state.name != 'Li' ||
           state.userId != widget.session.principalId ||
           state.tenantId != widget.session.tenantId ||
@@ -210,6 +233,41 @@ class _AssistantOverlayState extends State<AssistantOverlay> {
     }
   }
 
+  Future<void> _delete() async {
+    final id = _conversation?['conversation_id'];
+    if (_busy || id == null) return;
+    final approved = await showDialog<bool>(context: context, builder: (context) => AlertDialog(
+      title: Text(_copy('Delete conversation?', 'Sohbet silinsin mi?')),
+      content: Text(_copy('This removes the saved conversation.', 'Kaydedilmiş sohbet silinir.')),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context, false),
+            child: Text(_copy('Cancel', 'Vazgeç'))),
+        FilledButton(onPressed: () => Navigator.pop(context, true),
+            child: Text(_copy('Delete', 'Sil'))),
+      ],
+    ));
+    if (!mounted || approved != true) return;
+    setState(() => _busy = true);
+    try {
+      final response = await _request({'operation': 'delete', 'conversation_id': id});
+      if (!mounted) return;
+      if (response['deleted'] != true) {
+        throw const IdentityClientException('Deletion unverified');
+      }
+      _conversation = null;
+      _composer.clear();
+      _pendingMessageId = null;
+      await _load();
+    } on Object {
+      if (mounted) {
+        setState(() {
+          _busy = false; _error = true; _founder = false;
+          _conversation = null; _history = []; _memory = false;
+        });
+      }
+    }
+  }
+
   Future<void> _submitWork() async {
     final submit = widget.onSubmitWork;
     final text = _composer.text.trim();
@@ -255,7 +313,9 @@ class _AssistantOverlayState extends State<AssistantOverlay> {
     final chatTop = math.max(leftTop + 40, height * 637 / 1024)
         .clamp(0.0, math.max(0.0, height - 220)).toDouble();
     final messages = _conversation?['messages'] as List? ?? const [];
-    return Stack(children: [
+    return FocusTraversalGroup(
+      policy: ReadingOrderTraversalPolicy(),
+      child: Stack(children: [
       Positioned(left: 0, top: math.min(leftTop, chatTop - 32), bottom: bottom, width: leftWidth,
         child: _surface(const Key('assistant-history-arm'), Column(children: [
           Padding(padding: const EdgeInsets.all(12), child: Row(children: [
@@ -267,6 +327,10 @@ class _AssistantOverlayState extends State<AssistantOverlay> {
           TextButton(key: const Key('assistant-new'), onPressed: _busy ? null : () => _select(null),
               child: Text(_copy('New conversation', 'Yeni sohbet'))),
           Expanded(child: ListView(children: [
+            if (_conversation != null)
+              TextButton(key: const Key('assistant-delete'),
+                onPressed: _busy ? null : _delete,
+                child: Text(_copy('Delete conversation', 'Sohbeti sil'))),
             for (var i = 0; i < _history.length; i++)
               ListTile(dense: true, selected: _conversation?['conversation_id'] == _history[i]['conversation_id'],
                 title: Text('${_copy('Conversation', 'Sohbet')} ${_history.length - i}'),
@@ -282,6 +346,9 @@ class _AssistantOverlayState extends State<AssistantOverlay> {
             const AssistantSymbol(), const SizedBox(width: 10),
             Expanded(child: Text(_founder ? 'Li — Founder Intelligence' : 'ILAIOS Assistant',
                 key: const Key('assistant-panel-identity'), style: const TextStyle(fontWeight: FontWeight.w600))),
+            if (_busy) TextButton(key: const Key('assistant-cancel-request'),
+              onPressed: _stopWaiting,
+              child: Text(_copy('Stop waiting', 'Beklemeyi durdur'))),
             if (_busy) const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
           ])),
           Expanded(child: _memory && _founder
@@ -321,6 +388,6 @@ class _AssistantOverlayState extends State<AssistantOverlay> {
                 child: Text(_copy('Reload history', 'Geçmişi yenile'))),
           ]),
         ]))),
-    ]);
+    ]));
   });
 }

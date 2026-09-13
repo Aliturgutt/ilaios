@@ -48,6 +48,12 @@ class _ConversationFixture {
         if (created) {'conversation_id': 'conversation-1'},
       ]});
     }
+    if (request['operation'] == 'delete') {
+      created = false;
+      document['messages'] = <Map<String, dynamic>>[];
+      document['version'] = 0;
+      return _record(request, {'binding': binding, 'deleted': true});
+    }
     if (request['operation'] == 'create') created = true;
     document['binding'] = binding;
     if (request['operation'] == 'send') {
@@ -78,6 +84,8 @@ void main() {
       testWidgets('shared sidebar / authorized persona $locale $theme founder=$founder', (tester) async {
         await tester.binding.setSurfaceSize(const Size(1536, 1024));
         addTearDown(() => tester.binding.setSurfaceSize(null));
+        final semantics = tester.ensureSemantics();
+        addTearDown(semantics.dispose);
         final fixture = _ConversationFixture(founder: founder);
         await tester.pumpWidget(fixture.app(locale: locale, theme: theme));
         await tester.pumpAndSettle();
@@ -109,6 +117,8 @@ void main() {
         if (!founder) {
           expect(find.textContaining('Li'), findsNothing);
           expect(find.byKey(const Key('assistant-memory')), findsNothing);
+          expect(find.bySemanticsLabel('Li — Founder Intelligence'), findsNothing);
+          expect(find.bySemanticsLabel('Authorized memory'), findsNothing);
         }
         expect(identical(home, tester.element(find.byKey(const Key('command-center-home')))), isTrue);
         expect(tester.getRect(find.byKey(const Key('home-command-prompt'))), promptRect);
@@ -313,4 +323,69 @@ void main() {
     expect(submissions, 1);
     expect(tester.takeException(), isNull);
   });
+  testWidgets('delete requires confirmation and removes durable history', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1536, 1024));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final fixture = _ConversationFixture();
+    await tester.pumpWidget(fixture.app());
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('nav-assistant')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('assistant-composer')), 'Delete this history');
+    await tester.tap(find.byKey(const Key('assistant-send')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('assistant-delete')));
+    await tester.pumpAndSettle();
+    expect(fixture.created, isTrue);
+    await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+    await tester.pumpAndSettle();
+    expect(fixture.created, isTrue);
+    await tester.tap(find.byKey(const Key('assistant-delete')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+    await tester.pumpAndSettle();
+    expect(fixture.created, isFalse);
+    expect(find.text('Delete this history'), findsNothing);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpWidget(fixture.app());
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('nav-assistant')));
+    await tester.pumpAndSettle();
+    expect(find.text('Delete this history'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  for (final stop in ['cancel', 'timeout']) {
+    testWidgets('hung request $stop discards late response and allows reload', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1536, 1024));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final fixture = _ConversationFixture();
+      final pending = Completer<Map<String, dynamic>>();
+      var calls = 0;
+      await tester.pumpWidget(IlaiosDesktopApp(userSession: fixture.session,
+        onAssistantRequest: (body) {
+          calls++;
+          return calls == 1 ? pending.future : fixture.request(body);
+        }));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('nav-assistant')));
+      await tester.pump();
+      if (stop == 'cancel') {
+        await tester.tap(find.byKey(const Key('assistant-cancel-request')));
+      } else {
+        await tester.pump(const Duration(seconds: 31));
+      }
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('assistant-error')), findsOneWidget);
+      pending.complete({'binding': {'user_id': 'FORBIDDEN_LATE_SENTINEL'}});
+      await tester.pumpAndSettle();
+      expect(find.textContaining('FORBIDDEN_LATE_SENTINEL'), findsNothing);
+      await tester.tap(find.widgetWithText(TextButton, 'Reload history'));
+      await tester.pumpAndSettle();
+      expect(calls, 2);
+      expect(find.byKey(const Key('assistant-error')), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
 }
