@@ -1,9 +1,9 @@
 # ILAIOS — MASTER SYSTEM ARCHITECTURE
 
-**Document Type:** Canonical System Architecture Diagram Set  
-**Format:** GitHub Markdown + Mermaid  
-**Status:** Canonical Baseline v1.0 — Published in Repository  
-**Core Principle:** **SIGN IN → ONE PROMPT → VERIFIED FINISHED PRODUCT**  
+**Document Type:** Canonical System Architecture Diagram Set
+**Format:** GitHub Markdown + Mermaid
+**Status:** Canonical Baseline v1.0 — Published in Repository
+**Core Principle:** **SIGN IN → ONE PROMPT → VERIFIED FINISHED PRODUCT**
 **Authority:** This is the first foundational ILAIOS canonical architecture document. It defines target architecture, authority boundaries, execution invariants and canonical system relationships.
 
 **Important:** Architecture defines the target system. It does **not** by itself prove that every component is already implemented or production-deployed.
@@ -85,7 +85,7 @@ ILAIOS converts a user goal into a governed, verified final artifact.
 
 ## Contract
 
-**Input:** authenticated user intent.  
+**Input:** authenticated user intent.
 **Output:** verified final artifact + evidence.
 
 ## Rules / Invariants
@@ -138,7 +138,7 @@ Clients present and control ILAIOS. The platform owns authoritative state and ex
 
 ## Contract
 
-**Client → Platform:** authenticated requests, approvals, user input.  
+**Client → Platform:** authenticated requests, approvals, user input.
 **Platform → Client:** state projection, results, evidence, notifications.
 
 ## Rules / Invariants
@@ -203,10 +203,10 @@ The surrounding **Governed Platform Capabilities** implement planning, policy, r
 
 ## Contract
 
-**Core input:** authenticated platform events and canonical contexts.  
+**Core input:** authenticated platform events and canonical contexts.
 **Core output:** enforceable authority/state/contracts that governed platform capabilities must obey.
 
-**Platform input:** `GoalSpec + PrincipalContext + TenantContext + ProjectContext + AuthorizedContext`.  
+**Platform input:** `GoalSpec + PrincipalContext + TenantContext + ProjectContext + AuthorizedContext`.
 **Platform output:** governed executable work, authoritative state transitions and evidence-backed results.
 
 ## Rules / Invariants
@@ -283,7 +283,7 @@ This is the canonical user-goal execution lifecycle from sign-in to a verified f
 
 ## Contract
 
-**Input:** authenticated natural-language goal.  
+**Input:** authenticated natural-language goal.
 **Output:** verified finished artifact/action satisfying explicit acceptance criteria, plus authoritative evidence and provenance.
 
 ## Rules / Invariants
@@ -340,7 +340,7 @@ Agents coordinate governed work. Workers execute bounded tasks.
 
 ## Contract
 
-**Agent input:** task + capability contract + authorized context.  
+**Agent input:** task + capability contract + authorized context.
 **Agent output:** bounded task requests or evaluation decisions.
 
 ## Rules / Invariants
@@ -387,7 +387,7 @@ Policy Gateway decides whether an execution is allowed, denied or requires human
 
 ## Contract
 
-**Input:** `ExecutionRequest`.  
+**Input:** `ExecutionRequest`.
 **Output:** `Allow | Deny | RequireApproval`, optionally `ExecutionGrant`.
 
 ## Rules / Invariants
@@ -441,7 +441,7 @@ Select the best permitted execution resource without leaking provider-specific l
 
 ## Contract
 
-**Input:** `CapabilityRequirement + PolicyContext + ProviderState`.  
+**Input:** `CapabilityRequirement + PolicyContext + ProviderState`.
 **Output:** `RoutingDecision`.
 
 ## Rules / Invariants
@@ -493,7 +493,7 @@ Execute tools under explicit permission, isolation and evidence boundaries.
 
 ## Contract
 
-**Input:** `ToolRequest + ExecutionGrant`.  
+**Input:** `ToolRequest + ExecutionGrant`.
 **Output:** `ToolResult + EvidenceRecord`.
 
 ## Rules / Invariants
@@ -614,7 +614,7 @@ Provide grounded, authorized context without cross-tenant leakage.
 
 ## Contract
 
-**Input:** `RetrievalRequest + PrincipalContext + TenantContext + Purpose`.  
+**Input:** `RetrievalRequest + PrincipalContext + TenantContext + Purpose`.
 **Output:** authorized context units + provenance.
 
 ## Rules / Invariants
@@ -750,7 +750,7 @@ Explain exactly how an artifact was produced, validated and approved.
 
 ## Contract
 
-**Input:** execution events + artifact.  
+**Input:** execution events + artifact.
 **Output:** provenance chain + validation evidence + acceptance manifest.
 
 ## Rules / Invariants
@@ -797,7 +797,7 @@ Insert human authorization only where policy/risk requires it.
 
 ## Contract
 
-**Input:** high-risk `ActionRequest`.  
+**Input:** high-risk `ActionRequest`.
 **Output:** approved grant, rejection or expiration.
 
 ## Rules / Invariants
@@ -900,7 +900,7 @@ Recover from bounded failures without uncontrolled loops.
 
 ## Contract
 
-**Input:** failure event + retry/repair policy.  
+**Input:** failure event + retry/repair policy.
 **Output:** resumed execution, safe failure or escalation.
 
 ## Rules / Invariants
@@ -1029,7 +1029,7 @@ Produce a complete website from a user outcome, not a partial mockup.
 
 ## Contract
 
-**Input:** website goal + brand/business context + acceptance criteria.  
+**Input:** website goal + brand/business context + acceptance criteria.
 **Output:** deployable website artifact + QA/evidence.
 
 ## Rules / Invariants
@@ -1081,7 +1081,7 @@ Produce a finished, validated video through the existing ILAIOS Video Factory li
 
 ## Contract
 
-**Input:** video goal + duration/style/business constraints + acceptance criteria.  
+**Input:** video goal + duration/style/business constraints + acceptance criteria.
 **Output:** final rendered video + evidence.
 
 ## Rules / Invariants

@@ -106,7 +106,9 @@ class OpenRouterManagedVideoGenerationJobPoller:
         if not isinstance(data, Mapping):
             return payload, None
         total_cost = data.get("total_cost")
-        if isinstance(total_cost, bool) or not isinstance(total_cost, (int, float, str)):
+        if isinstance(total_cost, bool) or not isinstance(
+            total_cost, (int, float, str)
+        ):
             return payload, None
         try:
             decimal_cost = Decimal(str(total_cost))

@@ -1,6 +1,5 @@
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 COMPONENT = ROOT / "apps" / "website" / "app" / "SignInPage.tsx"
 STYLES = ROOT / "apps" / "website" / "app" / "SignInPage.module.css"

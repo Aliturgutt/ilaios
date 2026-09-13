@@ -301,7 +301,9 @@ class OpenRouterVideoGenerationProvider:
             ),
             "catalog_zero_cost": True,
             "catalog_zero_cost_evidence_json": json.dumps(
-                _sanitize_payload(catalog_evidence), sort_keys=True, separators=(",", ":")
+                _sanitize_payload(catalog_evidence),
+                sort_keys=True,
+                separators=(",", ":"),
             ),
             "catalog_zero_cost_evidence_source": str(
                 catalog_evidence.get("source", "openrouter_videos_models")
@@ -578,7 +580,9 @@ class OpenRouterVideoGenerationJobPoller:
         self._terminal_evidence[provider_job_id] = evidence
         metadata = dict(observation.metadata)
         terminal_usage = response.payload.get("usage")
-        usage_payload = dict(terminal_usage) if isinstance(terminal_usage, Mapping) else {}
+        usage_payload = (
+            dict(terminal_usage) if isinstance(terminal_usage, Mapping) else {}
+        )
         if _decimal_cost(usage_payload.get("cost")) is None:
             usage_payload["cost"] = float(cost)
         metadata["usage_json"] = json.dumps(
@@ -750,18 +754,24 @@ def _parse_single_item_payload(
 ) -> tuple[str, Mapping[str, object]]:
     model_id = payload.get("model_id")
     if not isinstance(model_id, str) or not model_id.strip():
-        raise OpenRouterVideoProviderError("payload model_id must be a non-empty string")
+        raise OpenRouterVideoProviderError(
+            "payload model_id must be a non-empty string"
+        )
     if payload.get("request_count") != 1:
         raise OpenRouterVideoProviderError(
             "OpenRouter video adapter requires exactly one generation item per dispatch"
         )
     items_json = payload.get("items_json")
     if not isinstance(items_json, str) or not items_json:
-        raise OpenRouterVideoProviderError("payload items_json must be a non-empty string")
+        raise OpenRouterVideoProviderError(
+            "payload items_json must be a non-empty string"
+        )
     try:
         parsed = json.loads(items_json)
     except json.JSONDecodeError as exc:
-        raise OpenRouterVideoProviderError("payload items_json is not valid JSON") from exc
+        raise OpenRouterVideoProviderError(
+            "payload items_json is not valid JSON"
+        ) from exc
     if not isinstance(parsed, list) or len(parsed) != 1:
         raise OpenRouterVideoProviderError(
             "items_json must contain exactly one generation item"
@@ -792,7 +802,9 @@ def _build_openrouter_request_body(
     elif isinstance(resolution, str) and resolution.strip():
         normalized_resolution = resolution
     else:
-        raise OpenRouterVideoProviderError("generation item resolution must be non-empty")
+        raise OpenRouterVideoProviderError(
+            "generation item resolution must be non-empty"
+        )
 
     body: dict[str, object] = {
         "model": model_id,
@@ -805,7 +817,9 @@ def _build_openrouter_request_body(
     seed = item.get("seed")
     if seed is not None:
         if isinstance(seed, bool) or not isinstance(seed, int):
-            raise OpenRouterVideoProviderError("generation item seed must be an integer")
+            raise OpenRouterVideoProviderError(
+                "generation item seed must be an integer"
+            )
         body["seed"] = seed
     return MappingProxyType(body)
 
@@ -824,7 +838,9 @@ def _validate_catalog_shape(
     elif isinstance(raw_resolution, str) and raw_resolution.strip():
         resolution = raw_resolution
     else:
-        raise OpenRouterVideoProviderError("generation item resolution must be non-empty")
+        raise OpenRouterVideoProviderError(
+            "generation item resolution must be non-empty"
+        )
 
     ratios = model.get("supported_aspect_ratios")
     durations = model.get("supported_durations")
@@ -1057,18 +1073,14 @@ def _auth_headers(api_key: str, *, json_content: bool = False) -> Mapping[str, s
 def _required_string(item: Mapping[str, object], name: str) -> str:
     value = item.get(name)
     if not isinstance(value, str) or not value.strip():
-        raise OpenRouterVideoProviderError(
-            f"generation item {name} must be non-empty"
-        )
+        raise OpenRouterVideoProviderError(f"generation item {name} must be non-empty")
     return value
 
 
 def _required_integral_duration(item: Mapping[str, object], name: str) -> int:
     value = item.get(name)
     if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise OpenRouterVideoProviderError(
-            f"generation item {name} must be numeric"
-        )
+        raise OpenRouterVideoProviderError(f"generation item {name} must be numeric")
     normalized = float(value)
     if normalized <= 0 or not normalized.is_integer():
         raise OpenRouterVideoProviderError(

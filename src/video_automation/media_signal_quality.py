@@ -218,8 +218,7 @@ class FfmpegMediaSignalQualityProbe:
             )
         )
         evidence_id = (
-            "media-signal-evidence-"
-            + sha256(material.encode("utf-8")).hexdigest()[:20]
+            "media-signal-evidence-" + sha256(material.encode("utf-8")).hexdigest()[:20]
         )
         return MediaSignalQualityEvidence(
             evidence_id=evidence_id,

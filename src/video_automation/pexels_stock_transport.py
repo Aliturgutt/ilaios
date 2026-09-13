@@ -73,7 +73,9 @@ class PexelsStockHttpTransport:
         remaining = _non_negative_int_header(headers, "x-ratelimit-remaining")
         reset = headers.get("x-ratelimit-reset")
         if remaining == 0 and not reset:
-            raise StockSourceError("Pexels rate-limit reset is required at zero remaining")
+            raise StockSourceError(
+                "Pexels rate-limit reset is required at zero remaining"
+            )
 
         return StockSearchResult(
             request=request,

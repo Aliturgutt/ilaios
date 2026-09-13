@@ -171,7 +171,9 @@ class GenerationJobPollingCoordinator:
                 record.provider_job_id,
                 observation,
             )
-            update = _observation_to_update(record.status, record.dispatch_id, observation)
+            update = _observation_to_update(
+                record.status, record.dispatch_id, observation
+            )
             if update is not None:
                 updates.append(update)
         return tuple(updates)
@@ -244,9 +246,7 @@ class SeedanceArkGenerationJobPoller:
         _require_non_blank("provider_id", provider_id)
         _require_non_blank("base_url", base_url)
         if timeout_seconds <= 0:
-            raise GenerationJobPollingError(
-                "timeout_seconds must be greater than zero"
-            )
+            raise GenerationJobPollingError("timeout_seconds must be greater than zero")
         self._api_key = api_key
         self._provider_id = provider_id
         self._base_url = base_url.rstrip("/")

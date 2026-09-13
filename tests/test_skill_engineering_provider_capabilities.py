@@ -5,7 +5,9 @@ from typing import Any
 
 import pytest
 
-from services.openrouter_agent_catalog import discover_free_openrouter_agent_configuration
+from services.openrouter_agent_catalog import (
+    discover_free_openrouter_agent_configuration,
+)
 from services.skill_engineering_runtime import SKILL_ENGINEERING_RUNTIME_BINDINGS
 
 

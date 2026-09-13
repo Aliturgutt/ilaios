@@ -1,6 +1,7 @@
+from services.integrations.reference_aware_provider_video_runtime import (
+    _conditioned_objective,
+)
 from src.video_automation.reference_image_analysis import ReferenceVisualBrief
-
-from services.integrations.reference_aware_provider_video_runtime import _conditioned_objective
 
 
 def test_conditioned_objective_locks_reference_identity_across_shots() -> None:

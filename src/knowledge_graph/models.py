@@ -4,6 +4,7 @@ from typing import Any
 
 class NodeType(Enum):
     """Types of nodes in the knowledge graph."""
+
     PROJECT = "Project"
     REPOSITORY = "Repository"
     DIRECTORY = "Directory"
@@ -24,6 +25,7 @@ class NodeType(Enum):
 
 class EdgeType(Enum):
     """Types of edges in the knowledge graph."""
+
     CONTAINS = "contains"
     IMPORTS = "imports"
     CALLS = "calls"
@@ -41,10 +43,7 @@ class EdgeType(Enum):
 class Node:
     """A node in the knowledge graph."""
 
-    def __init__(self,
-                 node_id: str,
-                 node_type: NodeType,
-                 properties: dict[str, Any]):
+    def __init__(self, node_id: str, node_type: NodeType, properties: dict[str, Any]):
         self.id = node_id
         self.type = node_type
         self.properties = properties
@@ -53,12 +52,14 @@ class Node:
 class Edge:
     """An edge in the knowledge graph."""
 
-    def __init__(self,
-                 edge_id: str,
-                 source_id: str,
-                 target_id: str,
-                 edge_type: EdgeType,
-                 properties: dict[str, Any] | None = None):
+    def __init__(
+        self,
+        edge_id: str,
+        source_id: str,
+        target_id: str,
+        edge_type: EdgeType,
+        properties: dict[str, Any] | None = None,
+    ):
         self.id = edge_id
         self.source = source_id
         self.target = target_id

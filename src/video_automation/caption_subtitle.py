@@ -47,9 +47,7 @@ class CaptionCue:
             )
 
         if self.end_seconds <= self.start_seconds:
-            raise CaptionSubtitleError(
-                "end_seconds must be greater than start_seconds"
-            )
+            raise CaptionSubtitleError("end_seconds must be greater than start_seconds")
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,9 +62,7 @@ class BurnedInCaptionInstructions:
         _require_non_blank("subtitle_format", self.subtitle_format)
 
         if self.subtitle_format not in {"srt", "vtt"}:
-            raise CaptionSubtitleError(
-                "subtitle_format must be either srt or vtt"
-            )
+            raise CaptionSubtitleError("subtitle_format must be either srt or vtt")
 
 
 @dataclass(frozen=True, slots=True)
@@ -89,9 +85,7 @@ class CaptionExportManifest:
         _validate_timing_source(self.timing_source)
 
         if not self.cues:
-            raise CaptionSubtitleError(
-                "caption manifest must contain at least one cue"
-            )
+            raise CaptionSubtitleError("caption manifest must contain at least one cue")
 
         for name in (
             "structured_json_path",
@@ -147,9 +141,7 @@ class CaptionSubtitleEngine:
             separators=(",", ":"),
         )
 
-        package_id = sha256(
-            identity_material.encode("utf-8")
-        ).hexdigest()[:24]
+        package_id = sha256(identity_material.encode("utf-8")).hexdigest()[:24]
 
         base_name = f"captions-{package_id}"
 
@@ -192,24 +184,18 @@ class CaptionSubtitleEngine:
 
 def _validate_cues(cues: tuple[CaptionCue, ...]) -> None:
     if not cues:
-        raise CaptionSubtitleError(
-            "cues must contain at least one caption"
-        )
+        raise CaptionSubtitleError("cues must contain at least one caption")
 
     cue_ids = tuple(cue.cue_id for cue in cues)
 
     if len(cue_ids) != len(set(cue_ids)):
-        raise CaptionSubtitleError(
-            "caption cue identifiers must be unique"
-        )
+        raise CaptionSubtitleError("caption cue identifiers must be unique")
 
     previous_end = 0.0
 
     for index, cue in enumerate(cues):
         if index > 0 and cue.start_seconds < previous_end:
-            raise CaptionSubtitleError(
-                "caption cues must not overlap"
-            )
+            raise CaptionSubtitleError("caption cues must not overlap")
 
         previous_end = cue.end_seconds
 
@@ -297,14 +283,10 @@ def _format_timestamp(
     separator: str,
 ) -> str:
     if seconds < 0:
-        raise CaptionSubtitleError(
-            "timestamp seconds must not be negative"
-        )
+        raise CaptionSubtitleError("timestamp seconds must not be negative")
 
     if separator not in {",", "."}:
-        raise CaptionSubtitleError(
-            "timestamp separator must be comma or period"
-        )
+        raise CaptionSubtitleError("timestamp separator must be comma or period")
 
     total_milliseconds = round(seconds * 1000.0)
 
@@ -337,23 +319,17 @@ def _write_text(path: Path, content: str) -> None:
             newline="\n",
         )
     except OSError as exc:
-        raise CaptionSubtitleError(
-            f"failed to write caption output: {path}"
-        ) from exc
+        raise CaptionSubtitleError(f"failed to write caption output: {path}") from exc
 
 
 def _checksum(path: Path) -> str:
     try:
         body = path.read_bytes()
     except OSError as exc:
-        raise CaptionSubtitleError(
-            f"caption output is unreadable: {path}"
-        ) from exc
+        raise CaptionSubtitleError(f"caption output is unreadable: {path}") from exc
 
     if not body:
-        raise CaptionSubtitleError(
-            f"caption output must not be empty: {path}"
-        )
+        raise CaptionSubtitleError(f"caption output must not be empty: {path}")
 
     return sha256(body).hexdigest()
 
@@ -383,11 +359,7 @@ def _validate_sha256(value: str) -> None:
 
 def _require_non_blank(name: str, value: str) -> None:
     if not value or not value.strip():
-        raise CaptionSubtitleError(
-            f"{name} must not be blank"
-        )
+        raise CaptionSubtitleError(f"{name} must not be blank")
 
     if value != value.strip():
-        raise CaptionSubtitleError(
-            f"{name} must not contain surrounding whitespace"
-        )
+        raise CaptionSubtitleError(f"{name} must not contain surrounding whitespace")

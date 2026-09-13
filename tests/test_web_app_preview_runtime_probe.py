@@ -16,7 +16,6 @@ from services.web_app_preview_runtime_probe import (
 )
 from services.web_app_preview_sandbox_observer import observe_generated_preview_sandbox
 
-
 _FixtureFn = TypeVar("_FixtureFn", bound=Callable[..., object])
 _autouse_fixture = cast(Callable[[_FixtureFn], _FixtureFn], pytest.fixture(autouse=True))
 

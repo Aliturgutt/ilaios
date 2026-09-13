@@ -125,9 +125,7 @@ class EpisodePublishingPackageManifest:
         ):
             _require_non_blank(name, getattr(self, name))
         if not self.packages:
-            raise PublishingPackagePreparationError(
-                "packages must not be empty"
-            )
+            raise PublishingPackagePreparationError("packages must not be empty")
         if self.package_count != len(self.packages):
             raise PublishingPackagePreparationError(
                 "package_count must equal packages length"
@@ -188,10 +186,7 @@ class PublishingPackagePreparer:
                 f"episode_id={artifact.episode_id}",
                 f"artifact_id={artifact.artifact_id}",
                 f"acceptance_decision_id={acceptance.decision_id}",
-                *(
-                    f"package_id={package.package_id}"
-                    for package in packages
-                ),
+                *(f"package_id={package.package_id}" for package in packages),
             )
         )
         manifest_id = (
@@ -278,17 +273,13 @@ def _normalize_tag(value: str) -> str:
     _require_non_blank("tag", value)
     normalized = value.strip().lower()
     if any(character.isspace() for character in normalized):
-        raise PublishingPackagePreparationError(
-            "tags must not contain whitespace"
-        )
+        raise PublishingPackagePreparationError("tags must not contain whitespace")
     return normalized
 
 
 def _validate_timezone_aware(name: str, value: datetime) -> None:
     if value.tzinfo is None or value.utcoffset() is None:
-        raise PublishingPackagePreparationError(
-            f"{name} must be timezone-aware"
-        )
+        raise PublishingPackagePreparationError(f"{name} must be timezone-aware")
 
 
 def _validate_sha256(value: str) -> None:

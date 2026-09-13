@@ -13,7 +13,6 @@ from services.rag14_canary_approval import (
 )
 from services.rag14_embedding_provider import PRODUCTION_EMBEDDING_MODE
 
-
 SOURCE_SHA = "9" * 40
 IMAGE_DIGEST = "sha256:" + "a" * 64
 

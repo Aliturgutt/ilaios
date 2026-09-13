@@ -112,7 +112,9 @@ class EpisodeGenerationBatchPlanner:
         for offset in range(0, len(manifest.entries), size):
             entries = manifest.entries[offset : offset + size]
             batch_number = len(batches) + 1
-            canonical = _canonical_batch_material(manifest.manifest_id, batch_number, entries)
+            canonical = _canonical_batch_material(
+                manifest.manifest_id, batch_number, entries
+            )
             digest = sha256(canonical.encode("utf-8")).hexdigest()
             batches.append(
                 GenerationBatch(

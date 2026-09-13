@@ -2,7 +2,11 @@ from pathlib import Path
 
 import pytest
 
-from services.control_plane.api import ControlPlane, ControlPlaneConfig, ControlPlaneError
+from services.control_plane.api import (
+    ControlPlane,
+    ControlPlaneConfig,
+    ControlPlaneError,
+)
 from services.control_plane.proposals import (
     BudgetEnvelope,
     DataClass,

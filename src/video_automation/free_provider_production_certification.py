@@ -145,9 +145,7 @@ def provider_reported_cost(metadata: dict[str, str]) -> float | None:
     if raw_cost is None:
         return None
     if isinstance(raw_cost, bool) or not isinstance(raw_cost, (int, float)):
-        raise FreeProviderCertificationError(
-            "provider-reported cost must be numeric"
-        )
+        raise FreeProviderCertificationError("provider-reported cost must be numeric")
     cost = float(raw_cost)
     if cost < 0:
         raise FreeProviderCertificationError(

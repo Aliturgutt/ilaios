@@ -139,7 +139,9 @@ class ContractValidationPipeline:
             if rule.rule_id in seen:
                 raise ValueError("validation rule IDs must be unique")
             if any(dependency not in seen for dependency in rule.depends_on):
-                raise ValueError("validation rule dependency must resolve earlier in order")
+                raise ValueError(
+                    "validation rule dependency must resolve earlier in order"
+                )
             seen.add(rule.rule_id)
 
     @property

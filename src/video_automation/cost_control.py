@@ -35,7 +35,9 @@ class CostController:
             currency=currency,
             estimated_total=sum(record.estimated_cost for record in items),
             actual_total=sum(
-                record.estimated_cost if record.actual_cost is None else record.actual_cost
+                record.estimated_cost
+                if record.actual_cost is None
+                else record.actual_cost
                 for record in items
             ),
         )

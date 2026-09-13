@@ -8,7 +8,11 @@ from pathlib import Path
 import pytest
 
 from services.software_factory import SoftwareFactoryError
-from services.software_factory_skills import SkillExecutor, SkillRegistry, default_skills_root
+from services.software_factory_skills import (
+    SkillExecutor,
+    SkillRegistry,
+    default_skills_root,
+)
 from services.ui_design_orchestrator import UIDesignCodingRequest, UIDesignOrchestrator
 from src.ilaios_ui_design import UIDesignError, resolve_ui_design
 
