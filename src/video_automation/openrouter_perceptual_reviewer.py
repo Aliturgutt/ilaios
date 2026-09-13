@@ -34,6 +34,8 @@ _DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
 _CRITERIA_ID = "ilaios.video.semantic-prompt-alignment"
 _CRITERIA_VERSION = "1.0.0"
 _RETRYABLE_CAPABILITY_STATUS_CODES = frozenset({404, 503})
+_FREE_VISION_FALLBACK_SOURCE_MODEL_ID = "google/gemma-3-27b-it:free"
+_FREE_VISION_FALLBACK_MODEL_ID = "google/gemma-4-26b-a4b-it-20260403:free"
 _MAX_RATE_LIMIT_RETRY_AFTER_SECONDS = 60.0
 _REVIEW_KEYS = frozenset({"score", "detail", "repair_target"})
 _CRITERIA_TEXT = (
@@ -214,6 +216,7 @@ class OpenRouterPerceptualReviewer:
             body=strict_body,
             timeout_seconds=self._timeout_seconds,
         )
+        review_model_id = self._model_id
         review_route = "json-schema"
         if response.status_code in _RETRYABLE_CAPABILITY_STATUS_CODES:
             response = self._transport.post_json(
@@ -223,6 +226,30 @@ class OpenRouterPerceptualReviewer:
                 timeout_seconds=self._timeout_seconds,
             )
             review_route = "prompt-json-fallback"
+        if (
+            response.status_code in _RETRYABLE_CAPABILITY_STATUS_CODES
+            and self._model_id == _FREE_VISION_FALLBACK_SOURCE_MODEL_ID
+        ):
+            review_model_id = _FREE_VISION_FALLBACK_MODEL_ID
+            fallback_strict_body = dict(strict_body)
+            fallback_strict_body["model"] = review_model_id
+            response = self._transport.post_json(
+                f"{self._base_url}/chat/completions",
+                headers=headers,
+                body=fallback_strict_body,
+                timeout_seconds=self._timeout_seconds,
+            )
+            review_route = "free-vision-json-schema-fallback"
+            if response.status_code in _RETRYABLE_CAPABILITY_STATUS_CODES:
+                fallback_base_body = dict(base_body)
+                fallback_base_body["model"] = review_model_id
+                response = self._transport.post_json(
+                    f"{self._base_url}/chat/completions",
+                    headers=headers,
+                    body=fallback_base_body,
+                    timeout_seconds=self._timeout_seconds,
+                )
+                review_route = "free-vision-prompt-json-fallback"
         if not 200 <= response.status_code < 300:
             raise OpenRouterPerceptualReviewError(
                 f"OpenRouter perceptual review failed with HTTP {response.status_code}"
@@ -255,7 +282,7 @@ class OpenRouterPerceptualReviewer:
             review_id=review_id,
             domain=QaDomain.VISUAL,
             artifact_sha256=artifact_sha256,
-            reviewer_id=self.reviewer_id,
+            reviewer_id=f"openrouter-semantic-review:{review_model_id}",
             producer_id=producer_id,
             reviewer_kind=PerceptualReviewerKind.INDEPENDENT_MODEL,
             criteria_id=_CRITERIA_ID,
@@ -265,7 +292,7 @@ class OpenRouterPerceptualReviewer:
             threshold=self._threshold,
             evidence_references=frame_refs,
             provenance_reference=(
-                f"openrouter-review:model={self._model_id}:route={review_route}:"
+                f"openrouter-review:model={review_model_id}:route={review_route}:"
                 f"artifact={artifact_sha256}"
             ),
             repair_target=None if passed else (repair_target.strip() or "regenerate-video"),
