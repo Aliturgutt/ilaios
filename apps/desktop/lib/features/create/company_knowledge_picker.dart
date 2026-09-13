@@ -302,7 +302,7 @@ if (\$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
                     _reading
                         ? _text('Reading…', 'Okunuyor…')
                         : _text('PDF / DOCX / ZIP', 'PDF / DOCX / ZIP'),
-                    style: const TextStyle(fontSize: 9),
+                    style: const TextStyle(fontSize: 12.5),
                   ),
                 ),
               ),
@@ -313,7 +313,7 @@ if (\$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
             detail,
             maxLines: widget.compact ? 1 : 2,
             overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.bodySmall?.copyWith(fontSize: 8.8),
+            style: theme.textTheme.bodySmall?.copyWith(fontSize: 12.5),
           ),
           if (documents.isNotEmpty) ...[
             const SizedBox(height: 3),
@@ -322,7 +322,7 @@ if (\$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.bodySmall?.copyWith(
-                fontSize: 8.8,
+                fontSize: 12.5,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -335,7 +335,7 @@ if (\$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.error,
-                fontSize: 8.5,
+                fontSize: 12.5,
               ),
             ),
           ],

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/ilaios_locale.dart';
 import '../../identity/identity_client.dart';
+import '../assistant/assistant_symbol.dart';
 
 class LiView extends StatefulWidget {
   const LiView({
@@ -28,6 +29,8 @@ class _LiViewState extends State<LiView> {
   String _selectedKind = 'working';
   String? _saveStatus;
   bool _saving = false;
+  int _generation = 0;
+  bool _authorized = false;
 
   @override
   void initState() {
@@ -39,11 +42,13 @@ class _LiViewState extends State<LiView> {
   void didUpdateWidget(covariant LiView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.userSession?.sessionId != widget.userSession?.sessionId ||
-        (oldWidget.onFetchState == null && widget.onFetchState != null) ||
-        (oldWidget.onFetchMemories == null && widget.onFetchMemories != null) ||
-        (oldWidget.onRemember == null && widget.onRemember != null) ||
-        (oldWidget.userSession?.liFounder == true &&
-            widget.userSession?.liFounder != true)) {
+        oldWidget.userSession?.principalId != widget.userSession?.principalId ||
+        oldWidget.userSession?.tenantId != widget.userSession?.tenantId ||
+        oldWidget.userSession?.liFounder != widget.userSession?.liFounder ||
+        (oldWidget.onFetchState == null) != (widget.onFetchState == null) ||
+        (oldWidget.onFetchMemories == null) !=
+            (widget.onFetchMemories == null) ||
+        (oldWidget.onRemember == null) != (widget.onRemember == null)) {
       _reload();
     }
   }
@@ -55,6 +60,12 @@ class _LiViewState extends State<LiView> {
   }
 
   void _reload() {
+    final generation = ++_generation;
+    _authorized = false;
+    _memories = null;
+    _memoryController.clear();
+    _saveStatus = null;
+    _saving = false;
     final session = widget.userSession;
     final fetchState = widget.onFetchState;
     final fetchMemories = widget.onFetchMemories;
@@ -66,34 +77,67 @@ class _LiViewState extends State<LiView> {
       _memories = null;
       return;
     }
-    _state = fetchState();
-    _memories = fetchMemories();
+    _state = _authorizeAndLoad(session, generation, fetchState, fetchMemories);
+  }
+
+  Future<DesktopLiState> _authorizeAndLoad(
+    DesktopUserSession session,
+    int generation,
+    Future<DesktopLiState> Function() fetchState,
+    Future<List<DesktopLiMemory>> Function() fetchMemories,
+  ) async {
+    final state = await fetchState();
+    if (!mounted ||
+        generation != _generation ||
+        !state.founderOperator ||
+        state.name != 'Li' ||
+        state.userId != session.principalId ||
+        state.tenantId != session.tenantId ||
+        state.source != 'canonical_desktop_session') {
+      throw const IdentityClientException('Founder access could not be verified');
+    }
+    final memories = await fetchMemories();
+    if (!mounted || generation != _generation) {
+      throw const IdentityClientException('Founder session changed');
+    }
+    _memories = Future.value(memories);
+    _authorized = true;
+    return state;
   }
 
   Future<void> _remember() async {
     final remember = widget.onRemember;
     final fetchMemories = widget.onFetchMemories;
     final content = _memoryController.text.trim();
-    if (remember == null || fetchMemories == null || content.isEmpty || _saving) {
+    if (!_authorized ||
+        remember == null ||
+        fetchMemories == null ||
+        content.isEmpty ||
+        _saving) {
       return;
     }
+    final generation = _generation;
     setState(() {
       _saving = true;
-      _saveStatus = _copy(context, 'Saving...', 'Kaydediliyor...');
+      _saveStatus = 'saving';
     });
     try {
       await remember(_selectedKind, content);
-      if (!mounted) return;
+      if (!mounted || generation != _generation) return;
+      final memories = await fetchMemories();
+      if (!mounted || generation != _generation) return;
       _memoryController.clear();
       setState(() {
-        _memories = fetchMemories();
-        _saveStatus = _copy(context, 'Saved.', 'Kaydedildi.');
+        _memories = Future.value(memories);
+        _saveStatus = 'saved';
       });
-    } on IdentityClientException catch (error) {
-      if (!mounted) return;
-      setState(() => _saveStatus = error.message);
+    } on Object {
+      if (!mounted || generation != _generation) return;
+      setState(() => _saveStatus = 'failed');
     } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted && generation == _generation) {
+        setState(() => _saving = false);
+      }
     }
   }
 
@@ -105,7 +149,7 @@ class _LiViewState extends State<LiView> {
       return Center(
         key: const Key('li-access-denied'),
         child: Text(
-          _copy(context, 'Li access unavailable.', 'Li erişimi kullanılamıyor.'),
+          _copy(context, 'Access unavailable.', 'Erişim kullanılamıyor.'),
         ),
       );
     }
@@ -120,13 +164,13 @@ class _LiViewState extends State<LiView> {
             return const Center(child: CircularProgressIndicator());
           }
           final state = snapshot.data;
-          if (snapshot.hasError || state == null || !state.founderOperator) {
+          if (snapshot.hasError || state == null || !_authorized) {
             return Center(
               child: Text(
                 _copy(
                   context,
-                  'Li access could not be verified.',
-                  'Li erişimi doğrulanamadı.',
+                  'Access could not be verified.',
+                  'Erişim doğrulanamadı.',
                 ),
               ),
             );
@@ -140,11 +184,18 @@ class _LiViewState extends State<LiView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Li',
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
+                    Row(
+                      children: [
+                        const AssistantSymbol(size: 32),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Li — Founder Intelligence',
+                            style: Theme.of(context).textTheme.headlineMedium
+                                ?.copyWith(fontWeight: FontWeight.w700),
                           ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 6),
                     Text(
@@ -158,7 +209,13 @@ class _LiViewState extends State<LiView> {
                       selectedKind: _selectedKind,
                       controller: _memoryController,
                       saving: _saving,
-                      status: _saveStatus,
+                      status: switch (_saveStatus) {
+                        'saving' => _copy(context, 'Saving...', 'Kaydediliyor...'),
+                        'saved' => _copy(context, 'Saved.', 'Kaydedildi.'),
+                        'failed' => _copy(context, 'Could not save memory.',
+                            'Hafıza kaydedilemedi.'),
+                        _ => null,
+                      },
                       onKindChanged: (value) {
                         if (value != null) {
                           setState(() => _selectedKind = value);
