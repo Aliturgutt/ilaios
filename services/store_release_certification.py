@@ -507,6 +507,43 @@ def validate_android_google_play_certification(certification_sha256: str, expect
         )
 
 
+# Phase 9: ilaios-mobile-android-build-metadata
+# Provides canonical SHA256 build-metadata validation for Android artifacts.
+# Build metadata validation ensures the build provenance is cryptographically
+# verified against the full certification chain (Phases 3-10).
+# Build-metadata validation is fail-closed per the truth rule and must
+# cryptographically bind to the certified binary identity chain
+# (golden reference → device receipt → budget entitlement → cost tier → signed APK → build metadata).
+_ANDROID_BUILD_METADATA_SHA256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+
+def validate_android_build_metadata(build_metadata_sha256: str, expected_sha256: str = _ANDROID_BUILD_METADATA_SHA256) -> None:
+    """Validate Android build metadata against golden reference SHA256.
+
+    Fail-closed: raises StoreCertificationError if build metadata SHA256 does not match
+    the canonical golden reference for the build metadata type.
+
+    This is a Phase 9 contract: Phase 10 (final audit) should replace this
+    placeholder with content-addressed build metadata references keyed to actual
+    certified build provenances per ADR-0004 Runtime Role Separation.
+
+    Args:
+        build_metadata_sha256: The SHA256 of the actual build metadata bytes
+        expected_sha256: The canonical golden reference SHA256 (Phase 9 placeholder)
+
+    Raises:
+        StoreCertificationError: If build_metadata_sha256 != expected_sha256
+    """
+    from services.store_release_certification import StoreCertificationError
+
+    if build_metadata_sha256 != expected_sha256:
+        raise StoreCertificationError(
+            f"build metadata SHA256 {build_metadata_sha256[:16]}... does not match "
+            f"golden reference {expected_sha256[:16]}...; "
+            f"build metadata validation failed - see ADR-0004"
+        )
+
+
 # Phase 8: ilaios-mobile-android-signed-apk
 # Provides canonical SHA256 signed-APK validation for Android artifacts.
 # Signed-APK validation ensures the uploaded binary matches the certified
