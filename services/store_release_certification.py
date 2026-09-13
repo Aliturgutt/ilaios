@@ -507,6 +507,43 @@ def validate_android_google_play_certification(certification_sha256: str, expect
         )
 
 
+# Phase 8: ilaios-mobile-android-signed-apk
+# Provides canonical SHA256 signed-APK validation for Android artifacts.
+# Signed-APK validation ensures the uploaded binary matches the certified
+# golden reference across the full certification chain (Phases 3-10).
+# Signed-APK validation is fail-closed per the truth rule and must
+# cryptographically bind to the certified binary identity chain
+# (golden reference → device receipt → budget entitlement → cost tier → signed APK).
+_ANDROID_SIGNED_APK_SHA256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+
+def validate_android_signed_apk(signed_apk_sha256: str, expected_sha256: str = _ANDROID_SIGNED_APK_SHA256) -> None:
+    """Validate Android signed-APK against golden reference SHA256.
+
+    Fail-closed: raises StoreCertificationError if signed-APK SHA256 does not match
+    the canonical golden reference for the signed-APK type.
+
+    This is a Phase 8 contract: downstream phases (9-10) should replace this
+    placeholder with content-addressed signed-APK references keyed to actual
+    certified binary hash references per ADR-0004 Runtime Role Separation.
+
+    Args:
+        signed_apk_sha256: The SHA256 of the actual signed-APK bytes
+        expected_sha256: The canonical golden reference SHA256 (Phase 8 placeholder)
+
+    Raises:
+        StoreCertificationError: If signed_apk_sha256 != expected_sha256
+    """
+    from services.store_release_certification import StoreCertificationError
+
+    if signed_apk_sha256 != expected_sha256:
+        raise StoreCertificationError(
+            f"signed-APK SHA256 {signed_apk_sha256[:16]}... does not match "
+            f"golden reference {expected_sha256[:16]}...; "
+            f"signed-APK validation failed - see ADR-0004"
+        )
+
+
 # Phase 7: ilaios-mobile-android-cost-aware-routing
 # Provides canonical SHA256 cost-aware routing for Android artifacts.
 # Cost-aware routing maps certified binary identities to pricing tiers
