@@ -4,6 +4,89 @@
 
 Implementation specification for the existing foundation PR. This document does not claim runtime completion.
 
+Follow-up checkpoint for PR #1531 (2026-09-13): live PR HEAD before this pass was
+`68891fcc5b6b1fcbd907f51b46bfb37944c8c4be`; live master/PR base was
+`c53d387609c0bab9c6c86e7b6d1724c3548f9e53`. Canonical owner files inspected below
+are identical between that master and the branch; only the Assistant handler
+has branch-specific changes. No master synchronization was needed for these contracts.
+
+This pass adds transport occupancy (one active operation per authenticated
+user/tenant/session, at most 16 occupied sessions, no queued duplicate session),
+released in `finally`. It complements, not replaces, the existing two-second
+conversation lock wait and canonical model `UsageGovernor`. Same-account concurrent
+writers/replays are now tested across two authenticated sessions; same-session
+saturation returns 429 and does not consume another user's slot. Error, timeout and
+revocation tests assert release. This admission occurs AFTER HTTP parsing and does
+not claim to bound all threads in the shared `ThreadingHTTPServer`. Shared listener
+resource admission remains outside this Assistant-local guard.
+
+Accessibility source changes are confined to Assistant focus nodes and the V11
+Assistant trigger/open/close wiring. Before editing, the V11 file was compared
+byte-for-byte with current #1485 HEAD `c2ccb1ce87fdaf63b15ad769c165db1eff87303b`
+and was identical. No historical Desktop implementation was used. Closed overlays
+exclude keyboard focus; opening/restoring focuses the composer (or close control
+while busy); close restores the existing sidebar trigger. Widget tests cover
+keyboard Enter/Tab, close/reopen focus, normal-user semantics, TR/EN, light/dark and
+1.0/1.25/1.5 text scaling. The existing callback test now sends eleven natural-language
+action intents and requires zero executions until explicit confirmation. These
+widget tests are SOURCE ONLY until Flutter executes them. This pass modifies V11
+only for the necessary Assistant focus wiring; it does not modify #1485 itself,
+Home/Agents, geometry, brand assets, attachments or workflows.
+
+Canonical model and grant investigation (contracts and their existing tests):
+
+| Question | Current canonical owner and exact constraint |
+| --- | --- |
+| Model selection | `routing_runtime.GovernedRoutingRuntime.resolve` obtains catalog/runtime snapshots, calls `RoutingIntelligenceEngine` and delegates final selection to `ai_governance.route_model`; evidence is persisted through `EvidenceStore`. |
+| Provider dispatch | `runtime.ai_provider_adapter.GovernedAIProviderAdapter` supplies adapters to `runtime.execution.GovernedRuntime`; `NamedAgentExecutor.execute` first invokes `PermissionFirewall.admit`. No Assistant code calls a provider. |
+| Conversational request | `AgentInvocation` must match a registered target, allowed caller, capability, permission, input/output classes, security scan, DLP approval and `ExecutionGrant`. The inspected `agent_registry`, agent execution bindings and `ALLOWED_AGENT_AI_CAPABILITIES` expose no Assistant conversation binding. Borrowing an unrelated factory/agent permission would not establish human chat authorization. |
+| Skills | `NamedAgentExecutor.ensure_skill` and `GovernedRuntime` own immutable skills. `_structured_response_format` currently provides a strict provider schema for the independent verifier; this is not an admitted Assistant skill. |
+| Pricing/free | `openrouter_routing_sources` reads prompt/completion prices into `ai_governance.ModelRecord`. That contract carries input/output cost, but does not carry request-fee evidence. Zero token prices alone cannot prove the required prompt + completion + request = zero rule. No safe free route was inferred. |
+| Model limits | `UsageGovernor.admit/complete/reconcile_cost` enforce configured scopes, tokens, concurrency, retries and cost. It does not grant a Desktop human an Assistant conversation capability. |
+| Billable admission | `governance.runtime.GovernedRuntimeGateway.authorize_billable/reconcile_billable` consume persisted admission; `commercial_access.TrustedCommercialGrant` binds user/tenant/plan/period. No Assistant request binding into these contracts is configured. |
+| Unknown result | Adapter retries use attempt-specific usage request IDs and retryable transport errors. This is not proof of durable conversational unknown-billable-result reconciliation; no paid inference was enabled. |
+| Human Knowledge | `knowledge_runtime.DurableKnowledgeRuntime` creates an `IdentityKind.SERVICE` principal and fixed project policy. `knowledge_rag.PrincipalScope`/`AuthorizedContext` bind retrieval to caller-supplied authorized scope, but do not resolve a human Desktop session to revocable workload/resource grants. `identity.AuthorizationEngine` is generic; `runtime.ExecutionGrant` authorizes agent actions/resources. Neither may be substituted for that missing human resolver. |
+| Freshness | `ProviderCatalogSnapshot.is_fresh` and routing intelligence enforce catalog/state TTL and reject future/stale observations. Assistant has no configured live catalog/model/evidence consumer; existing public guidance is explicitly snapshot-only. No fake live connector was introduced. |
+
+Environment evidence: `ILAIOS_AGENT_AI_CONFIG_JSON` is absent (presence-only check;
+no secret values read or printed). ZERO-COST REAL MODEL E2E = BLOCKED; PAID MODEL
+E2E = NOT AUTHORIZED. Model-input sentinel capture, malicious retrieved-content
+integration and fresh/live Assistant response acceptance remain BLOCKED at the
+unconnected canonical conversational/grant boundaries, not falsely passed by the
+fallback tests. Existing canonical routing freshness and Knowledge quarantine tests
+were executed, but are not represented as end-to-end Assistant integration.
+
+Python validation: 132 tests passed across Assistant, Li, identity, routing runtime,
+AI governance, agent governance, Knowledge RAG/runtime; an additional 28 canonical
+provider/structured-output/routing/named-executor tests passed. The 132-test command
+used `test_desktop_assistant_conversations.py`, `test_desktop_li_memory_transport.py`,
+`test_desktop_li_founder_route.py`, `test_desktop_oidc.py`,
+`test_desktop_oidc_persistence.py`, `test_li_app_runtime.py`, `test_routing_runtime.py`,
+`test_ai_governance.py`, `test_agent_governance.py`, `test_knowledge_rag.py`, and
+`test_knowledge_runtime.py`. The 28-test command used
+`test_ai_provider_usage_diagnostics.py`, `test_named_agent_executor_e2e.py`,
+`test_routing_intelligence.py`, `test_ai_provider_structured_output.py`, and
+`test_openrouter_routing_sources.py`. All commands used the isolated workspace venv;
+PyJWT now matches CI's 2.13.0 pin. No live provider calls were made.
+
+Pre-commit root cause was environment-only: inherited PYTHONPATH exposed the
+external tool directory inside hook environments, allowing dependency resolution
+without installing the Ruff/Mypy executables there. A clean venv and separate
+PRE_COMMIT_HOME resolved it. All applicable hooks passed, including Ruff, strict
+Mypy, SF-19 and SF-20; YAML had no matching files. No hook configuration changed.
+Standalone strict Mypy in the new test venv encountered missing optional NumPy in
+pytest's installed package; strict Mypy in the canonical isolated hook passed.
+`command -v flutter` returned no executable. Flutter analyze/test/pub get, screenshots,
+Windows scaling/runtime acceptance remain NOT RUN / ENVIRONMENT BLOCKED.
+
+Current status is BLOCKED for full closure, not SOURCE COMPLETE: real model admission,
+complete zero-cost pricing, human Knowledge grants, actual pre-model input leakage
+acceptance, and live Assistant evidence require the canonical dependencies above;
+Flutter/Windows execution evidence is unavailable. No direct provider path, duplicate
+authority, file/heading rename, merge, deployment or CI monitoring was introduced.
+The older checkpoints below retain their historical evidence only.
+
+
 Continuation checkpoint (2026-09-13), based on live-fetched master
 `ddb49269c46ca6fa150976681712b7118ea6b0ca`, which contains merged #1521:
 branch `assistant/full-production-closure-20260913`. This is PARTIAL hardening,
