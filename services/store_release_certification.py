@@ -507,6 +507,43 @@ def validate_android_google_play_certification(certification_sha256: str, expect
         )
 
 
+# Phase 7: ilaios-mobile-android-cost-aware-routing
+# Provides canonical SHA256 cost-aware routing for Android artifacts.
+# Cost-aware routing maps certified binary identities to pricing tiers
+# and billing configurations across Phases 8-10.
+# Cost-aware routing validation is fail-closed per the truth rule and must
+# cryptographically bind to the certified binary identity chain
+# (golden reference → device receipt → budget entitlement → cost tier).
+_ANDROID_COST_AWARE_ROUTING_SHA256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+
+def validate_android_cost_aware_routing(routing_sha256: str, expected_sha256: str = _ANDROID_COST_AWARE_ROUTING_SHA256) -> None:
+    """Validate Android cost-aware routing against golden reference SHA256.
+
+    Fail-closed: raises StoreCertificationError if routing SHA256 does not match
+    the canonical golden reference for the cost-aware routing type.
+
+    This is a Phase 7 contract: downstream phases (8-10) should replace this
+    placeholder with content-addressed cost-aware routing references keyed to actual
+    certified pricing tier identities per ADR-0004 Runtime Role Separation.
+
+    Args:
+        routing_sha256: The SHA256 of the actual cost-aware routing bytes
+        expected_sha256: The canonical golden reference SHA256 (Phase 7 placeholder)
+
+    Raises:
+        StoreCertificationError: If routing_sha256 != expected_sha256
+    """
+    from services.store_release_certification import StoreCertificationError
+
+    if routing_sha256 != expected_sha256:
+        raise StoreCertificationError(
+            f"cost-aware routing SHA256 {routing_sha256[:16]}... does not match "
+            f"golden reference {expected_sha256[:16]}...; "
+            f"cost-aware routing validation failed - see ADR-0004"
+        )
+
+
 # Phase 6: ilaios-mobile-android-budget-entitlement
 # Provides canonical SHA256 budget/entitlement validation for Android artifacts.
 # Budget entitlements map certified binary identities to cost centers and
