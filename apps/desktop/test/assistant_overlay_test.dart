@@ -87,8 +87,8 @@ void main() {
         await tester.binding.setSurfaceSize(const Size(1536, 1024));
         addTearDown(() => tester.binding.setSurfaceSize(null));
         final semantics = tester.ensureSemantics();
-        addTearDown(semantics.dispose);
-        final fixture = _ConversationFixture(founder: founder);
+        try {
+          final fixture = _ConversationFixture(founder: founder);
         await tester.pumpWidget(fixture.app(locale: locale, theme: theme));
         await tester.pumpAndSettle();
         final trigger = find.byKey(const Key('nav-assistant'));
@@ -141,6 +141,9 @@ void main() {
         expect(find.byKey(const Key('assistant-conversation-arm')), findsNothing);
         expect(tester.getRect(find.byKey(const Key('home-new-work'))), startRect);
         expect(tester.takeException(), isNull);
+        } finally {
+          semantics.dispose();
+        }
       });
       }
     }
@@ -429,8 +432,8 @@ void main() {
           await tester.binding.setSurfaceSize(const Size(1536, 1024));
           addTearDown(() => tester.binding.setSurfaceSize(null));
           final semantics = tester.ensureSemantics();
-          addTearDown(semantics.dispose);
-          final fixture = _ConversationFixture();
+          try {
+            final fixture = _ConversationFixture();
           await tester.pumpWidget(MaterialApp(
             theme: ThemeData(brightness: brightness),
             home: Builder(builder: (context) => MediaQuery(
@@ -446,6 +449,9 @@ void main() {
           expect(find.byTooltip(locale == IlaiosLocale.turkish ? 'Kapat' : 'Close'), findsOneWidget);
           expect(find.text(locale == IlaiosLocale.turkish ? 'Gönder' : 'Send'), findsOneWidget);
           expect(tester.takeException(), isNull);
+          } finally {
+            semantics.dispose();
+          }
         });
       }
     }
