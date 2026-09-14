@@ -137,6 +137,12 @@ def discover_free_openrouter_agent_configuration(
     Direct exact-zero user-visible text models are preferred. If none are
     exposed, ``openrouter/free`` is admitted as a conservative virtual model.
     That router is never mixed with paid model IDs by this bootstrap.
+
+    ``request_cost_zero_verified`` is true only when at least one direct model
+    was selected from live catalog entries whose prompt, completion and request
+    prices were all explicitly zero. The virtual free router remains usable for
+    existing governed agent paths but cannot satisfy a consumer that requires
+    exact request-fee evidence.
     """
     secret = api_key if api_key is not None else os.environ.get("OPENROUTER_API_KEY", "")
     if not secret or not secret.strip():
@@ -173,15 +179,22 @@ def discover_free_openrouter_agent_configuration(
     ]
     models.sort(key=lambda item: (-item.context_window, item.model_id))
     models = models[:_MAX_AUTO_MODELS]
+    request_cost_zero_verified = bool(models)
     if not models:
         models = [_free_router_model(capabilities)]
 
-    return _configuration(models, capabilities)
+    return _configuration(
+        models,
+        capabilities,
+        request_cost_zero_verified=request_cost_zero_verified,
+    )
 
 
 def _configuration(
     models: list[ModelRecord],
     capabilities: frozenset[str],
+    *,
+    request_cost_zero_verified: bool,
 ) -> P0AIProviderConfiguration:
     if not models:
         raise OpenRouterAgentCatalogError("zero-cost model set cannot be empty")
@@ -236,6 +249,7 @@ def _configuration(
         ),
         provider_capabilities={_OPENROUTER_PROVIDER_ID: capabilities},
         configured_scopes=(),
+        request_cost_zero_verified=request_cost_zero_verified,
     )
 
 
