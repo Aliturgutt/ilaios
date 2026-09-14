@@ -144,6 +144,11 @@ class AssistantConversationRuntime:
     def zero_cost_ready(self) -> bool:
         return self._request_cost_zero_verified
 
+    @property
+    def grant_policy(self) -> DurableGrantPolicy:
+        """Expose the already-composed canonical grant authority to adapters."""
+        return self._grants
+
     def complete(
         self,
         *,
