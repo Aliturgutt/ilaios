@@ -176,7 +176,6 @@ class AssistantRuntimeCompanyKnowledgeDesktopIdentityHTTPServer(
         reference_assets: ReferenceAssetStore | None = None,
         source_media: SourceMediaStore,
         company_knowledge: TenantCompanyKnowledgeRegistry,
-        grants: DurableGrantPolicy,
         assistant_runtime: AssistantConversationRuntime | None,
     ) -> None:
         super().__init__(
@@ -188,7 +187,6 @@ class AssistantRuntimeCompanyKnowledgeDesktopIdentityHTTPServer(
             source_media=source_media,
             company_knowledge=company_knowledge,
         )
-        self.grants = grants
         self.assistant_runtime = assistant_runtime
         self.RequestHandlerClass = AssistantRuntimeCompanyKnowledgeDesktopIdentityRequestHandler
 
@@ -229,7 +227,7 @@ class AssistantRuntimeCompanyKnowledgeDesktopIdentityRequestHandler(
         token = _ACTIVE_ASSISTANT.set(
             _AssistantRequestContext(
                 runtime=runtime,
-                grants=self.server.grants,
+                grants=runtime.grant_policy,
                 company_knowledge=self.server.company_knowledge,
                 principal_id=session.principal_id,
                 tenant_id=session.tenant_id,
