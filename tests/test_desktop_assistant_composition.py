@@ -19,10 +19,14 @@ from services.desktop_assistant_composition import (
 from services.desktop_oidc import DesktopIdentityError, DesktopOIDCService
 from services.execution_coordinator import ExecutionCoordinator
 from services.identity import Session
+from services.runtime import DurableGrantPolicy
 from services.source_media import SourceMediaStore
 
 
 class _Identity:
+    def __init__(self, *, founder: bool = False) -> None:
+        self.founder = founder
+
     def validate_session(self, session_id: str) -> Session:
         if session_id != "user":
             raise DesktopIdentityError("Session denied")
@@ -34,7 +38,7 @@ class _Identity:
         )
 
     def is_li_founder_session(self, session_id: str) -> bool:
-        return False
+        return self.founder and session_id == "user"
 
 
 class _Coordinator:
@@ -42,16 +46,43 @@ class _Coordinator:
         self._database_path = root / "execution-coordinator.sqlite3"
 
 
+class _Grants:
+    def __init__(self) -> None:
+        self.registered: list[Any] = []
+        self.authorized: list[dict[str, object]] = []
+        self.revoked: list[str] = []
+
+    def register(self, grant: Any) -> None:
+        self.registered.append(grant)
+
+    def authorize(self, grant: Any, **kwargs: object) -> None:
+        self.authorized.append({"grant": grant, **kwargs})
+
+    def revoke(self, grant_id: str, *, now: datetime) -> None:
+        assert now.tzinfo is not None
+        self.revoked.append(grant_id)
+
+
 class _Runtime:
     def __init__(self, *, fail: bool = False) -> None:
         self.fail = fail
         self.calls: list[dict[str, object]] = []
+        self._grants = _Grants()
+
+    @property
+    def grant_policy(self) -> DurableGrantPolicy:
+        return cast(DurableGrantPolicy, self._grants)
 
     def complete(self, **kwargs: object) -> AssistantConversationResult:
         self.calls.append(dict(kwargs))
         if self.fail:
             raise AssistantConversationError("provider failed")
+        assert kwargs["principal_id"] == "usr_user"
         assert kwargs["tenant_id"] == "tnt_user"
+        assert kwargs["project_id"] == "company-profile"
+        workload_id = kwargs["workload_id"]
+        assert isinstance(workload_id, str)
+        assert workload_id.startswith("assistant-conversation:")
         assert kwargs["text"] == "Hello governed Assistant"
         assert kwargs["locale"] == "en"
         request_id = kwargs["request_id"]
@@ -66,20 +97,72 @@ class _Runtime:
         )
 
 
+class _KnowledgeRuntime:
+    project_id = "company-profile"
+
+    def state(self) -> dict[str, object]:
+        return {"metrics": {"active_units": 1}}
+
+    def retrieve(self, **kwargs: object) -> dict[str, object]:
+        assert kwargs["purpose"] == "company-context"
+        assert kwargs["query"] == "Hello governed Assistant"
+        return {
+            "context_id": "ctx-1",
+            "retrieval_id": kwargs["retrieval_id"],
+            "tenant_id": "tnt_user",
+            "project_id": "company-profile",
+            "purpose": "company-context",
+            "query_sha256": "b" * 64,
+            "safety_boundary": "UNTRUSTED_KNOWLEDGE_DATA",
+            "result_evidence_sha256": "c" * 64,
+            "context_evidence_sha256": "d" * 64,
+            "units": [
+                {
+                    "unit_id": "unit-1",
+                    "source_id": "source-1",
+                    "source_version": 1,
+                    "text": "Company policy reference",
+                    "final_score": 1.0,
+                    "citation": {},
+                }
+            ],
+        }
+
+
+class _KnowledgeRegistry:
+    def __init__(self) -> None:
+        self.runtime = _KnowledgeRuntime()
+
+    def runtime_for(self, tenant_id: str) -> _KnowledgeRuntime:
+        assert tenant_id == "tnt_user"
+        return self.runtime
+
+
 class _Client:
-    def __init__(self, root: Path, runtime: _Runtime) -> None:
+    def __init__(
+        self,
+        root: Path,
+        runtime: _Runtime,
+        *,
+        founder: bool = False,
+        company_knowledge: object | None = None,
+    ) -> None:
         source_media = SourceMediaStore(
             root / "source-media.sqlite3",
             root / "source-media" / "blobs",
         )
-        company_knowledge = TenantCompanyKnowledgeRegistry(root / "company-knowledge")
+        knowledge = (
+            company_knowledge
+            if company_knowledge is not None
+            else TenantCompanyKnowledgeRegistry(root / "company-knowledge")
+        )
         self.server = AssistantRuntimeCompanyKnowledgeDesktopIdentityHTTPServer(
             ("127.0.0.1", 0),
             bearer_token="transport",
-            identity=cast(DesktopOIDCService, _Identity()),
+            identity=cast(DesktopOIDCService, _Identity(founder=founder)),
             coordinator=cast(ExecutionCoordinator, _Coordinator(root)),
             source_media=source_media,
-            company_knowledge=company_knowledge,
+            company_knowledge=cast(TenantCompanyKnowledgeRegistry, knowledge),
             assistant_runtime=cast(AssistantConversationRuntime, runtime),
         )
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
@@ -144,6 +227,49 @@ def test_composed_runtime_serves_authenticated_desktop_send(tmp_path: Path) -> N
         assert answer["live"] is True
         assert answer["provenance"][0]["evidence_id"] == "a" * 64
         assert len(runtime.calls) == 1
+        assert runtime.calls[0]["authorized_context"] is None
+    finally:
+        client.close()
+
+
+def test_human_session_gets_revocable_scoped_knowledge_grant(tmp_path: Path) -> None:
+    runtime = _Runtime()
+    client = _Client(tmp_path, runtime, company_knowledge=_KnowledgeRegistry())
+    try:
+        conversation_id = _create(client)
+        status, payload = client.call(_message(conversation_id))
+        assert status == 200
+        assert payload["conversation"]["messages"][1]["text"] == "Governed response"
+        context = runtime.calls[0]["authorized_context"]
+        assert isinstance(context, dict)
+        assert context["tenant_id"] == "tnt_user"
+        assert context["project_id"] == "company-profile"
+        assert len(runtime._grants.registered) == 1
+        grant = runtime._grants.registered[0]
+        assert grant.subject_id == "usr_user"
+        assert grant.actions == frozenset({"knowledge.retrieve"})
+        assert len(grant.resources) == 1
+        resource = next(iter(grant.resources))
+        assert resource.startswith("knowledge:tnt_user:company-profile:assistant-conversation:")
+        assert len(runtime._grants.authorized) == 1
+        assert runtime._grants.authorized[0]["subject_id"] == "usr_user"
+        assert runtime._grants.authorized[0]["resource"] == resource
+        assert runtime._grants.revoked == [grant.grant_id]
+    finally:
+        client.close()
+
+
+def test_founder_li_session_never_enters_normal_model_runtime(tmp_path: Path) -> None:
+    runtime = _Runtime()
+    client = _Client(tmp_path, runtime, founder=True)
+    try:
+        conversation_id = _create(client)
+        status, payload = client.call(_message(conversation_id))
+        assert status == 200
+        answer = payload["conversation"]["messages"][1]
+        assert answer["model_status"] == "ASSISTANT_UNAVAILABLE"
+        assert answer["live"] is False
+        assert runtime.calls == []
     finally:
         client.close()
 
