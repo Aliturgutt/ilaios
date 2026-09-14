@@ -31,6 +31,12 @@ class P0AIProviderConfiguration:
     adapter: GovernedAIProviderAdapter
     provider_capabilities: dict[str, frozenset[str]]
     configured_scopes: tuple[Scope, ...]
+    # True only when the configuration was derived from evidence that explicitly
+    # proved prompt + completion + request prices are all zero. Static/explicit
+    # configuration cannot make that claim because its schema has no request-fee
+    # field, so it remains fail-closed for zero-cost-only consumers such as the
+    # Desktop Assistant conversational path.
+    request_cost_zero_verified: bool = False
 
 
 _ALLOWED_CAPABILITIES = ALLOWED_AGENT_AI_CAPABILITIES
@@ -201,6 +207,7 @@ def load_p0_ai_provider_configuration(
             for provider_id, capabilities in provider_capabilities.items()
         },
         configured_scopes=tuple(sorted(limits, key=lambda item: (item.kind.value, item.scope_id))),
+        request_cost_zero_verified=False,
     )
 
 
