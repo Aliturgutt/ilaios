@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, cast
+from typing import Any, TypedDict, cast
 
 import pytest
 
@@ -87,7 +87,14 @@ def _runtime(
     return runtime, named, grants
 
 
-def _scope() -> dict[str, str]:
+class _ScopeKwargs(TypedDict):
+    principal_id: str
+    tenant_id: str
+    project_id: str
+    workload_id: str
+
+
+def _scope() -> _ScopeKwargs:
     return {
         "principal_id": "usr-user",
         "tenant_id": "tenant-1",
