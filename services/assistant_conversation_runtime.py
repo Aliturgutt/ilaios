@@ -17,7 +17,7 @@ from datetime import datetime, timedelta
 
 from services.agent_governance import AgentInvocation, AgentSecurityError
 from services.agent_registry import ORCHESTRATOR_ID
-from services.ai_governance import GovernanceError, Scope, ScopeKind
+from services.ai_governance import GovernanceError, ScopeKind
 from services.named_agent_executor import NamedAgentExecutor
 from services.runtime import BlastRadiusBudget, ExecutionGrant
 from services.runtime.ai_provider_adapter import (
