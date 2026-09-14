@@ -27,12 +27,18 @@ class _Response:
         return json.dumps(self._payload).encode("utf-8")
 
 
-def _model(model_id: str, *, free: bool, text: bool = True) -> dict[str, Any]:
+def _model(
+    model_id: str,
+    *,
+    free: bool,
+    text: bool = True,
+    request_price: str = "0",
+) -> dict[str, Any]:
     price = "0" if free else "0.000001"
     return {
         "id": model_id,
         "context_length": 65536,
-        "pricing": {"prompt": price, "completion": price, "request": "0"},
+        "pricing": {"prompt": price, "completion": price, "request": request_price},
         "architecture": {
             "input_modalities": ["text"] if text else ["image"],
             "output_modalities": ["text"],
@@ -77,6 +83,31 @@ def test_auto_catalog_prefers_direct_free_user_eligible_text_models(
     assert selection.provider_id == "openrouter"
     assert selection.model_id == "free/text"
     assert configuration.configured_scopes == ()
+    assert configuration.request_cost_zero_verified is True
+
+
+def test_auto_catalog_rejects_nonzero_request_fee_as_zero_cost_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "services.openrouter_agent_catalog.urllib.request.urlopen",
+        lambda *_args, **_kwargs: _Response(
+            {
+                "data": [
+                    _model(
+                        "token-free-but-request-paid/model",
+                        free=True,
+                        request_price="0.000001",
+                    )
+                ]
+            }
+        ),
+    )
+    configuration = discover_free_openrouter_agent_configuration(api_key="test-secret")
+    assert configuration is not None
+    selection = configuration.adapter.select("workflow.coordinate")
+    assert selection.model_id == "openrouter/free"
+    assert configuration.request_cost_zero_verified is False
 
 
 def test_auto_catalog_uses_documented_free_router_when_no_direct_zero_price_model(
@@ -98,6 +129,7 @@ def test_auto_catalog_uses_documented_free_router_when_no_direct_zero_price_mode
     selection = configuration.adapter.select("workflow.coordinate")
     assert selection.provider_id == "openrouter"
     assert selection.model_id == "openrouter/free"
+    assert configuration.request_cost_zero_verified is False
 
 
 def test_strict_openrouter_transport_uses_only_provider_filterable_controls(
