@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from contextvars import ContextVar
 from datetime import datetime, timezone
+from http import HTTPStatus
 from typing import Any
 
 from services import desktop_identity_server_core as _identity_core
@@ -118,7 +119,7 @@ class AssistantRuntimeCompanyKnowledgeDesktopIdentityRequestHandler(
             super()._assistant(body)
         except AssistantConversationError:
             self._send_error(
-                _identity_core.HTTPStatus.SERVICE_UNAVAILABLE,
+                HTTPStatus.SERVICE_UNAVAILABLE,
                 "Assistant governed model unavailable",
             )
 
