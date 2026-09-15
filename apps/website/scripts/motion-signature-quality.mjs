@@ -21,8 +21,9 @@ for (const forbidden of [
   "orbital-core",
   "canonical-dimensional-orbital-core",
   "<SuppliedVisual",
+  "home-output-index-v2",
 ]) {
-  if (home.includes(forbidden)) failures.push(`corporate homepage still contains rejected hero composition: ${forbidden}`);
+  if (home.includes(forbidden)) failures.push(`corporate homepage still contains rejected hero/catalog composition: ${forbidden}`);
 }
 
 if (/spline|three(?:\.js)?|webgl|react-three|@react-three/i.test(packageJson)) {
@@ -34,7 +35,6 @@ for (const token of [
   "ProductExperience",
   "home-process-rail-v2",
   "home-control-ledger-v2",
-  "home-output-index-v2",
   "GovernanceEvidence",
   "/factories",
   "/how-it-works",
@@ -58,4 +58,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log(`Website corporate visual-quality gate PASS; ${sectionCount} concise sections, canonical product surface, and no rejected cube/orbit/3D hero dependency.`);
+console.log(`Website corporate visual-quality gate PASS; ${sectionCount} concise sections, canonical product surface, and no rejected cube/orbit/3D or duplicate nine-area homepage catalog.`);
