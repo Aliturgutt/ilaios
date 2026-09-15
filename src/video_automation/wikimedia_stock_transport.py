@@ -71,17 +71,24 @@ class WikimediaStockHttpTransport:
         }
         payload = self._fetch_json(f"{_API_URL}?{urlencode(params)}")
         query_payload = payload.get("query")
-        if not isinstance(query_payload, dict):
+        if query_payload is None and payload.get("batchcomplete") == "":
+            # MediaWiki emits this documented terminal shape for a successful
+            # generator search with no matching pages. It is an empty provider
+            # result, not a response-contract failure, so governed selection
+            # may advance only under its existing empty-result policy.
+            pages: list[Any] = []
+        elif not isinstance(query_payload, dict):
             raise StockSourceError(
                 "Wikimedia response query must be an object",
                 diagnostic_category=StockSourceFailureCategory.RESPONSE_CONTRACT,
             )
-        pages = query_payload.get("pages", [])
-        if not isinstance(pages, list):
-            raise StockSourceError(
-                "Wikimedia response pages must be a list",
-                diagnostic_category=StockSourceFailureCategory.RESPONSE_CONTRACT,
-            )
+        else:
+            pages = query_payload.get("pages", [])
+            if not isinstance(pages, list):
+                raise StockSourceError(
+                    "Wikimedia response pages must be a list",
+                    diagnostic_category=StockSourceFailureCategory.RESPONSE_CONTRACT,
+                )
 
         candidates: list[StockAssetCandidate] = []
         retrieved_at = datetime.now(UTC).isoformat()

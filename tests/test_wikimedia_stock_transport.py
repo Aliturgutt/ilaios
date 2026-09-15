@@ -80,6 +80,21 @@ def test_wikimedia_transport_fails_closed_without_license() -> None:
     assert result.candidates == ()
 
 
+def test_wikimedia_transport_accepts_documented_empty_generator_response() -> None:
+    result = WikimediaStockHttpTransport(
+        lambda _: {"batchcomplete": ""}
+    ).search(
+        provider=StockProvider.WIKIMEDIA,
+        tenant_id="tenant-1",
+        job_id="job-1",
+        query="zzzxqvnonexistentgovernedstockcandidate",
+        max_results=1,
+    )
+
+    assert result.candidates == ()
+    assert result.request.provider is StockProvider.WIKIMEDIA
+
+
 def test_wikimedia_transport_rejects_cross_provider_request() -> None:
     with pytest.raises(StockSourceError, match="only accepts wikimedia"):
         WikimediaStockHttpTransport(lambda _: _payload()).search(
