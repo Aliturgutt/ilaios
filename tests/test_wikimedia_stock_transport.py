@@ -85,3 +85,47 @@ def test_wikimedia_transport_rejects_cross_provider_request() -> None:
             query="earth",
             max_results=1,
         )
+
+def test_wikimedia_transport_skips_malformed_license_url_and_keeps_valid_candidate() -> None:
+    payload = _payload()
+
+    malformed = payload["query"]["pages"][0]
+    malformed["imageinfo"][0]["extmetadata"]["LicenseUrl"]["value"] = (
+        "http://creativecommons.org/licenses/by-sa/4.0/"
+    )
+
+    valid = {
+        "title": "File:Valid.jpg",
+        "imageinfo": [
+            {
+                "url": "https://upload.wikimedia.org/valid.jpg",
+                "descriptionurl": "https://commons.wikimedia.org/wiki/File:Valid.jpg",
+                "mime": "image/jpeg",
+                "width": 1920,
+                "height": 1080,
+                "extmetadata": {
+                    "Artist": {"value": "Valid Creator"},
+                    "LicenseShortName": {"value": "CC BY 4.0"},
+                    "LicenseUrl": {
+                        "value": "https://creativecommons.org/licenses/by/4.0/"
+                    },
+                },
+            }
+        ],
+    }
+    payload["query"]["pages"].append(valid)
+
+    result = WikimediaStockHttpTransport(lambda _: payload).search(
+        provider=StockProvider.WIKIMEDIA,
+        tenant_id="tenant-1",
+        job_id="job-1",
+        query="data center",
+        max_results=3,
+    )
+
+    assert len(result.candidates) == 1
+    candidate = result.candidates[0]
+    assert candidate.provenance.asset_id == "File:Valid.jpg"
+    assert candidate.provenance.license_url == (
+        "https://creativecommons.org/licenses/by/4.0/"
+    )

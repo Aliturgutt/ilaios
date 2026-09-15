@@ -79,7 +79,12 @@ class WikimediaStockHttpTransport:
         candidates: list[StockAssetCandidate] = []
         retrieved_at = datetime.now(UTC).isoformat()
         for page in pages:
-            candidate = _candidate_from_page(page, retrieved_at)
+            try:
+                candidate = _candidate_from_page(page, retrieved_at)
+            except StockSourceError:
+                # A malformed Commons result must never weaken provenance
+                # validation or poison otherwise valid search results.
+                continue
             if candidate is not None:
                 candidates.append(candidate)
             if len(candidates) >= max_results:
