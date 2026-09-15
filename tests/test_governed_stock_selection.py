@@ -145,6 +145,34 @@ def test_selector_advances_after_documented_empty_wikimedia_response() -> None:
     ]
 
 
+def test_selector_advances_after_boolean_empty_wikimedia_response() -> None:
+    nasa = _Adapter(
+        StockProvider.NASA,
+        candidates=(_candidate(StockProvider.NASA),),
+    )
+    selector = GovernedStockSelector(
+        {
+            StockProvider.WIKIMEDIA: WikimediaStockSourceAdapter(
+                WikimediaStockHttpTransport(lambda _: {"batchcomplete": True})
+            ),
+            StockProvider.NASA: nasa,
+        },
+        provider_order=(StockProvider.WIKIMEDIA, StockProvider.NASA),
+    )
+
+    selection = selector.select(
+        tenant_id="tenant-1",
+        job_id="job-1",
+        query="objective-derived-windows-query",
+    )
+
+    assert selection.candidate.provenance.provider is StockProvider.NASA
+    assert [(attempt.provider, attempt.status) for attempt in selection.attempts] == [
+        (StockProvider.WIKIMEDIA, "empty"),
+        (StockProvider.NASA, "selected"),
+    ]
+
+
 def test_selector_fails_closed_on_provider_error_without_trying_next() -> None:
     pexels = _Adapter(StockProvider.PEXELS, error="network failed")
     wikimedia = _Adapter(
