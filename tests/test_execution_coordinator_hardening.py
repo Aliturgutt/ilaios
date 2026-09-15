@@ -24,6 +24,11 @@ from services.integrations import (
 )
 from services.integrations.product_runtime import ProductRuntimeError
 from services.runtime import DurableGrantPolicy, DurableWorkerScheduler, GovernedRuntime
+from src.video_automation.governed_stock_selection import GovernedStockSelectionError
+from src.video_automation.stock_source_adapters import (
+    StockProvider,
+    StockSourceFailureCategory,
+)
 
 
 class _Fixture:
@@ -251,3 +256,56 @@ def test_failure_error_contract_binds_capability_and_adapter(tmp_path: Path) -> 
     assert error["capability_id"] == "ilaios.capability.video-media-factory"
     assert error["adapter_id"] == "video.product-runtime.v1"
     assert "safe_message" in error
+
+
+def test_governed_stock_failure_persists_only_allowlisted_diagnostics(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fixture = _Fixture(tmp_path)
+    _prepare_video(fixture, "hard-stock-diagnostic-1")
+
+    def fail_stock(*args: object, **kwargs: object) -> dict[str, object]:
+        raise GovernedStockSelectionError(
+            "provider response included secret-token-must-not-persist",
+            provider=StockProvider.WIKIMEDIA,
+            failure_category=StockSourceFailureCategory.HTTP_REQUEST,
+        )
+
+    monkeypatch.setattr(fixture.product, "execute", fail_stock)
+    with pytest.raises(GovernedStockSelectionError):
+        fixture.coordinator.resume(
+            "hard-stock-diagnostic-1", token="token", now=_now() + timedelta(seconds=1)
+        )
+
+    error = cast(
+        dict[str, object], fixture.coordinator.get("hard-stock-diagnostic-1")["error"]
+    )
+    assert error["safe_message"] == "The governed execution adapter failed."
+    assert error["diagnostic_domain"] == "governed_stock"
+    assert error["stock_provider"] == "wikimedia"
+    assert error["failure_category"] == "http_request"
+    assert "secret-token-must-not-persist" not in str(error)
+
+
+def test_unknown_execution_failure_cannot_inject_stock_diagnostics(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fixture = _Fixture(tmp_path)
+    _prepare_video(fixture, "hard-generic-diagnostic-1")
+
+    def fail_generic(*args: object, **kwargs: object) -> dict[str, object]:
+        raise RuntimeError("stock_provider=wikimedia secret-token-must-not-persist")
+
+    monkeypatch.setattr(fixture.product, "execute", fail_generic)
+    with pytest.raises(RuntimeError):
+        fixture.coordinator.resume(
+            "hard-generic-diagnostic-1", token="token", now=_now() + timedelta(seconds=1)
+        )
+
+    error = cast(
+        dict[str, object], fixture.coordinator.get("hard-generic-diagnostic-1")["error"]
+    )
+    assert "diagnostic_domain" not in error
+    assert "stock_provider" not in error
+    assert "failure_category" not in error
+    assert "secret-token-must-not-persist" not in str(error)

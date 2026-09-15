@@ -18,6 +18,7 @@ from src.video_automation.stock_source_adapters import (
     StockSearchRequest,
     StockSearchResult,
     StockSourceError,
+    StockSourceFailureCategory,
 )
 
 _API_URL = "https://images-api.nasa.gov"
@@ -56,10 +57,16 @@ class NasaStockHttpTransport:
         payload = self._fetch_json(f"{_API_URL}/search?{params}")
         collection = payload.get("collection")
         if not isinstance(collection, dict):
-            raise StockSourceError("NASA response collection must be an object")
+            raise StockSourceError(
+                "NASA response collection must be an object",
+                diagnostic_category=StockSourceFailureCategory.RESPONSE_CONTRACT,
+            )
         items = collection.get("items", [])
         if not isinstance(items, list):
-            raise StockSourceError("NASA response items must be a list")
+            raise StockSourceError(
+                "NASA response items must be a list",
+                diagnostic_category=StockSourceFailureCategory.RESPONSE_CONTRACT,
+            )
 
         retrieved_at = datetime.now(UTC).isoformat()
         candidates: list[StockAssetCandidate] = []
@@ -178,7 +185,13 @@ def _fetch_json(url: str) -> dict[str, Any]:
         with urlopen(request, timeout=15) as response:  # noqa: S310 - fixed HTTPS host
             payload = json.load(response)
     except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as exc:
-        raise StockSourceError("NASA HTTP request failed closed") from exc
+        raise StockSourceError(
+            "NASA HTTP request failed closed",
+            diagnostic_category=StockSourceFailureCategory.HTTP_REQUEST,
+        ) from exc
     if not isinstance(payload, dict):
-        raise StockSourceError("NASA response must be a JSON object")
+        raise StockSourceError(
+            "NASA response must be a JSON object",
+            diagnostic_category=StockSourceFailureCategory.RESPONSE_CONTRACT,
+        )
     return payload
