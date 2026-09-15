@@ -16,6 +16,7 @@ from src.video_automation.stock_source_adapters import (
     StockSearchRequest,
     StockSearchResult,
     StockSourceError,
+    StockSourceFailureCategory,
 )
 
 
@@ -137,6 +138,27 @@ def test_selector_fails_closed_on_provider_error_without_trying_next() -> None:
 
     assert pexels.calls == 1
     assert wikimedia.calls == 0
+
+
+def test_selector_exposes_only_typed_provider_failure_diagnostics() -> None:
+    pexels = _Adapter(StockProvider.PEXELS, error="secret-token-must-not-persist")
+    selector = GovernedStockSelector({StockProvider.PEXELS: pexels})
+
+    with pytest.raises(GovernedStockSelectionError) as raised:
+        selector.select(
+            tenant_id="tenant-1",
+            job_id="job-1",
+            query="enterprise automation",
+        )
+
+    assert raised.value.diagnostic_metadata() == {
+        "diagnostic_domain": "governed_stock",
+        "stock_provider": "pexels",
+        "failure_category": StockSourceFailureCategory.UNKNOWN.value,
+    }
+    assert "secret-token-must-not-persist" not in str(
+        raised.value.diagnostic_metadata()
+    )
 
 
 def test_selector_filters_media_type_without_weakening_provenance() -> None:

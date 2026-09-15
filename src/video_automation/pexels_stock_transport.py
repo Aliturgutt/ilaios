@@ -18,6 +18,7 @@ from src.video_automation.stock_source_adapters import (
     StockSearchRequest,
     StockSearchResult,
     StockSourceError,
+    StockSourceFailureCategory,
 )
 
 _SEARCH_URL = "https://api.pexels.com/v1/search"
@@ -32,7 +33,10 @@ class PexelsStockHttpTransport:
 
     def __init__(self, api_key: str, fetch_json: JsonFetcher | None = None) -> None:
         if not api_key or not api_key.strip() or api_key != api_key.strip():
-            raise StockSourceError("Pexels API key must be non-blank and trimmed")
+            raise StockSourceError(
+                "Pexels API key must be non-blank and trimmed",
+                diagnostic_category=StockSourceFailureCategory.CONFIGURATION,
+            )
         self._api_key = api_key
         self._fetch_json = fetch_json or _fetch_json
 
@@ -160,8 +164,14 @@ def _fetch_json(url: str, api_key: str) -> tuple[dict[str, Any], dict[str, str]]
             raw_payload: object = json.load(response)
             headers = {key.casefold(): value for key, value in response.headers.items()}
     except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as exc:
-        raise StockSourceError("Pexels HTTP request failed closed") from exc
+        raise StockSourceError(
+            "Pexels HTTP request failed closed",
+            diagnostic_category=StockSourceFailureCategory.HTTP_REQUEST,
+        ) from exc
     if not isinstance(raw_payload, dict):
-        raise StockSourceError("Pexels response must be a JSON object")
+        raise StockSourceError(
+            "Pexels response must be a JSON object",
+            diagnostic_category=StockSourceFailureCategory.RESPONSE_CONTRACT,
+        )
     payload = cast(dict[str, Any], raw_payload)
     return payload, headers

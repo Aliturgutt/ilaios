@@ -18,11 +18,33 @@ from src.video_automation.stock_source_adapters import (
     StockProvider,
     StockSearchRequest,
     StockSourceError,
+    StockSourceFailureCategory,
 )
 
 
 class GovernedStockSelectionError(ValueError):
     """Raised when governed stock selection cannot produce an admissible asset."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        provider: StockProvider | None = None,
+        failure_category: StockSourceFailureCategory | None = None,
+    ) -> None:
+        super().__init__(message)
+        self._provider = provider
+        self._failure_category = failure_category
+
+    def diagnostic_metadata(self) -> dict[str, str]:
+        """Return only typed, non-sensitive failure facts for durable evidence."""
+        if self._provider is None or self._failure_category is None:
+            return {}
+        return {
+            "diagnostic_domain": "governed_stock",
+            "stock_provider": self._provider.value,
+            "failure_category": self._failure_category.value,
+        }
 
 
 DEFAULT_PROVIDER_ORDER: tuple[StockProvider, ...] = (
@@ -102,11 +124,15 @@ class GovernedStockSelector:
                 result = adapter.search(request)
             except StockSourceError as exc:
                 raise GovernedStockSelectionError(
-                    f"{provider.value} stock provider failed closed"
+                    f"{provider.value} stock provider failed closed",
+                    provider=provider,
+                    failure_category=exc.diagnostic_category,
                 ) from exc
             if result.request != request:
                 raise GovernedStockSelectionError(
-                    f"{provider.value} stock result request mismatch"
+                    f"{provider.value} stock result request mismatch",
+                    provider=provider,
+                    failure_category=StockSourceFailureCategory.RESPONSE_CONTRACT,
                 )
             admissible = tuple(
                 candidate

@@ -4,7 +4,11 @@ from typing import Any
 
 import pytest
 
-from src.video_automation.stock_source_adapters import StockProvider, StockSourceError
+from src.video_automation.stock_source_adapters import (
+    StockProvider,
+    StockSourceError,
+    StockSourceFailureCategory,
+)
 from src.video_automation.wikimedia_stock_transport import WikimediaStockHttpTransport
 
 
@@ -85,6 +89,19 @@ def test_wikimedia_transport_rejects_cross_provider_request() -> None:
             query="earth",
             max_results=1,
         )
+
+
+def test_wikimedia_transport_classifies_response_contract_failure() -> None:
+    with pytest.raises(StockSourceError) as raised:
+        WikimediaStockHttpTransport(lambda _: {"query": []}).search(
+            provider=StockProvider.WIKIMEDIA,
+            tenant_id="tenant-1",
+            job_id="job-1",
+            query="earth",
+            max_results=1,
+        )
+
+    assert raised.value.diagnostic_category is StockSourceFailureCategory.RESPONSE_CONTRACT
 
 def test_wikimedia_transport_skips_malformed_license_url_and_keeps_valid_candidate() -> None:
     payload = _payload()
