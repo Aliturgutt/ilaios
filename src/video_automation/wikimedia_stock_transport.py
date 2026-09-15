@@ -20,6 +20,7 @@ from src.video_automation.stock_source_adapters import (
     StockSearchRequest,
     StockSearchResult,
     StockSourceError,
+    StockSourceFailureCategory,
 )
 
 _API_URL = "https://commons.wikimedia.org/w/api.php"
@@ -70,11 +71,24 @@ class WikimediaStockHttpTransport:
         }
         payload = self._fetch_json(f"{_API_URL}?{urlencode(params)}")
         query_payload = payload.get("query")
-        if not isinstance(query_payload, dict):
-            raise StockSourceError("Wikimedia response query must be an object")
-        pages = query_payload.get("pages", [])
-        if not isinstance(pages, list):
-            raise StockSourceError("Wikimedia response pages must be a list")
+        if query_payload is None and payload.get("batchcomplete") == "":
+            # MediaWiki emits this documented terminal shape for a successful
+            # generator search with no matching pages. It is an empty provider
+            # result, not a response-contract failure, so governed selection
+            # may advance only under its existing empty-result policy.
+            pages: list[Any] = []
+        elif not isinstance(query_payload, dict):
+            raise StockSourceError(
+                "Wikimedia response query must be an object",
+                diagnostic_category=StockSourceFailureCategory.RESPONSE_CONTRACT,
+            )
+        else:
+            pages = query_payload.get("pages", [])
+            if not isinstance(pages, list):
+                raise StockSourceError(
+                    "Wikimedia response pages must be a list",
+                    diagnostic_category=StockSourceFailureCategory.RESPONSE_CONTRACT,
+                )
 
         candidates: list[StockAssetCandidate] = []
         retrieved_at = datetime.now(UTC).isoformat()
@@ -189,7 +203,13 @@ def _fetch_json(url: str) -> dict[str, Any]:
         with urlopen(request, timeout=15) as response:  # noqa: S310 - fixed HTTPS host
             raw_payload: object = json.load(response)
     except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as exc:
-        raise StockSourceError("Wikimedia HTTP request failed closed") from exc
+        raise StockSourceError(
+            "Wikimedia HTTP request failed closed",
+            diagnostic_category=StockSourceFailureCategory.HTTP_REQUEST,
+        ) from exc
     if not isinstance(raw_payload, dict):
-        raise StockSourceError("Wikimedia response must be a JSON object")
+        raise StockSourceError(
+            "Wikimedia response must be a JSON object",
+            diagnostic_category=StockSourceFailureCategory.RESPONSE_CONTRACT,
+        )
     return cast(dict[str, Any], raw_payload)

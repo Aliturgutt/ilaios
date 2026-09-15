@@ -16,7 +16,10 @@ from src.video_automation.stock_source_adapters import (
     StockSearchRequest,
     StockSearchResult,
     StockSourceError,
+    StockSourceFailureCategory,
+    WikimediaStockSourceAdapter,
 )
+from src.video_automation.wikimedia_stock_transport import WikimediaStockHttpTransport
 
 
 @dataclass
@@ -114,6 +117,34 @@ def test_selector_skips_unconfigured_provider_but_records_it() -> None:
     assert selection.attempts[1].status == "selected"
 
 
+def test_selector_advances_after_documented_empty_wikimedia_response() -> None:
+    nasa = _Adapter(
+        StockProvider.NASA,
+        candidates=(_candidate(StockProvider.NASA),),
+    )
+    selector = GovernedStockSelector(
+        {
+            StockProvider.WIKIMEDIA: WikimediaStockSourceAdapter(
+                WikimediaStockHttpTransport(lambda _: {"batchcomplete": ""})
+            ),
+            StockProvider.NASA: nasa,
+        },
+        provider_order=(StockProvider.WIKIMEDIA, StockProvider.NASA),
+    )
+
+    selection = selector.select(
+        tenant_id="tenant-1",
+        job_id="job-1",
+        query="zzzxqvnonexistentgovernedstockcandidate",
+    )
+
+    assert selection.candidate.provenance.provider is StockProvider.NASA
+    assert [(attempt.provider, attempt.status) for attempt in selection.attempts] == [
+        (StockProvider.WIKIMEDIA, "empty"),
+        (StockProvider.NASA, "selected"),
+    ]
+
+
 def test_selector_fails_closed_on_provider_error_without_trying_next() -> None:
     pexels = _Adapter(StockProvider.PEXELS, error="network failed")
     wikimedia = _Adapter(
@@ -137,6 +168,27 @@ def test_selector_fails_closed_on_provider_error_without_trying_next() -> None:
 
     assert pexels.calls == 1
     assert wikimedia.calls == 0
+
+
+def test_selector_exposes_only_typed_provider_failure_diagnostics() -> None:
+    pexels = _Adapter(StockProvider.PEXELS, error="secret-token-must-not-persist")
+    selector = GovernedStockSelector({StockProvider.PEXELS: pexels})
+
+    with pytest.raises(GovernedStockSelectionError) as raised:
+        selector.select(
+            tenant_id="tenant-1",
+            job_id="job-1",
+            query="enterprise automation",
+        )
+
+    assert raised.value.diagnostic_metadata() == {
+        "diagnostic_domain": "governed_stock",
+        "stock_provider": "pexels",
+        "failure_category": StockSourceFailureCategory.UNKNOWN.value,
+    }
+    assert "secret-token-must-not-persist" not in str(
+        raised.value.diagnostic_metadata()
+    )
 
 
 def test_selector_filters_media_type_without_weakening_provenance() -> None:
