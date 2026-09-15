@@ -113,6 +113,27 @@ class LiveStateTransport:
             ).fetchall()
         return tuple(_event_from_row(row) for row in rows)
 
+    def snapshots_with_prefix(self, prefix: str) -> tuple[LiveEvent, ...]:
+        """Return authoritative snapshots for one bounded aggregate namespace."""
+        _require_text(prefix, "prefix")
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT aggregate_id, version, state_json, last_sequence "
+                "FROM live_state WHERE aggregate_id LIKE ? "
+                "ORDER BY aggregate_id",
+                (f"{prefix}%",),
+            ).fetchall()
+        return tuple(
+            LiveEvent(
+                row["last_sequence"],
+                row["aggregate_id"],
+                row["version"],
+                "state.snapshot",
+                dict(json.loads(row["state_json"])),
+            )
+            for row in rows
+        )
+
     def snapshot(self, aggregate_id: str) -> LiveEvent:
         with self._connect() as connection:
             row = connection.execute(
