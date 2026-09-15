@@ -17,7 +17,9 @@ from src.video_automation.stock_source_adapters import (
     StockSearchResult,
     StockSourceError,
     StockSourceFailureCategory,
+    WikimediaStockSourceAdapter,
 )
+from src.video_automation.wikimedia_stock_transport import WikimediaStockHttpTransport
 
 
 @dataclass
@@ -113,6 +115,34 @@ def test_selector_skips_unconfigured_provider_but_records_it() -> None:
     assert selection.attempts[0].provider is StockProvider.PEXELS
     assert selection.attempts[0].status == "not_configured"
     assert selection.attempts[1].status == "selected"
+
+
+def test_selector_advances_after_documented_empty_wikimedia_response() -> None:
+    nasa = _Adapter(
+        StockProvider.NASA,
+        candidates=(_candidate(StockProvider.NASA),),
+    )
+    selector = GovernedStockSelector(
+        {
+            StockProvider.WIKIMEDIA: WikimediaStockSourceAdapter(
+                WikimediaStockHttpTransport(lambda _: {"batchcomplete": ""})
+            ),
+            StockProvider.NASA: nasa,
+        },
+        provider_order=(StockProvider.WIKIMEDIA, StockProvider.NASA),
+    )
+
+    selection = selector.select(
+        tenant_id="tenant-1",
+        job_id="job-1",
+        query="zzzxqvnonexistentgovernedstockcandidate",
+    )
+
+    assert selection.candidate.provenance.provider is StockProvider.NASA
+    assert [(attempt.provider, attempt.status) for attempt in selection.attempts] == [
+        (StockProvider.WIKIMEDIA, "empty"),
+        (StockProvider.NASA, "selected"),
+    ]
 
 
 def test_selector_fails_closed_on_provider_error_without_trying_next() -> None:
