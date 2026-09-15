@@ -110,7 +110,7 @@ def test_wikimedia_transport_accepts_boolean_empty_generator_response() -> None:
     assert result.request.provider is StockProvider.WIKIMEDIA
 
 
-@pytest.mark.parametrize(
+@pytest.mark.parametrize(  # type: ignore[misc, unused-ignore]
     "payload",
     ({}, {"batchcomplete": False}, {"batchcomplete": True, "error": {}}),
 )
