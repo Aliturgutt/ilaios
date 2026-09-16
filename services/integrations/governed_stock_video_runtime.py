@@ -8,6 +8,7 @@ the existing provider-bound adapters. It performs no paid AI video generation.
 from __future__ import annotations
 
 import hashlib
+import re
 import subprocess
 import time
 from datetime import datetime
@@ -38,6 +39,9 @@ from .desktop_video_runtime import (
     _windows_font,
 )
 from .video_runtime import DeterministicLocalVideoRuntime, VideoRuntimeError
+
+
+_STOCK_QUERY_TOKEN_RE = re.compile(r"[^\W\d_]+(?:['’][^\W\d_]+)?", re.UNICODE)
 
 
 class ProductIdentityResolver(Protocol):
@@ -313,4 +317,12 @@ def _stock_query(objective: str) -> str:
     query = " ".join(objective.split())[:160].strip()
     if not query:
         raise VideoRuntimeError("governed stock search query is empty")
+    tokens = _STOCK_QUERY_TOKEN_RE.findall(query)
+    for index, token in enumerate(tokens[:-1]):
+        subject_prefix = token.split("'", 1)[0].split("’", 1)[0]
+        if not (subject_prefix.isupper() and len(subject_prefix) > 1):
+            continue
+        subject = tokens[index + 1]
+        if subject[:1].isupper() and len(subject) > 3:
+            return f"{subject_prefix} {subject}"
     return query
