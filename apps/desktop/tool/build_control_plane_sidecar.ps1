@@ -167,7 +167,13 @@ Copy-Item (Join-Path $bundle '*') $OutputDirectory -Recurse -Force
 $target = Join-Path $OutputDirectory 'ilaios_control_plane.exe'
 if (-not (Test-Path $target -PathType Leaf)) { throw "Bundled control-plane executable missing after copy: $target" }
 if ((Get-Item $target).Length -le 0) { throw 'Bundled control-plane executable is empty.' }
-$hash = (Get-FileHash $target -Algorithm SHA256).Hash.ToLowerInvariant()
+$sha256 = [System.Security.Cryptography.SHA256]::Create()
+try {
+  $hash = ([BitConverter]::ToString($sha256.ComputeHash([IO.File]::ReadAllBytes($target))).Replace('-', '')).ToLowerInvariant()
+}
+finally {
+  $sha256.Dispose()
+}
 Write-Host "ILAIOS_DESKTOP_SIDECAR_PATH=$target"
 Write-Host "ILAIOS_DESKTOP_SIDECAR_SHA256=$hash"
 Write-Host "ILAIOS_DESKTOP_SOURCE_HEAD=$sourceHead"
