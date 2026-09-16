@@ -67,7 +67,6 @@ html[data-theme="dark"] .site-header .language-switch > strong {
   background: #2F2F2F !important;
   color: #FFFFFF !important;
   -webkit-text-fill-color: #FFFFFF !important;
-  box-shadow: none !important;
 }
 
 .site-header .theme-toggle:hover,
@@ -75,6 +74,34 @@ html[data-theme="dark"] .site-header .language-switch > strong {
 .site-header .language-switch > a:hover,
 .site-header .language-switch > a:focus-visible {
   background-color: var(--brand-hover) !important;
+}
+
+/* Desktop footer labels must stay inside their own navigation column in both
+   languages. Long Turkish labels may wrap, but never overlap adjacent groups. */
+@media (min-width: 941px) {
+  html body .site-footer .footer-main {
+    grid-template-columns: minmax(260px, .72fr) minmax(0, 1.58fr) !important;
+    gap: 40px !important;
+  }
+
+  html body .site-footer .footer-nav-grid {
+    grid-template-columns: repeat(5, minmax(112px, 1fr)) !important;
+    gap: 20px !important;
+  }
+
+  html body .site-footer .footer-nav-grid > div,
+  html body .site-footer .footer-nav-grid a,
+  html body .site-footer .footer-nav-grid strong {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  html body .site-footer .footer-nav-grid a,
+  html body .site-footer .footer-nav-grid strong {
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+    hyphens: none !important;
+  }
 }
 
 @media (max-width: 560px) {
