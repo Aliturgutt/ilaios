@@ -1,0 +1,28 @@
+{
+  "schema": "ilaios.website.redteam-100.v1",
+  "workstream": "web/final-commercial-closure-hotfix-20260916",
+  "evidence_head": "c68244ba223fa3492010e9a46c0bd8553e08d881",
+  "completed_passes": 12,
+  "target_passes": 100,
+  "passes": [
+    {"id":"01","dimension":"live GitHub truth and successor PR identity","result":"PASS","evidence":"master 0372fb477dae103aaf0a733ba118edf66078e4ea; PR #1543 draft/open/mergeable; head c68244ba223fa3492010e9a46c0bd8553e08d881"},
+    {"id":"02","dimension":"Website-only diff scope","result":"PASS","evidence":"PR #1543 changed files limited to apps/website/app/app-control-parity.css, apps/website/app/docs/page.tsx, apps/website/app/tr/docs/page.tsx"},
+    {"id":"03","dimension":"EN documentation hub source semantics and links","result":"PASS","evidence":"exact-head apps/website/app/docs/page.tsx inspected; linked Architecture/Security/Core/Execution/Evidence routes and conservative API/Recovery placeholders"},
+    {"id":"04","dimension":"TR documentation hub semantic parity and localized links","result":"PASS","evidence":"exact-head apps/website/app/tr/docs/page.tsx inspected against EN; localized Architecture/Security/Core/Execution/Evidence routes preserved"},
+    {"id":"05","dimension":"shared header/footer navigation source","result":"PASS","evidence":"exact-head SiteChrome.tsx inspected; EN/TR primary/explore/footer groups and app bridge present"},
+    {"id":"06","dimension":"desktop Turkish footer column containment repair","result":"PASS","evidence":"exact-head app-control-parity.css uses five minmax columns and bounded labels; light TR desktop rendered artifact inspected with no observed overlap"},
+    {"id":"07","dimension":"skip-link baseline/focus CSS source","result":"PASS","evidence":"exact-head app-control-parity.css hides skip-link by translated fixed position and restores on focus; keyboard accessibility preserved"},
+    {"id":"08","dimension":"public route matrix runtime status","result":"PASS","evidence":"exact-head Website V2 Visual QA report: 41 EN/TR route pairs, 82 localized routes, all recorded runtime checks PASS"},
+    {"id":"09","dimension":"internal navigation target HTTP integrity","result":"PASS","evidence":"exact-head Visual QA internal_link_results inspected; discovered internal targets return <400"},
+    {"id":"10","dimension":"responsive horizontal overflow runtime gate","result":"PASS","evidence":"exact-head Visual QA records enforce <=1px overflow across EN/TR light desktop/tablet/mobile and dark desktop/mobile"},
+    {"id":"11","dimension":"rendered asset and console/page-error runtime gate","result":"PASS","evidence":"exact-head Visual QA records enforce no broken visible images, console errors, or page errors"},
+    {"id":"12","dimension":"exact-head required CI and Website gates","result":"PASS","evidence":"c68244ba223fa3492010e9a46c0bd8553e08d881: Required CI Gate, Website V2 Visual QA, Website Rebuild Closure, Product Surface Parity Gate, Software Factory Final Evidence all success"}
+  ],
+  "findings": [
+    {"id":"RT-001","status":"CLOSED_REVALIDATED","summary":"EN/TR docs linked-card light-theme text became unreadable due dark-surface semantics","repair":"removed incorrect dark-surface class from docs link cards","evidence_head":"c68244ba223fa3492010e9a46c0bd8553e08d881"},
+    {"id":"RT-002","status":"CLOSED_REVALIDATED","summary":"long Turkish footer label overlapped adjacent desktop column","repair":"bounded footer grid columns and label sizing/wrapping behavior","evidence_head":"c68244ba223fa3492010e9a46c0bd8553e08d881"},
+    {"id":"RT-003","status":"CLOSED_SOURCE_CI_PENDING_VISUAL_BASELINE","summary":"skip-link appeared as ordinary content in earlier capture","repair":"baseline hidden position with focus-only reveal added","evidence_head":"c68244ba223fa3492010e9a46c0bd8553e08d881"},
+    {"id":"RT-004","status":"OPEN","summary":"full-page screenshot evidence is captured after navigation/footer interaction checks, so sticky/focus/hover state can contaminate visual acceptance artifacts","required_repair":"reset scroll, hover and focus to neutral baseline immediately before each screenshot, then regenerate exact-head artifacts"}
+  ],
+  "completion_state": "IN_PROGRESS"
+}
