@@ -76,6 +76,32 @@ html[data-theme="dark"] .site-header .language-switch > strong {
   background-color: var(--brand-hover) !important;
 }
 
+/* Keep the accessibility shortcut out of the visual canvas until it receives
+   keyboard focus; this also prevents full-page captures from showing it as
+   ordinary page content. */
+.skip-link {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 1000;
+  transform: translateY(calc(-100% - 24px));
+  padding: 10px 12px;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  background: #FFFFFF;
+  color: #0A0A0A;
+}
+
+html[data-theme="dark"] .skip-link {
+  background: #0A0A0A;
+  color: #FFFFFF;
+}
+
+.skip-link:focus,
+.skip-link:focus-visible {
+  transform: translateY(0);
+}
+
 /* Desktop footer labels must stay inside their own navigation column in both
    languages. Long Turkish labels may wrap, but never overlap adjacent groups. */
 @media (min-width: 941px) {
