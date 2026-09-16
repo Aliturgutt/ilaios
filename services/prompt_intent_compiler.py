@@ -249,6 +249,12 @@ _DURATION_RE = re.compile(
 _ALTERNATIVE_RE = re.compile(r"\b(?:or|veya|ya\s+da)\b", re.IGNORECASE)
 
 
+def _domain_term_matches(folded: str, term: str) -> bool:
+    if term == "program":
+        return re.search(r"\bprogram\b", folded, flags=re.UNICODE) is not None
+    return term in folded
+
+
 def compile_prompt(objective: str) -> PromptCompilation:
     """Compile raw input into a provider-neutral, governed admission record."""
     if not objective or objective != objective.strip():
@@ -261,7 +267,7 @@ def compile_prompt(objective: str) -> PromptCompilation:
     domains = tuple(
         domain
         for domain, terms in _DOMAIN_TERMS.items()
-        if any(term in folded for term in terms)
+        if any(_domain_term_matches(folded, term) for term in terms)
     )
     ambiguity: list[str] = []
     missing: list[str] = []
