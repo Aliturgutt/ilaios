@@ -71,11 +71,13 @@ class WikimediaStockHttpTransport:
         }
         payload = self._fetch_json(f"{_API_URL}?{urlencode(params)}")
         query_payload = payload.get("query")
-        if query_payload is None and payload.get("batchcomplete") == "":
+        if query_payload is None and _is_terminal_empty_generator_response(payload):
             # MediaWiki emits this documented terminal shape for a successful
-            # generator search with no matching pages. It is an empty provider
-            # result, not a response-contract failure, so governed selection
-            # may advance only under its existing empty-result policy.
+            # generator search with no matching pages. MediaWiki versions may
+            # encode batchcomplete as either an empty string or boolean true.
+            # It is an empty provider result, not a response-contract failure,
+            # so governed selection may advance only under its existing
+            # empty-result policy.
             pages: list[Any] = []
         elif not isinstance(query_payload, dict):
             raise StockSourceError(
@@ -109,6 +111,17 @@ class WikimediaStockHttpTransport:
             candidates=tuple(candidates),
             rate_limit=RateLimitState(remaining=None, reset_at_iso8601=None),
         )
+
+
+def _is_terminal_empty_generator_response(payload: dict[str, Any]) -> bool:
+    """Recognize only documented terminal no-results responses from MediaWiki."""
+    batchcomplete = payload.get("batchcomplete")
+    if batchcomplete != "" and batchcomplete is not True:
+        return False
+    if not set(payload) <= {"batchcomplete", "warnings"}:
+        return False
+    warnings = payload.get("warnings")
+    return warnings is None or isinstance(warnings, dict)
 
 
 def _candidate_from_page(page: Any, retrieved_at: str) -> StockAssetCandidate | None:

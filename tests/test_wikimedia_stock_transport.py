@@ -95,6 +95,40 @@ def test_wikimedia_transport_accepts_documented_empty_generator_response() -> No
     assert result.request.provider is StockProvider.WIKIMEDIA
 
 
+def test_wikimedia_transport_accepts_boolean_empty_generator_response() -> None:
+    result = WikimediaStockHttpTransport(
+        lambda _: {"batchcomplete": True}
+    ).search(
+        provider=StockProvider.WIKIMEDIA,
+        tenant_id="tenant-1",
+        job_id="job-1",
+        query="objective-derived-windows-query",
+        max_results=1,
+    )
+
+    assert result.candidates == ()
+    assert result.request.provider is StockProvider.WIKIMEDIA
+
+
+@pytest.mark.parametrize(  # type: ignore[misc, unused-ignore]
+    "payload",
+    ({}, {"batchcomplete": False}, {"batchcomplete": True, "error": {}}),
+)
+def test_wikimedia_transport_fails_closed_for_unmarked_missing_query(
+    payload: dict[str, object],
+) -> None:
+    with pytest.raises(StockSourceError) as raised:
+        WikimediaStockHttpTransport(lambda _: payload).search(
+            provider=StockProvider.WIKIMEDIA,
+            tenant_id="tenant-1",
+            job_id="job-1",
+            query="objective-derived-windows-query",
+            max_results=1,
+        )
+
+    assert raised.value.diagnostic_category is StockSourceFailureCategory.RESPONSE_CONTRACT
+
+
 def test_wikimedia_transport_rejects_cross_provider_request() -> None:
     with pytest.raises(StockSourceError, match="only accepts wikimedia"):
         WikimediaStockHttpTransport(lambda _: _payload()).search(
