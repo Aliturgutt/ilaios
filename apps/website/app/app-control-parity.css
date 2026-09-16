@@ -1,8 +1,9 @@
 /* Header control visual parity with app.ilaios.com.
-   Presentation only: preserve existing ThemeToggle/language behavior and control geometry. */
+   Presentation only: preserve existing ThemeToggle/language behavior. */
 
 .site-header .theme-toggle,
 .site-header .language-switch {
+  min-height: 36px !important;
   border-radius: 999px !important;
   border: 1px solid var(--brand-text-tertiary) !important;
   box-shadow: none !important;
@@ -10,9 +11,23 @@
   overflow: hidden;
 }
 
+.site-header .theme-toggle {
+  gap: 7px !important;
+  padding: 6px 10px !important;
+}
+
+.site-header .language-switch {
+  gap: 6px !important;
+  padding: 5px !important;
+}
+
 .site-header .language-switch > :where(a, strong) {
+  height: 24px !important;
+  min-width: 30px !important;
+  padding: 3px 7px !important;
   border-radius: 999px !important;
   box-shadow: none !important;
+  line-height: 1 !important;
 }
 
 html[data-theme="light"] .site-header .theme-toggle,
@@ -60,4 +75,17 @@ html[data-theme="dark"] .site-header .language-switch > strong {
 .site-header .language-switch > a:hover,
 .site-header .language-switch > a:focus-visible {
   background-color: var(--brand-hover) !important;
+}
+
+@media (max-width: 560px) {
+  .site-header .theme-toggle {
+    width: 36px !important;
+    min-width: 36px !important;
+    padding: 5px !important;
+    justify-content: center !important;
+  }
+
+  .site-header .theme-toggle strong {
+    display: none !important;
+  }
 }

@@ -106,7 +106,8 @@ if (homeEntry.includes("WebsiteV2HomeRecovery") || homeEntryTr.includes("Website
 requireText(home, "homepage-v2-authoritative", "authoritative homepage identity");
 requireText(home, "ProductExperience", "homepage product visibility");
 requireText(home, "home-process-rail-v2", "five-step execution composition");
-requireText(home, "home-output-index-v2", "restrained production index");
+requireText(home, "The four interactive examples are only part of ILAIOS.", "restrained homepage bridge to all production areas");
+requireText(home, "Dört etkileşimli örnek ILAIOS'un yalnızca bir bölümünü gösterir.", "Turkish restrained homepage bridge to all production areas");
 requireText(home, "home-control-ledger-v2", "governed control composition");
 requireText(home, "GovernanceEvidence", "homepage evidence credibility");
 requireText(product, "Planning", "interactive product state progression");
@@ -142,8 +143,12 @@ requireText(architecture, "SystemVisuals", "Architecture governed execution visu
 requireText(architecture, "Technical depth", "Architecture progressive technical disclosure");
 forbidIn(architecture, /CanonicalSystemDetail|ExecutionGrant|RoutingDecision|worker lease|fencing token|Knowledge \/ RAG|Checkpoint \/ Resume \/ Repair/i, "Architecture public-density boundary");
 
-requireText(factoriesPage, "Cross-factory composition", "cross-factory bounded composition");
-requireText(factoriesPage, "variant=\"knowledge\"", "factories shared knowledge plane");
+requireText(factoriesPage, "Nine production areas", "nine-area commercial catalog");
+requireText(factoriesPage, "Dokuz üretim alanı", "Turkish nine-area commercial catalog");
+requireText(factoriesPage, "Preview", "conservative factory readiness");
+requireText(factoriesPage, "In development", "conservative factory readiness");
+for (const route of ["/factories/web", "/factories/video", "/factories/software", "/factories/app", "/factories/research-data", "/factories/security", "/factories/creative-document", "/factories/commerce-growth", "/factories/personal-operations"]) requireText(factoriesPage, route, "nine-area factory detail coverage");
+forbidIn(factoriesPage, /ThemedDiagram|variant=\"knowledge\"|factory-pipeline/i, "factories rejected workflow/diagram boundary");
 
 for (const text of [
   "Describe what you want finished",
@@ -197,8 +202,8 @@ requireText(about, "about-editorial-grid", "compact About editorial composition"
 requireText(chrome, "footer-nav-grid", "dense footer information architecture");
 for (const label of ["Product", "Use", "Resources", "Trust", "Company"]) requireText(chrome, `\"${label}\"`, "footer information architecture");
 
-const requiredVisualRoles = ["interactive-product-demo", "five-step-execution", "factory-explorer", "architecture-spatial-map", "contact-directory"];
-const combined = [home, product, factory, spatial, contact].join("\n");
+const requiredVisualRoles = ["interactive-product-demo", "five-step-execution", "architecture-spatial-map", "contact-directory"];
+const combined = [home, product, spatial, contact].join("\n");
 for (const role of requiredVisualRoles) requireText(combined, role, "rendered visual role");
 
 requireText(mobileCss, "@media (max-width:760px)", "dedicated mobile breakpoint");

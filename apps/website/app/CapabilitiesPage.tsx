@@ -14,13 +14,11 @@ const copy = {
     exampleTitle: "A product launch can move from research to production without becoming five separate workflows for the user.",
     exampleLead: "ILAIOS can coordinate the capabilities that apply while preserving one controlled execution path.",
     example: [["Research", "Understand the market and source material."], ["Plan", "Define the required deliverables and dependencies."], ["Create", "Build the website, software or media that is needed."], ["Verify", "Check each result against its applicable acceptance criteria."], ["Deliver", "Return accepted work with reviewable evidence."]],
-    productionEyebrow: "Production outcomes",
-    productionTitle: "Explore what those capabilities can produce.",
     truthEyebrow: "Evidence before claims",
     truthTitle: "Capability status and cost choices remain evidence-bound.",
     truthLead: "The detailed maturity and cost-control model is kept here as technical assurance, while the main page stays focused on what users can accomplish.",
-    factories: [["Web", "/factories/web"], ["Video / Media", "/factories/video"], ["Software", "/factories/software"], ["App", "/factories/app"], ["Research / Data", "/factories/research-data"], ["Security", "/factories/security"], ["Creative / Document", "/factories/creative-document"], ["Commerce / Growth", "/factories/commerce-growth"], ["Personal Operations", "/factories/personal-operations"]],
-    all: "Explore all production outcomes",
+    closeTitle: "See the production areas that turn these capabilities into finished work.",
+    all: "Explore production outcomes",
     how: "How ILAIOS works",
   },
   tr: {
@@ -33,13 +31,11 @@ const copy = {
     exampleTitle: "Bir ürün lansmanı, kullanıcı için beş ayrı iş akışına dönüşmeden araştırmadan üretime ilerleyebilir.",
     exampleLead: "ILAIOS gerekli yetenekleri aynı kontrollü yürütme yolu içinde koordine edebilir.",
     example: [["Araştır", "Pazarı ve kaynak materyali anla."], ["Planla", "Gerekli teslimatları ve bağımlılıkları belirle."], ["Üret", "Gereken web sitesi, yazılım veya medyayı oluştur."], ["Doğrula", "Her sonucu geçerli kabul ölçütleriyle kontrol et."], ["Teslim et", "Kabul edilen işi incelenebilir kanıtla sun." ]],
-    productionEyebrow: "Üretim sonuçları",
-    productionTitle: "Bu yeteneklerin neler üretebildiğini keşfet.",
     truthEyebrow: "İddiadan önce kanıt",
     truthTitle: "Yetenek durumu ve maliyet seçimleri kanıta bağlı kalır.",
     truthLead: "Ayrıntılı olgunluk ve maliyet kontrol modeli teknik güvence olarak burada tutulur; ana sayfa ise kullanıcının elde edeceği sonuca odaklanır.",
-    factories: [["Web", "/tr/factories/web"], ["Video / Medya", "/tr/factories/video"], ["Yazılım", "/tr/factories/software"], ["Uygulama", "/tr/factories/app"], ["Araştırma / Veri", "/tr/factories/research-data"], ["Güvenlik", "/tr/factories/security"], ["Creative / Doküman", "/tr/factories/creative-document"], ["Commerce / Büyüme", "/tr/factories/commerce-growth"], ["Kişisel Operasyon", "/tr/factories/personal-operations"]],
-    all: "Tüm üretim sonuçlarını keşfet",
+    closeTitle: "Bu yetenekleri bitmiş işe dönüştüren üretim alanlarını gör.",
+    all: "Üretim sonuçlarını keşfet",
     how: "ILAIOS nasıl çalışır?",
   },
 } as const;
@@ -51,8 +47,7 @@ export default function CapabilitiesPage({ locale }: { locale: Locale }) {
     <section className="shell page-hero compact-page-hero"><div className="eyebrow">{c.eyebrow}</div><h1>{c.title}</h1><p className="lead">{c.lead}</p></section>
     <section className="section"><div className="shell"><div className="compact-heading-row"><div><h2>{c.capabilityTitle}</h2></div></div><div className="grid two-up capability-matrix">{c.capabilities.map(([title,text]) => <article className="card dark-surface" key={title}><h3>{title}</h3><p>{text}</p></article>)}</div></div></section>
     <section className="section surface-section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">{c.exampleEyebrow}</div><h2>{c.exampleTitle}</h2></div><p>{c.exampleLead}</p></div><div className="runtime-line">{c.example.map(([title, detail], index) => <div key={title}><span>{String(index + 1).padStart(2, "0")}</span><strong>{title}</strong><small>{detail}</small></div>)}</div></div></section>
-    <section className="section"><div className="shell capability-factory-band"><div><div className="eyebrow">{c.productionEyebrow}</div><h2>{c.productionTitle}</h2></div><div className="factory-link-cloud">{c.factories.map(([label, href], index) => <Link key={href} href={href}><span>{String(index + 1).padStart(2, "0")}</span>{label}</Link>)}</div></div></section>
     <section className="section surface-section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">{c.truthEyebrow}</div><h2>{c.truthTitle}</h2></div><p>{c.truthLead}</p></div><CanonicalSystemDetail locale={locale} variant="maturity" /><CanonicalSystemDetail locale={locale} variant="cost" /></div></section>
-    <section className="section compact-section"><div className="shell compact-cta"><div><h2>{c.productionTitle}</h2></div><div className="actions"><Link className="button" href={`${base}/factories`}>{c.all}</Link><Link className="button secondary" href={`${base}/how-it-works`}>{c.how}</Link></div></div></section>
+    <section className="section compact-section"><div className="shell compact-cta"><div><h2>{c.closeTitle}</h2></div><div className="actions"><Link className="button" href={`${base}/factories`}>{c.all}</Link><Link className="button secondary" href={`${base}/how-it-works`}>{c.how}</Link></div></div></section>
   </>;
 }
