@@ -32,6 +32,22 @@ def _stable_public_preview_dns(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
+_FixtureFn = TypeVar("_FixtureFn", bound=Callable[..., object])
+_autouse_fixture = cast(Callable[[_FixtureFn], _FixtureFn], pytest.fixture(autouse=True))
+
+
+@_autouse_fixture
+def _stable_public_preview_dns(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep injected-transport unit tests deterministic and network-free."""
+    monkeypatch.setattr(
+        preview_probe,
+        "getaddrinfo",
+        lambda host, port, **kwargs: [
+            (socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", ("93.184.216.34", port))
+        ],
+    )
+
+
 class _Transport:
     def __init__(self, result: PreviewHttpProbeResult) -> None:
         self.result = result
