@@ -9,7 +9,8 @@ const structureCss = await readFile(path.join(app, "adaptive-structures.css"), "
 const mobileCss = await readFile(path.join(app, "mobile-redteam.css"), "utf8");
 const canonicalCss = await readFile(path.join(app, "canonical-detail.css"), "utf8");
 const finalCss = await readFile(path.join(app, "site-v2-finalization.css"), "utf8");
-const css = `${nativeCss}\n${structureCss}\n${mobileCss}\n${canonicalCss}\n${finalCss}`;
+const acceptanceCss = await readFile(path.join(app, "live-acceptance-fixes.css"), "utf8");
+const css = `${nativeCss}\n${structureCss}\n${mobileCss}\n${canonicalCss}\n${finalCss}\n${acceptanceCss}`;
 const home = await readFile(path.join(app, "HomePage.tsx"), "utf8");
 const homeEntry = await readFile(path.join(app, "page.tsx"), "utf8");
 const homeEntryTr = await readFile(path.join(app, "tr", "page.tsx"), "utf8");
@@ -100,6 +101,11 @@ for (const match of css.matchAll(/box-shadow\s*:\s*([^;}]+)/gi)) {
 
 requireText(layout, "mobile-redteam.css", "mobile correction layer");
 requireText(layout, "canonical-detail.css", "canonical documentation visual layer");
+requireText(layout, "live-acceptance-fixes.css", "live rendered acceptance correction layer");
+requireText(acceptanceCss, ".detail-directory > a", "light-theme Docs card readability coverage");
+requireText(acceptanceCss, ".security-process article", "light-theme Security process readability coverage");
+requireText(acceptanceCss, ".principle-directory article", "light-theme Security principles readability coverage");
+requireText(acceptanceCss, "main:has(.architecture-primary) .spatial-stage", "Architecture collapse regression coverage");
 requireText(homeEntry, "HomePage", "English canonical homepage entrypoint");
 requireText(homeEntryTr, "HomePage", "Turkish canonical homepage entrypoint");
 if (homeEntry.includes("WebsiteV2HomeRecovery") || homeEntryTr.includes("WebsiteV2HomeRecovery")) failures.push("homepage entrypoint: legacy WebsiteV2HomeRecovery still active");
@@ -116,6 +122,8 @@ requireText(product, "Validating", "interactive product state progression");
 requireText(product, "Finished", "interactive product state progression");
 requireText(product, "Interactive canonical workflow preview", "prototype truth label");
 requireText(product, "no external side effects", "prototype truth boundary");
+requireText(product, "Dört örnek iş akışı · 9 üretim alanından örnekler", "Turkish four-tab demo nine-area context");
+requireText(product, "dokuz üretim alanından yalnızca örnek akışları gösterir", "Turkish four-tab demo taxonomy boundary");
 requireText(factory, "onMouseEnter", "factory hover behavior");
 requireText(factory, "factory-pipeline", "factory pipeline preview");
 requireText(spatial, "onPointerMove", "spatial pointer depth");
@@ -183,7 +191,7 @@ requireText(useIlaios, "Different outcomes, one governed product boundary.", "Us
 forbidIn(useIlaios, /ilaios-concept\.avif|Product-flow concept|Static illustrative workflow|ThemedDiagram|next\/image/i, "Use ILAIOS fake-or-static product-screen boundary");
 
 requireText(resources, "Resources explains the thinking; Docs carries the technical reference.", "English Resources/Docs separation");
-requireText(resourcesTr, "Resources yaklaşımı açıklar; Docs teknik referansı taşır.", "Turkish Resources/Docs separation");
+requireText(resourcesTr, "Kaynaklar yaklaşımı açıklar; Dokümantasyon teknik referansı taşır.", "Turkish Resources/Docs separation");
 requireText(resources, "detail-directory", "Resources compact editorial directory");
 requireText(resourcesTr, "detail-directory", "Turkish Resources compact editorial directory");
 

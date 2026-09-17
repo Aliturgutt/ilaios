@@ -1,0 +1,224 @@
+/* Live acceptance fixes from the 2026-09-17 rendered-site red-team.
+   Presentation-only overrides; keep canonical monochrome identity intact. */
+
+/* Light theme: every information card/diagram must carry readable foreground
+   colors instead of inheriting the dark-theme white text. */
+html[data-theme="light"] body :where(
+  .detail-directory > a,
+  .security-process article,
+  .principle-directory article,
+  .use-factory-card,
+  .trust-gate > div,
+  .spatial-stage,
+  .spatial-node,
+  .canonical-detail-panel,
+  .canonical-linear > div,
+  .canonical-dual > div
+) {
+  background: #FFFFFF !important;
+  background-image: none !important;
+  color: #0A0A0A !important;
+  -webkit-text-fill-color: #0A0A0A !important;
+  border-color: #B3B3B3 !important;
+}
+
+html[data-theme="light"] body :where(
+  .detail-directory > a,
+  .security-process article,
+  .principle-directory article,
+  .use-factory-card,
+  .trust-gate > div,
+  .spatial-stage,
+  .spatial-node,
+  .canonical-detail-panel,
+  .canonical-linear > div,
+  .canonical-dual > div
+) :where(h1,h2,h3,h4,strong,b,span,i) {
+  color: #0A0A0A !important;
+  -webkit-text-fill-color: #0A0A0A !important;
+  opacity: 1 !important;
+}
+
+html[data-theme="light"] body :where(
+  .detail-directory > a,
+  .security-process article,
+  .principle-directory article,
+  .use-factory-card,
+  .trust-gate > div,
+  .spatial-stage,
+  .spatial-node,
+  .canonical-detail-panel,
+  .canonical-linear > div,
+  .canonical-dual > div
+) :where(p,small,li) {
+  color: #2A2A2A !important;
+  -webkit-text-fill-color: #2A2A2A !important;
+  opacity: 1 !important;
+}
+
+/* Keep rendered explanatory copy comfortably readable on white surfaces. */
+html[data-theme="light"] body :where(
+  .security-boundary-layout p,
+  .section-heading > p,
+  .compact-heading-row p,
+  .system-visual-instruction,
+  .spatial-map-head small
+) {
+  color: #2A2A2A !important;
+  -webkit-text-fill-color: #2A2A2A !important;
+}
+/* Architecture must never collapse into character-width columns on desktop. */
+@media (min-width: 901px) {
+  main:has(.architecture-primary) .architecture-primary {
+    grid-template-columns: minmax(320px, .72fr) minmax(560px, 1.28fr) !important;
+    gap: 40px !important;
+  }
+
+  main:has(.architecture-primary) .spatial-map,
+  main:has(.architecture-primary) .spatial-stage {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  main:has(.architecture-primary) .spatial-stage {
+    grid-template-columns: repeat(7, minmax(76px, 1fr)) !important;
+  }
+
+  main:has(.architecture-primary) .spatial-node {
+    min-width: 0 !important;
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+  }
+
+  main:has(.architecture-primary) .spatial-node :where(strong,small) {
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+    hyphens: none !important;
+  }
+}
+/* Editorial/legal pages: keep desktop hierarchy proportional and avoid a narrow
+   text island surrounded by unused canvas. */
+@media (min-width: 901px) {
+  main > .about-intro {
+    grid-template-columns: minmax(0, .92fr) minmax(420px, 1.08fr) !important;
+    gap: 48px !important;
+  }
+
+  main > .about-intro h1 {
+    max-width: 660px !important;
+    font-size: clamp(2.8rem, 3.8vw, 4rem) !important;
+  }
+
+  main > .contact-intro {
+    grid-template-columns: minmax(0, .95fr) minmax(420px, 1.05fr) !important;
+    gap: 48px !important;
+  }
+
+  main > .legal-copy {
+    width: min(1120px, calc(100% - 40px)) !important;
+    max-width: 1120px !important;
+  }
+
+  main > .legal-copy > :where(p,h2,ul,ol) {
+    max-width: 82ch !important;
+  }
+}
+
+/* 2026-09-17 user-visible acceptance: dark-surface semantics must not force
+   white text after the card itself has been normalized to a light surface. */
+html[data-theme="light"] body :where(
+  .detail-directory > a.dark-surface,
+  .security-process article.dark-surface,
+  .principle-directory article.dark-surface,
+  .use-factory-card.dark-surface,
+  .trust-gate > .dark-surface
+) :where(h1,h2,h3,h4,strong,b,p,small,span,li) {
+  color: #0A0A0A !important;
+  -webkit-text-fill-color: #0A0A0A !important;
+  opacity: 1 !important;
+}
+
+html[data-theme="light"] body :where(
+  .security-process article.dark-surface,
+  .principle-directory article.dark-surface,
+  .use-factory-card.dark-surface
+) :where(p,small,li) {
+  color: #2A2A2A !important;
+  -webkit-text-fill-color: #2A2A2A !important;
+}
+
+/* SystemVisuals uses interactive buttons rather than dark-surface cards. Keep
+   every light-theme node readable in idle, active and focus states. */
+html[data-theme="light"] body :where(
+  .node,
+  .plane-box,
+  .lifecycle-step,
+  .trust-node,
+  .system-inline-detail
+) {
+  color: #0A0A0A !important;
+  -webkit-text-fill-color: #0A0A0A !important;
+}
+
+html[data-theme="light"] body :where(
+  .node,
+  .plane-box,
+  .lifecycle-step,
+  .trust-node,
+  .system-inline-detail
+) :where(strong,b,span,small,p) {
+  color: #0A0A0A !important;
+  -webkit-text-fill-color: #0A0A0A !important;
+  opacity: 1 !important;
+}
+
+/* Sticky header must not visually cover section content at desktop scroll
+   positions; anchor targets receive the same clearance. */
+html body main :where(section,[id]) {
+  scroll-margin-top: 96px;
+}
+
+@media (min-width: 901px) {
+  main:has(> .about-intro) .about-intro {
+    min-height: 0 !important;
+    padding-top: 52px !important;
+    padding-bottom: 52px !important;
+  }
+
+  main:has(> .contact-intro) .contact-intro {
+    min-height: 0 !important;
+    padding-top: 52px !important;
+    padding-bottom: 52px !important;
+  }
+
+  main > .legal-copy h1 {
+    font-size: clamp(2.8rem, 3.8vw, 4rem) !important;
+  }
+}
+
+/* Final mobile containment guard. The public 390px acceptance must never rely
+   on horizontal page scrolling or hide the primary navigation trigger. */
+@media (max-width: 900px) {
+  html, body, main, .site-header, .site-footer {
+    max-width: 100% !important;
+    overflow-x: clip !important;
+  }
+  .shell, main > section, main > article {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+  .menu-toggle {
+    display: inline-flex !important;
+    align-items: center !important;
+    flex: 0 0 auto !important;
+  }
+  :where(h1,h2,h3,p,li,a,strong,small,blockquote) {
+    overflow-wrap: anywhere;
+  }
+  .actions {
+    flex-wrap: wrap !important;
+  }
+  .actions > * {
+    max-width: 100% !important;
+  }
+}
