@@ -183,7 +183,7 @@ requireText(useIlaios, "Different outcomes, one governed product boundary.", "Us
 forbidIn(useIlaios, /ilaios-concept\.avif|Product-flow concept|Static illustrative workflow|ThemedDiagram|next\/image/i, "Use ILAIOS fake-or-static product-screen boundary");
 
 requireText(resources, "Resources explains the thinking; Docs carries the technical reference.", "English Resources/Docs separation");
-requireText(resourcesTr, "Resources yaklaşımı açıklar; Docs teknik referansı taşır.", "Turkish Resources/Docs separation");
+requireText(resourcesTr, "Kaynaklar yaklaşımı açıklar; Dokümantasyon teknik referansı taşır.", "Turkish Resources/Docs separation");
 requireText(resources, "detail-directory", "Resources compact editorial directory");
 requireText(resourcesTr, "detail-directory", "Turkish Resources compact editorial directory");
 
