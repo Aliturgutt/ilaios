@@ -3,7 +3,7 @@
   "workstream": "web/final-commercial-closure-hotfix-20260916",
   "production_origin": "https://ilaios.com",
   "series_restarted_at": "2026-09-17T01:18:51+03:00",
-  "completed_passes": 25,
+  "completed_passes": 29,
   "target_passes": 100,
   "pass_rule": "Only distinct substantive checks exercised against live ilaios.com count. Repository, CI and artifacts are supporting evidence only.",
   "finding_status_rule": "CLOSED requires attributable deployment plus live-production revalidation. Source or CI success alone never closes a finding.",
@@ -389,6 +389,78 @@
       "evidence": "Live Contact exposes general, support, privacy, security and abuse channels in Turkish with route/footer integrity",
       "result": "PASS",
       "finding_ids": []
+    },
+    {
+      "id": "26",
+      "timestamp": "2026-09-17T06:05:00-03:00",
+      "urls": [
+        "https://ilaios.com",
+        "https://ilaios.com/tr"
+      ],
+      "locale": "TR",
+      "theme": "UNVERIFIED",
+      "viewport": "live web render/fetch; exact pixel viewport UNVERIFIED",
+      "interaction": "root redirect + header/footer route exposure",
+      "dimension": "global navigation and homepage route integrity",
+      "evidence": "Live root redirects to /tr; header exposes Platform, ?retim, Yetenekler, G?venlik, app, theme and locale controls; footer exposes product/use/resources/trust/company groups. Visual proportions remain UNVERIFIED without pixel browser evidence.",
+      "result": "PASS_WITH_FINDING",
+      "finding_ids": [
+        "RT-005"
+      ]
+    },
+    {
+      "id": "27",
+      "timestamp": "2026-09-17T06:05:00-03:00",
+      "urls": [
+        "https://ilaios.com/factories",
+        "https://ilaios.com/tr/factories"
+      ],
+      "locale": "EN/TR",
+      "theme": "UNVERIFIED",
+      "viewport": "live web render/fetch; exact pixel viewport UNVERIFIED",
+      "interaction": "route content enumeration",
+      "dimension": "exactly nine factories plus readiness semantics EN/TR",
+      "evidence": "Both live routes enumerate exactly 01-09 production areas and distinguish Preview from In development; TR still contains untranslated production/repository/build/render terminology under RT-005.",
+      "result": "PASS_WITH_FINDING",
+      "finding_ids": [
+        "RT-005"
+      ]
+    },
+    {
+      "id": "28",
+      "timestamp": "2026-09-17T06:05:00-03:00",
+      "urls": [
+        "https://ilaios.com/capabilities",
+        "https://ilaios.com/tr/capabilities"
+      ],
+      "locale": "EN/TR",
+      "theme": "UNVERIFIED",
+      "viewport": "live web render/fetch; exact pixel viewport UNVERIFIED",
+      "interaction": "capability enumeration + truth-model review",
+      "dimension": "eight capabilities and readiness semantics EN/TR",
+      "evidence": "Both live routes expose exactly eight capabilities Research/Plan/Create/Verify/Automate/Manage/Measure/Recover and a maturity truth model; TR maturity/FinOps section still exposes untranslated implementation/runtime/deployment/routing terminology under RT-005.",
+      "result": "PASS_WITH_FINDING",
+      "finding_ids": [
+        "RT-005"
+      ]
+    },
+    {
+      "id": "29",
+      "timestamp": "2026-09-17T06:05:00-03:00",
+      "urls": [
+        "https://ilaios.com/platform",
+        "https://ilaios.com/tr/platform"
+      ],
+      "locale": "EN/TR",
+      "theme": "UNVERIFIED",
+      "viewport": "live web render/fetch; exact pixel viewport UNVERIFIED",
+      "interaction": "platform flow + technical assurance review",
+      "dimension": "end-to-end platform control/knowledge flow parity",
+      "evidence": "Both live routes expose request/govern/produce/verify, identity/permissions/policy/approval, planning/orchestration, state/recovery, factory/tools/providers, validation/evidence and authorized knowledge; TR still exposes untranslated tenant/factory/skill/execution-admission/retrieval terms under RT-005.",
+      "result": "PASS_WITH_FINDING",
+      "finding_ids": [
+        "RT-005"
+      ]
     }
   ],
   "findings": [
@@ -438,7 +510,7 @@
     },
     {
       "id": "RT-005",
-      "first_seen_pass": "03_PREVIOUS_SERIES; fresh observations 02/05/07/10/11/12/14/15/16/17/18/19/22/23",
+      "first_seen_pass": "03_PREVIOUS_SERIES; fresh observations 02/05/07/10/11/12/14/15/16/17/18/19/22/23; fresh observations 26/27/28/29",
       "status": "FIX_IN_SOURCE",
       "summary": "TR public product copy contains systematic untranslated engineering jargon across product, architecture, commercial, resource, trust and privacy surfaces",
       "affected_urls": [
@@ -459,7 +531,7 @@
         "https://ilaios.com/tr/privacy",
         "https://ilaios.com/tr/trust"
       ],
-      "live_evidence": "Live TR surfaces retain English engineering/product terms; privacy specifically exposed tenant/workspace/repository/log/evidence and Trust retains tenant/production terminology.",
+      "live_evidence": "Live TR surfaces still retain English engineering/product terms. Fresh passes 26-29 confirmed production/repository/build/render, implementation/runtime/deployment/routing, tenant/factory/skill/execution-admission/retrieval terminology.",
       "source_root_cause": "Turkish user-facing copy across shared and route-specific Website components retained English engineering prose. Canonical identifiers may remain unchanged where translation would alter semantics.",
       "fix_commit_shas": [
         "0b3ef69c42b57c83e93955a938b8b3e5179b64c7",
@@ -482,8 +554,8 @@
     }
   ],
   "checkpoint": {
-    "previous_head": "30c19e2c236ff6226c59bbf57e1376aba3aaef0e",
-    "next_unfinished_pass": "26",
+    "previous_head": "42f7869a8951e31e3cd328dddab8c3087cf07f92",
+    "next_unfinished_pass": "30",
     "open_rt_ids": [
       "RT-001",
       "RT-002",
@@ -491,7 +563,7 @@
       "RT-004",
       "RT-005"
     ],
-    "next_atomic_action": "Continue distinct live audit from pass 26 with readability, proportion/layout and remaining EN/TR route coverage; exact-head required CI and attributable production deploy remain required before live closure."
+    "next_atomic_action": "Continue distinct LIVE pass 30 onward. RT-005 source localization continues in small Website-only batches; exact-head CI/deploy/live revalidation required. Pixel-level readability, menu proportion, Light/Dark and 390x844 remain UNVERIFIED until real rendered browser evidence is captured."
   },
   "completion_state": "IN_PROGRESS"
 }
