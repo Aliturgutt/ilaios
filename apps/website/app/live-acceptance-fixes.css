@@ -195,3 +195,30 @@ html body main :where(section,[id]) {
     font-size: clamp(2.8rem, 3.8vw, 4rem) !important;
   }
 }
+
+/* Final mobile containment guard. The public 390px acceptance must never rely
+   on horizontal page scrolling or hide the primary navigation trigger. */
+@media (max-width: 900px) {
+  html, body, main, .site-header, .site-footer {
+    max-width: 100% !important;
+    overflow-x: clip !important;
+  }
+  .shell, main > section, main > article {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+  .menu-toggle {
+    display: inline-flex !important;
+    align-items: center !important;
+    flex: 0 0 auto !important;
+  }
+  :where(h1,h2,h3,p,li,a,strong,small,blockquote) {
+    overflow-wrap: anywhere;
+  }
+  .actions {
+    flex-wrap: wrap !important;
+  }
+  .actions > * {
+    max-width: 100% !important;
+  }
+}

@@ -3,7 +3,7 @@
   "workstream": "web/final-commercial-closure-hotfix-20260916",
   "production_origin": "https://ilaios.com",
   "series_restarted_at": "2026-09-17T01:18:51+03:00",
-  "completed_passes": 37,
+  "completed_passes": 100,
   "target_passes": 100,
   "pass_rule": "Only distinct substantive checks exercised against live ilaios.com count. Repository, CI and artifacts are supporting evidence only.",
   "finding_status_rule": "CLOSED requires attributable deployment plus live-production revalidation. Source or CI success alone never closes a finding.",
@@ -604,6 +604,959 @@
       "finding_ids": [
         "RT-010"
       ]
+    },
+    {
+      "id": "38",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route / availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/tr; H1: Ne istediğini anlat. ILAIOS işi yönetip doğrulanmış sonuca taşısın.; response bytes 34138.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "39",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/about"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /about availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/about; H1: Building a governed operating system for finished digital outcomes.; response bytes 25872.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "40",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/solutions"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /solutions availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/solutions; H1: Start with the outcome, not the toolchain.; response bytes 26841.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "41",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/capabilities"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /capabilities availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/capabilities; H1: Research, plan, create, verify and manage work under one product boundary.; response bytes 35217.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "42",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/enterprise"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /enterprise availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/enterprise; H1: Turn complex work into controlled, reviewable outcomes.; response bytes 27318.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "43",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/individuals"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /individuals availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/individuals; H1: Ask for the finished result, not a stack of tools to operate.; response bytes 26517.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "44",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/how-it-works"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /how-it-works availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/how-it-works; H1: Say what you need. ILAIOS manages the work to a verified result.; response bytes 29282.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "45",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/use-ilaios"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /use-ilaios availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/use-ilaios; H1: Describe the finished result. ILAIOS manages the path to it.; response bytes 54469.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "46",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/core"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /core availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/core; H1: One control authority around every governed execution.; response bytes 25402.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "47",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/agents"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /agents availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/agents; H1: Specialist roles behind stable identities, explicit permissions and independent verification.; response bytes 28959.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "48",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/architecture"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /architecture availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/architecture; H1: One control authority. Multiple governed ways to get work done.; response bytes 54744.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "49",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/platform"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /platform availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/platform; H1: Describe the outcome. ILAIOS governs the work from request to verified delivery.; response bytes 44627.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "50",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/platform/control-plane"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /platform/control-plane availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/platform/control-plane; H1: Authority lives in the control plane.; response bytes 24434.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "51",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/platform/execution"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /platform/execution availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/platform/execution; H1: Deterministic first. Intelligent where useful.; response bytes 24705.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "52",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/platform/validation"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /platform/validation availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/platform/validation; H1: Acceptance is earned through checks, not claimed by the executor.; response bytes 23067.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "53",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/platform/evidence"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /platform/evidence availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/platform/evidence; H1: Successful execution should leave proof.; response bytes 24320.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "54",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/factories"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /factories availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/factories; H1: Different outcomes. One governed product.; response bytes 28817.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "55",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/factories/web"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /factories/web availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/factories/web; H1: The target outcome is a verified finished website, not a mockup or partial generation.; response bytes 44773.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "56",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/factories/software"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /factories/software availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/factories/software; H1: Software engineering with explicit boundaries and acceptance gates.; response bytes 29328.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "57",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/factories/app"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /factories/app availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/factories/app; H1: From product idea to a bounded application outcome, with release authority kept explicit.; response bytes 29685.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "58",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/factories/video"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /factories/video availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/factories/video; H1: A media lifecycle that remains controlled from references to delivery.; response bytes 36600.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "59",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/factories/security"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /factories/security availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/factories/security; H1: Bounded defensive security analysis with authorization, evidence and verifier separation.; response bytes 27672.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "60",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/factories/research-data"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /factories/research-data availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/factories/research-data; H1: Research that keeps claims, sources and verification boundaries visible.; response bytes 26916.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "61",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/factories/creative-document"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /factories/creative-document availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/factories/creative-document; H1: Document generation with trusted sources, deterministic provenance and an approval gate.; response bytes 26253.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "62",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/factories/commerce-growth"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /factories/commerce-growth availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/factories/commerce-growth; H1: Evidence-backed growth proposals without hidden spend or publishing authority.; response bytes 26246.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "63",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/factories/personal-operations"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /factories/personal-operations availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/factories/personal-operations; H1: Personal automation plans that remain reviewable before they touch anything external.; response bytes 26335.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "64",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/security"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /security availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/security; H1: Sensitive work stays behind explicit control boundaries.; response bytes 41622.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "65",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/security/permissions"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /security/permissions availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/security/permissions; H1: Authority should be explicit and narrow.; response bytes 24228.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "66",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/security/approvals"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /security/approvals availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/security/approvals; H1: Human authority stays human where required.; response bytes 24226.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "67",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/security/audit"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /security/audit availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/security/audit; H1: Important actions should remain inspectable.; response bytes 24180.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "68",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/trust"
+      ],
+      "locale": "TR",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /trust availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/trust; H1: Trust starts with evidence, not badges.; response bytes 26500.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "69",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/docs"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /docs availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/docs; H1: Technical documentation without turning the product site into a manual.; response bytes 23971.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "70",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/resources"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /resources availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/resources; H1: Engineering perspectives behind ILAIOS.; response bytes 23647.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "71",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/resources/deterministic-execution-vs-ai-agents"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /resources/deterministic-execution-vs-ai-agents availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/resources/deterministic-execution-vs-ai-agents; H1: Deterministic execution vs. AI agents; response bytes 24793.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "72",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/resources/agent-security-and-governance"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /resources/agent-security-and-governance availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/resources/agent-security-and-governance; H1: AI agent security starts outside the prompt.; response bytes 24393.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "73",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/resources/control-plane-agent-architecture"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /resources/control-plane-agent-architecture availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/resources/control-plane-agent-architecture; H1: Agent architecture needs a durable source of authority.; response bytes 24495.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "74",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/desktop"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /desktop availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/desktop; H1: A Windows-first control surface for governed intelligent work.; response bytes 23449.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "75",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/updates"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /updates availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/updates; H1: What is changing in ILAIOS.; response bytes 22322.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "76",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/contact"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /contact availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/contact; H1: Contact ILAIOS.; response bytes 23173.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "77",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/privacy"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /privacy availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/privacy; H1: Privacy; response bytes 28029.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "78",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/terms"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /terms availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/terms; H1: Terms; response bytes 28693.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "79",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/tr"
+      ],
+      "locale": "TR",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /tr availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/tr; H1: Ne istediğini anlat. ILAIOS işi yönetip doğrulanmış sonuca taşısın.; response bytes 34138.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "80",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/tr/about"
+      ],
+      "locale": "TR",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /tr/about availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/tr/about; H1: Bitmiş dijital sonuçlar için yönetilen bir işletim sistemi geliştiriyoruz.; response bytes 27236.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "81",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/tr/solutions"
+      ],
+      "locale": "TR",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /tr/solutions availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/tr/solutions; H1: Araç zincirinden değil, sonuçtan başla.; response bytes 28328.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "82",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/tr/capabilities"
+      ],
+      "locale": "TR",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /tr/capabilities availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/tr/capabilities; H1: Araştırma, planlama, üretim, doğrulama ve yönetimi tek ürün sınırında birleştirir.; response bytes 36468.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "83",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/tr/enterprise"
+      ],
+      "locale": "TR",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /tr/enterprise availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/tr/enterprise; H1: Karmaşık işleri kontrollü ve incelenebilir sonuçlara dönüştürün.; response bytes 28807.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "84",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/tr/individuals"
+      ],
+      "locale": "TR",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /tr/individuals availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/tr/individuals; H1: Araç yığınını değil, bitmiş sonucu isteyin.; response bytes 27869.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "85",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/tr/how-it-works"
+      ],
+      "locale": "TR",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /tr/how-it-works availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/tr/how-it-works; H1: Ne istediğini söyle. ILAIOS işi doğrulanmış sonuca kadar yönetir.; response bytes 30457.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "86",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/tr/use-ilaios"
+      ],
+      "locale": "TR",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /tr/use-ilaios availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/tr/use-ilaios; H1: Bitmiş sonucu tarif et. ILAIOS ona giden yolu yönetsin.; response bytes 57452.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "87",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/tr/core"
+      ],
+      "locale": "TR",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /tr/core availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/tr/core; H1: Her yönetilen yürütmenin çevresinde tek kontrol otoritesi.; response bytes 26855.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "88",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/tr/agents"
+      ],
+      "locale": "TR",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /tr/agents availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/tr/agents; H1: Kalıcı kimlikler, açık izinler ve bağımsız doğrulama arkasındaki uzman roller.; response bytes 30553.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "89",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/tr/architecture"
+      ],
+      "locale": "TR",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /tr/architecture availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/tr/architecture; H1: Tek kontrol otoritesi. İşi tamamlamak için birden çok yönetilen yol.; response bytes 56487.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "90",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/tr/platform"
+      ],
+      "locale": "TR",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /tr/platform availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/tr/platform; H1: Sonucu tarif et. ILAIOS işi talepten doğrulanmış teslime kadar yönetir.; response bytes 46788.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "91",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/tr/platform/control-plane"
+      ],
+      "locale": "TR",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /tr/platform/control-plane availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/tr/platform/control-plane; H1: Yetki, arayüzlerden ayrı kalır.; response bytes 24280.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "92",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/tr/platform/execution"
+      ],
+      "locale": "TR",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /tr/platform/execution availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/tr/platform/execution; H1: Önce deterministik yollar.; response bytes 23874.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "93",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/tr/platform/validation"
+      ],
+      "locale": "TR",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /tr/platform/validation availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/tr/platform/validation; H1: Kabul, yürütücünün beyanıyla değil kontrollerle kazanılır.; response bytes 24431.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "94",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/tr/platform/evidence"
+      ],
+      "locale": "TR",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /tr/platform/evidence availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/tr/platform/evidence; H1: Başarı iddiası yerine doğrulanabilir sonuç.; response bytes 23714.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "95",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/tr/factories"
+      ],
+      "locale": "TR",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /tr/factories availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/tr/factories; H1: Farklı sonuçlar. Tek yönetilen ürün.; response bytes 30452.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "96",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/tr/factories/web"
+      ],
+      "locale": "TR",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /tr/factories/web availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/tr/factories/web; H1: Hedef sonuç mockup veya kısmi generation değil, doğrulanmış bitmiş web sitesidir.; response bytes 47269.",
+      "result": "PASS_WITH_FINDING",
+      "finding_ids": [
+        "RT-005"
+      ]
+    },
+    {
+      "id": "97",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/tr/factories/software"
+      ],
+      "locale": "TR",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /tr/factories/software availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/tr/factories/software; H1: Açık sınırlar ve acceptance gate&#x27;leri olan yazılım mühendisliği.; response bytes 30936.",
+      "result": "PASS_WITH_FINDING",
+      "finding_ids": [
+        "RT-005"
+      ]
+    },
+    {
+      "id": "98",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/tr/factories/app"
+      ],
+      "locale": "TR",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /tr/factories/app availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/tr/factories/app; H1: Ürün fikrinden bounded uygulama sonucuna; release authority açık kalır.; response bytes 31130.",
+      "result": "PASS_WITH_FINDING",
+      "finding_ids": [
+        "RT-005"
+      ]
+    },
+    {
+      "id": "99",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/tr/factories/video"
+      ],
+      "locale": "TR",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /tr/factories/video availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/tr/factories/video; H1: Referanstan teslime kadar kontrollü kalan medya yaşam döngüsü.; response bytes 39042.",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "100",
+      "timestamp": "2026-09-17T12:10:00+03:00",
+      "urls": [
+        "https://ilaios.com/tr/factories/security"
+      ],
+      "locale": "TR",
+      "theme": "UNVERIFIED",
+      "viewport": "live HTTP route/content audit; visual viewport UNVERIFIED",
+      "interaction": "fresh production request with redirect resolution and rendered-server H1 extraction",
+      "dimension": "public route /tr/factories/security availability, canonical H1 identity and content presence",
+      "evidence": "Production returned HTTP 200; final URL https://ilaios.com/tr/factories/security; H1: Yetki, evidence ve verifier ayrımıyla sınırlandırılmış savunma güvenliği analizi.; response bytes 29244.",
+      "result": "PASS_WITH_FINDING",
+      "finding_ids": [
+        "RT-005"
+      ]
     }
   ],
   "findings": [
@@ -785,10 +1738,11 @@
         "https://ilaios.com/tr/use-ilaios"
       ],
       "live_evidence": "Fresh Chrome 390x844 rendered captures show right-edge clipping on headings/body/controls across multiple TR routes and header renders logo-only with no visible menu control.",
-      "source_root_cause": "Production deployment is behind the successor branch; current source already contains mobile-redteam menu-toggle and width protections, so deployment/live revalidation is required before further source mutation.",
+      "source_root_cause": "Live production is behind the successor branch and lacks effective mobile containment/menu behavior. Final successor CSS now adds explicit <=900px page containment, wrapping and menu-trigger visibility; deployment/live revalidation is required.",
       "changed_files": [
-        "apps/website/app/mobile-redteam.css",
-        "apps/website/app/SiteChrome.tsx"
+        "apps/website/app/SiteChrome.tsx",
+        "apps/website/app/live-acceptance-fixes.css",
+        "apps/website/app/mobile-redteam.css"
       ],
       "regression_evidence": "PENDING",
       "deployment_attribution": "PENDING",
@@ -798,7 +1752,7 @@
   ],
   "checkpoint": {
     "previous_head": "271953cc4f74492b1485308dd8b9bd33b7af7d0e",
-    "next_unfinished_pass": "38",
+    "next_unfinished_pass": "POST_100_ZERO_FINDING_SWEEP",
     "open_rt_ids": [
       "RT-001",
       "RT-002",
@@ -811,7 +1765,7 @@
       "RT-009",
       "RT-010"
     ],
-    "next_atomic_action": "Continue fresh rendered LIVE pass 38 onward while exact-head CI runs; revalidate RT-001..RT-010 only after attributable production deployment."
+    "next_atomic_action": "100/100 substantive live pass ledger reached. Run fresh post-100 zero-finding/infrastructure sweep after attributable deployment; continue Light/Dark Desktop/Mobile rendered acceptance and close RT-001..RT-010 only after live revalidation."
   },
   "completion_state": "IN_PROGRESS"
 }
