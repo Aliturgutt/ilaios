@@ -35,7 +35,7 @@ const copy = {
     mapTitle: "İş birden fazla yeteneğe yayılsa bile kullanıcı deneyimi sade kalır.",
     planes: [["Talep", "Bir yapay zekâ araç zinciri seçip işletmek yerine ihtiyacın olan sonucu tarif ederek başla."], ["Yönet", "Kimlik, izinler, politika ve onaylar yürütmenin ne yapabileceğini belirler."], ["Üret", "Uygulanabilir sınırlandırılmış yetenekler web, yazılım, medya veya araştırma alanında kabul edilmiş işi yürütür."], ["Doğrula", "Kabul kontrolleri ve kanıt, sonucun teslime hazır olup olmadığını belirler."]],
     separationTitle: "Yürütme kaynakları değişebilir; kontrol otoritesi değişmez.",
-    separationLead: "Modeller, sağlayıcılar ve araçlar yürütme kaynaklarıdır. Politika gerçeği, kirac? yetkisi ve kanıt sahipliği platformun kontrol sınırında kalır.",
+    separationLead: "Modeller, sağlayıcılar ve araçlar yürütme kaynaklarıdır. Politika gerçeği, kiracı yetkisi ve kanıt sahipliği platformun kontrol sınırında kalır.",
     runtimeEyebrow: "Hedeften sonuca",
     runtimeTitle: "Tek kontrollü yol talebi bitmiş sonuca bağlar.",
     runtime: [["Hedef", "Sonucu tarif et"], ["Kontrol", "İzinleri çöz"], ["Plan", "İşi sınırlandır"], ["Üret", "İşi yürüt"], ["Doğrula", "Kabulü kontrol et"], ["Teslim", "Sonuç + kanıtı sun"]],
