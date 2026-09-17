@@ -1,45 +1,497 @@
 {
-  "schema":"ilaios.website.redteam-100.v4-fresh-live-series",
-  "workstream":"web/final-commercial-closure-hotfix-20260916",
-  "production_origin":"https://ilaios.com",
-  "series_restarted_at":"2026-09-17T01:18:51+03:00",
-  "completed_passes":23,
-  "target_passes":100,
-  "pass_rule":"Only distinct substantive checks exercised against live ilaios.com count. Repository, CI and artifacts are supporting evidence only.",
-  "finding_status_rule":"CLOSED requires attributable deployment plus live-production revalidation. Source or CI success alone never closes a finding.",
-  "counters":{"TOTAL_FOUND":5,"OPEN":5,"FIX_IN_SOURCE":4,"CI_PASS_NOT_LIVE":3,"LIVE_REVALIDATED_CLOSED":0,"REOPENED":0},
-  "passes":[
-    {"id":"01","urls":["https://ilaios.com","https://ilaios.com/tr"],"locale":"TR","theme":"UNVERIFIED","viewport":"web live fetch; exact visual viewport UNVERIFIED","dimension":"production root localization routing","evidence":"Root localized to Turkish product/navigation content","result":"PASS","finding_ids":[]},
-    {"id":"02","urls":["https://ilaios.com/tr"],"locale":"TR","theme":"UNVERIFIED","viewport":"web live fetch; exact visual viewport UNVERIFIED","dimension":"canonical four-tab homepage demo","evidence":"Web sitesi, Video, Yazılım, Uygulama exposed","result":"PASS_WITH_FINDING","finding_ids":["RT-005"]},
-    {"id":"03","urls":["https://ilaios.com/factories"],"locale":"EN","theme":"UNVERIFIED","viewport":"web live fetch; exact visual viewport UNVERIFIED","dimension":"exactly nine production areas","evidence":"Live factories enumerated exactly 01-09 canonical areas","result":"PASS","finding_ids":[]},
-    {"id":"04","urls":["https://ilaios.com/capabilities"],"locale":"EN","theme":"UNVERIFIED","viewport":"web live fetch; exact visual viewport UNVERIFIED","dimension":"canonical eight capabilities","evidence":"Research, Plan, Create, Verify, Automate, Manage, Measure, Recover exposed","result":"PASS","finding_ids":[]},
-    {"id":"05","urls":["https://ilaios.com/tr/capabilities"],"locale":"TR","theme":"UNVERIFIED","viewport":"web live fetch; exact visual viewport UNVERIFIED","dimension":"TR eight-capability semantic parity","evidence":"Eight localized capabilities exposed","result":"PASS_WITH_FINDING","finding_ids":["RT-005"]},
-    {"id":"06","urls":["https://ilaios.com/docs"],"locale":"EN","theme":"UNVERIFIED","viewport":"web live fetch; exact visual viewport UNVERIFIED","dimension":"EN documentation destinations","evidence":"Architecture, Security, Core, Execution, Evidence plus conservative API/Recovery placeholders exposed","result":"PASS","finding_ids":[]},
-    {"id":"07","urls":["https://ilaios.com/tr/docs"],"locale":"TR","theme":"UNVERIFIED","viewport":"web live fetch; exact visual viewport UNVERIFIED","dimension":"TR documentation parity","evidence":"Localized docs destinations exposed; untranslated jargon remains","result":"PASS_WITH_FINDING","finding_ids":["RT-005"]},
-    {"id":"08","urls":["https://ilaios.com/platform"],"locale":"EN","theme":"UNVERIFIED","viewport":"web live fetch; exact visual viewport UNVERIFIED","dimension":"governed platform flow","evidence":"Identity/tenant, policy/approval, orchestration, execution, validation/evidence and authorized knowledge exposed","result":"PASS","finding_ids":[]},
-    {"id":"09","urls":["https://ilaios.com/architecture"],"locale":"EN","theme":"UNVERIFIED","viewport":"web live fetch; exact visual viewport UNVERIFIED","dimension":"complete public infrastructure map","evidence":"24 public-relevant system areas exposed with conservative readiness language","result":"PASS","finding_ids":[]},
-    {"id":"10","urls":["https://ilaios.com/tr/architecture"],"locale":"TR","theme":"UNVERIFIED","viewport":"web live fetch; exact visual viewport UNVERIFIED","dimension":"TR infrastructure coverage parity","evidence":"Same infrastructure structure exposed; untranslated engineering terms remain","result":"PASS_WITH_FINDING","finding_ids":["RT-005"]},
-    {"id":"11","urls":["https://ilaios.com/how-it-works","https://ilaios.com/tr/how-it-works"],"locale":"EN/TR","theme":"UNVERIFIED","viewport":"web live fetch; exact visual viewport UNVERIFIED","dimension":"How It Works semantic flow parity","evidence":"Both routes expose outcome -> governed work -> production -> verification/delivery flow; TR jargon remains","result":"PASS_WITH_FINDING","finding_ids":["RT-005"]},
-    {"id":"12","urls":["https://ilaios.com/security","https://ilaios.com/tr/security"],"locale":"EN/TR","theme":"UNVERIFIED","viewport":"web live fetch; exact visual viewport UNVERIFIED","dimension":"security authority/fail-closed parity","evidence":"Both routes expose authority separation and fail-closed controls; TR terminology remains","result":"PASS_WITH_FINDING","finding_ids":["RT-005"]},
-    {"id":"13","urls":["https://ilaios.com/trust","https://ilaios.com/tr/trust"],"locale":"EN/TR","theme":"UNVERIFIED","viewport":"web live fetch; exact visual viewport UNVERIFIED","dimension":"Trust Center availability/parity","evidence":"Both localized trust routes returned public trust content","result":"PASS","finding_ids":[]},
-    {"id":"14","urls":["https://ilaios.com/solutions","https://ilaios.com/tr/solutions"],"locale":"EN/TR","theme":"UNVERIFIED","viewport":"web live fetch; exact visual viewport UNVERIFIED","dimension":"Solutions outcome/readiness parity","evidence":"Both routes expose controlled outcome patterns; TR workflow jargon remains","result":"PASS_WITH_FINDING","finding_ids":["RT-005"]},
-    {"id":"15","urls":["https://ilaios.com/enterprise","https://ilaios.com/tr/enterprise"],"locale":"EN/TR","theme":"UNVERIFIED","viewport":"web live fetch; exact visual viewport UNVERIFIED","dimension":"enterprise governance/product story parity","evidence":"Both routes expose governance and evidence; TR jargon remains","result":"PASS_WITH_FINDING","finding_ids":["RT-005"]},
-    {"id":"16","urls":["https://ilaios.com/individuals","https://ilaios.com/tr/individuals"],"locale":"EN/TR","theme":"UNVERIFIED","viewport":"web live fetch; exact visual viewport UNVERIFIED","dimension":"individual outcome/product story parity","evidence":"Both routes expose individual outcome categories and controlled flow; TR jargon remains","result":"PASS_WITH_FINDING","finding_ids":["RT-005"]},
-    {"id":"17","urls":["https://ilaios.com/use-ilaios","https://ilaios.com/tr/use-ilaios"],"locale":"EN/TR","theme":"UNVERIFIED","viewport":"web live fetch; exact visual viewport UNVERIFIED","dimension":"commercial plans/payment/factory readiness parity","evidence":"Both routes expose plans, payment activation and factory readiness; TR jargon remains","result":"PASS_WITH_FINDING","finding_ids":["RT-005"]},
-    {"id":"18","urls":["https://ilaios.com/core","https://ilaios.com/tr/core"],"locale":"EN/TR","theme":"UNVERIFIED","viewport":"web live fetch; exact visual viewport UNVERIFIED","dimension":"single-control-authority Core parity","evidence":"Both routes preserve single authority semantics; TR skill terminology remains","result":"PASS_WITH_FINDING","finding_ids":["RT-005"]},
-    {"id":"19","urls":["https://ilaios.com/resources","https://ilaios.com/tr/resources"],"locale":"EN/TR","theme":"UNVERIFIED","viewport":"web live fetch; exact visual viewport UNVERIFIED","dimension":"Resources/Docs separation and localization","evidence":"Both routes preserve Resources-vs-Docs separation; TR jargon remains","result":"PASS_WITH_FINDING","finding_ids":["RT-005"]},
-    {"id":"20","timestamp":"2026-09-17T03:20:00+03:00","urls":["https://ilaios.com/about","https://ilaios.com/tr/about"],"locale":"EN/TR","theme":"UNVERIFIED","viewport":"web live fetch; exact visual viewport UNVERIFIED","dimension":"company/product-truth parity","evidence":"Both live About routes expose founder, operating principles and explicit active-development/product-truth boundary without unsupported availability claims","result":"PASS","finding_ids":[]},
-    {"id":"21","timestamp":"2026-09-17T03:20:00+03:00","urls":["https://ilaios.com/contact"],"locale":"EN","theme":"UNVERIFIED","viewport":"web live fetch; exact visual viewport UNVERIFIED","dimension":"public contact channels","evidence":"Live Contact exposes separate general, support, privacy, security and abuse channels","result":"PASS","finding_ids":[]},
-    {"id":"22","timestamp":"2026-09-17T03:20:00+03:00","urls":["https://ilaios.com/privacy","https://ilaios.com/tr/privacy"],"locale":"EN/TR","theme":"UNVERIFIED","viewport":"web live fetch; exact visual viewport UNVERIFIED","dimension":"privacy/data-boundary semantic parity","evidence":"Both routes cover public-site request data, identity/account, work content, logs/evidence, third parties, retention/export/deletion and requests; live TR retains tenant/workspace/repository/log/evidence jargon","result":"PASS_WITH_FINDING","finding_ids":["RT-005"]},
-    {"id":"23","timestamp":"2026-09-17T03:20:00+03:00","urls":["https://ilaios.com/trust","https://ilaios.com/tr/trust"],"locale":"EN/TR","theme":"UNVERIFIED","viewport":"web live fetch; exact visual viewport UNVERIFIED","dimension":"trust claim-boundary adversarial recheck","evidence":"Live Trust explicitly separates public architecture principles from certifications/audits/compliance/production commitments requiring stronger evidence","result":"PASS_WITH_FINDING","finding_ids":["RT-005"]}
+  "schema": "ilaios.website.redteam-100.v4-fresh-live-series",
+  "workstream": "web/final-commercial-closure-hotfix-20260916",
+  "production_origin": "https://ilaios.com",
+  "series_restarted_at": "2026-09-17T01:18:51+03:00",
+  "completed_passes": 25,
+  "target_passes": 100,
+  "pass_rule": "Only distinct substantive checks exercised against live ilaios.com count. Repository, CI and artifacts are supporting evidence only.",
+  "finding_status_rule": "CLOSED requires attributable deployment plus live-production revalidation. Source or CI success alone never closes a finding.",
+  "counters": {
+    "TOTAL_FOUND": 5,
+    "OPEN": 5,
+    "FIX_IN_SOURCE": 4,
+    "CI_PASS_NOT_LIVE": 3,
+    "LIVE_REVALIDATED_CLOSED": 0,
+    "REOPENED": 0
+  },
+  "passes": [
+    {
+      "id": "01",
+      "urls": [
+        "https://ilaios.com",
+        "https://ilaios.com/tr"
+      ],
+      "locale": "TR",
+      "theme": "UNVERIFIED",
+      "viewport": "web live fetch; exact visual viewport UNVERIFIED",
+      "dimension": "production root localization routing",
+      "evidence": "Root localized to Turkish product/navigation content",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "02",
+      "urls": [
+        "https://ilaios.com/tr"
+      ],
+      "locale": "TR",
+      "theme": "UNVERIFIED",
+      "viewport": "web live fetch; exact visual viewport UNVERIFIED",
+      "dimension": "canonical four-tab homepage demo",
+      "evidence": "Web sitesi, Video, Yazılım, Uygulama exposed",
+      "result": "PASS_WITH_FINDING",
+      "finding_ids": [
+        "RT-005"
+      ]
+    },
+    {
+      "id": "03",
+      "urls": [
+        "https://ilaios.com/factories"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "web live fetch; exact visual viewport UNVERIFIED",
+      "dimension": "exactly nine production areas",
+      "evidence": "Live factories enumerated exactly 01-09 canonical areas",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "04",
+      "urls": [
+        "https://ilaios.com/capabilities"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "web live fetch; exact visual viewport UNVERIFIED",
+      "dimension": "canonical eight capabilities",
+      "evidence": "Research, Plan, Create, Verify, Automate, Manage, Measure, Recover exposed",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "05",
+      "urls": [
+        "https://ilaios.com/tr/capabilities"
+      ],
+      "locale": "TR",
+      "theme": "UNVERIFIED",
+      "viewport": "web live fetch; exact visual viewport UNVERIFIED",
+      "dimension": "TR eight-capability semantic parity",
+      "evidence": "Eight localized capabilities exposed",
+      "result": "PASS_WITH_FINDING",
+      "finding_ids": [
+        "RT-005"
+      ]
+    },
+    {
+      "id": "06",
+      "urls": [
+        "https://ilaios.com/docs"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "web live fetch; exact visual viewport UNVERIFIED",
+      "dimension": "EN documentation destinations",
+      "evidence": "Architecture, Security, Core, Execution, Evidence plus conservative API/Recovery placeholders exposed",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "07",
+      "urls": [
+        "https://ilaios.com/tr/docs"
+      ],
+      "locale": "TR",
+      "theme": "UNVERIFIED",
+      "viewport": "web live fetch; exact visual viewport UNVERIFIED",
+      "dimension": "TR documentation parity",
+      "evidence": "Localized docs destinations exposed; untranslated jargon remains",
+      "result": "PASS_WITH_FINDING",
+      "finding_ids": [
+        "RT-005"
+      ]
+    },
+    {
+      "id": "08",
+      "urls": [
+        "https://ilaios.com/platform"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "web live fetch; exact visual viewport UNVERIFIED",
+      "dimension": "governed platform flow",
+      "evidence": "Identity/tenant, policy/approval, orchestration, execution, validation/evidence and authorized knowledge exposed",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "09",
+      "urls": [
+        "https://ilaios.com/architecture"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "web live fetch; exact visual viewport UNVERIFIED",
+      "dimension": "complete public infrastructure map",
+      "evidence": "24 public-relevant system areas exposed with conservative readiness language",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "10",
+      "urls": [
+        "https://ilaios.com/tr/architecture"
+      ],
+      "locale": "TR",
+      "theme": "UNVERIFIED",
+      "viewport": "web live fetch; exact visual viewport UNVERIFIED",
+      "dimension": "TR infrastructure coverage parity",
+      "evidence": "Same infrastructure structure exposed; untranslated engineering terms remain",
+      "result": "PASS_WITH_FINDING",
+      "finding_ids": [
+        "RT-005"
+      ]
+    },
+    {
+      "id": "11",
+      "urls": [
+        "https://ilaios.com/how-it-works",
+        "https://ilaios.com/tr/how-it-works"
+      ],
+      "locale": "EN/TR",
+      "theme": "UNVERIFIED",
+      "viewport": "web live fetch; exact visual viewport UNVERIFIED",
+      "dimension": "How It Works semantic flow parity",
+      "evidence": "Both routes expose outcome -> governed work -> production -> verification/delivery flow; TR jargon remains",
+      "result": "PASS_WITH_FINDING",
+      "finding_ids": [
+        "RT-005"
+      ]
+    },
+    {
+      "id": "12",
+      "urls": [
+        "https://ilaios.com/security",
+        "https://ilaios.com/tr/security"
+      ],
+      "locale": "EN/TR",
+      "theme": "UNVERIFIED",
+      "viewport": "web live fetch; exact visual viewport UNVERIFIED",
+      "dimension": "security authority/fail-closed parity",
+      "evidence": "Both routes expose authority separation and fail-closed controls; TR terminology remains",
+      "result": "PASS_WITH_FINDING",
+      "finding_ids": [
+        "RT-005"
+      ]
+    },
+    {
+      "id": "13",
+      "urls": [
+        "https://ilaios.com/trust",
+        "https://ilaios.com/tr/trust"
+      ],
+      "locale": "EN/TR",
+      "theme": "UNVERIFIED",
+      "viewport": "web live fetch; exact visual viewport UNVERIFIED",
+      "dimension": "Trust Center availability/parity",
+      "evidence": "Both localized trust routes returned public trust content",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "14",
+      "urls": [
+        "https://ilaios.com/solutions",
+        "https://ilaios.com/tr/solutions"
+      ],
+      "locale": "EN/TR",
+      "theme": "UNVERIFIED",
+      "viewport": "web live fetch; exact visual viewport UNVERIFIED",
+      "dimension": "Solutions outcome/readiness parity",
+      "evidence": "Both routes expose controlled outcome patterns; TR workflow jargon remains",
+      "result": "PASS_WITH_FINDING",
+      "finding_ids": [
+        "RT-005"
+      ]
+    },
+    {
+      "id": "15",
+      "urls": [
+        "https://ilaios.com/enterprise",
+        "https://ilaios.com/tr/enterprise"
+      ],
+      "locale": "EN/TR",
+      "theme": "UNVERIFIED",
+      "viewport": "web live fetch; exact visual viewport UNVERIFIED",
+      "dimension": "enterprise governance/product story parity",
+      "evidence": "Both routes expose governance and evidence; TR jargon remains",
+      "result": "PASS_WITH_FINDING",
+      "finding_ids": [
+        "RT-005"
+      ]
+    },
+    {
+      "id": "16",
+      "urls": [
+        "https://ilaios.com/individuals",
+        "https://ilaios.com/tr/individuals"
+      ],
+      "locale": "EN/TR",
+      "theme": "UNVERIFIED",
+      "viewport": "web live fetch; exact visual viewport UNVERIFIED",
+      "dimension": "individual outcome/product story parity",
+      "evidence": "Both routes expose individual outcome categories and controlled flow; TR jargon remains",
+      "result": "PASS_WITH_FINDING",
+      "finding_ids": [
+        "RT-005"
+      ]
+    },
+    {
+      "id": "17",
+      "urls": [
+        "https://ilaios.com/use-ilaios",
+        "https://ilaios.com/tr/use-ilaios"
+      ],
+      "locale": "EN/TR",
+      "theme": "UNVERIFIED",
+      "viewport": "web live fetch; exact visual viewport UNVERIFIED",
+      "dimension": "commercial plans/payment/factory readiness parity",
+      "evidence": "Both routes expose plans, payment activation and factory readiness; TR jargon remains",
+      "result": "PASS_WITH_FINDING",
+      "finding_ids": [
+        "RT-005"
+      ]
+    },
+    {
+      "id": "18",
+      "urls": [
+        "https://ilaios.com/core",
+        "https://ilaios.com/tr/core"
+      ],
+      "locale": "EN/TR",
+      "theme": "UNVERIFIED",
+      "viewport": "web live fetch; exact visual viewport UNVERIFIED",
+      "dimension": "single-control-authority Core parity",
+      "evidence": "Both routes preserve single authority semantics; TR skill terminology remains",
+      "result": "PASS_WITH_FINDING",
+      "finding_ids": [
+        "RT-005"
+      ]
+    },
+    {
+      "id": "19",
+      "urls": [
+        "https://ilaios.com/resources",
+        "https://ilaios.com/tr/resources"
+      ],
+      "locale": "EN/TR",
+      "theme": "UNVERIFIED",
+      "viewport": "web live fetch; exact visual viewport UNVERIFIED",
+      "dimension": "Resources/Docs separation and localization",
+      "evidence": "Both routes preserve Resources-vs-Docs separation; TR jargon remains",
+      "result": "PASS_WITH_FINDING",
+      "finding_ids": [
+        "RT-005"
+      ]
+    },
+    {
+      "id": "20",
+      "timestamp": "2026-09-17T03:20:00+03:00",
+      "urls": [
+        "https://ilaios.com/about",
+        "https://ilaios.com/tr/about"
+      ],
+      "locale": "EN/TR",
+      "theme": "UNVERIFIED",
+      "viewport": "web live fetch; exact visual viewport UNVERIFIED",
+      "dimension": "company/product-truth parity",
+      "evidence": "Both live About routes expose founder, operating principles and explicit active-development/product-truth boundary without unsupported availability claims",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "21",
+      "timestamp": "2026-09-17T03:20:00+03:00",
+      "urls": [
+        "https://ilaios.com/contact"
+      ],
+      "locale": "EN",
+      "theme": "UNVERIFIED",
+      "viewport": "web live fetch; exact visual viewport UNVERIFIED",
+      "dimension": "public contact channels",
+      "evidence": "Live Contact exposes separate general, support, privacy, security and abuse channels",
+      "result": "PASS",
+      "finding_ids": []
+    },
+    {
+      "id": "22",
+      "timestamp": "2026-09-17T03:20:00+03:00",
+      "urls": [
+        "https://ilaios.com/privacy",
+        "https://ilaios.com/tr/privacy"
+      ],
+      "locale": "EN/TR",
+      "theme": "UNVERIFIED",
+      "viewport": "web live fetch; exact visual viewport UNVERIFIED",
+      "dimension": "privacy/data-boundary semantic parity",
+      "evidence": "Both routes cover public-site request data, identity/account, work content, logs/evidence, third parties, retention/export/deletion and requests; live TR retains tenant/workspace/repository/log/evidence jargon",
+      "result": "PASS_WITH_FINDING",
+      "finding_ids": [
+        "RT-005"
+      ]
+    },
+    {
+      "id": "23",
+      "timestamp": "2026-09-17T03:20:00+03:00",
+      "urls": [
+        "https://ilaios.com/trust",
+        "https://ilaios.com/tr/trust"
+      ],
+      "locale": "EN/TR",
+      "theme": "UNVERIFIED",
+      "viewport": "web live fetch; exact visual viewport UNVERIFIED",
+      "dimension": "trust claim-boundary adversarial recheck",
+      "evidence": "Live Trust explicitly separates public architecture principles from certifications/audits/compliance/production commitments requiring stronger evidence",
+      "result": "PASS_WITH_FINDING",
+      "finding_ids": [
+        "RT-005"
+      ]
+    },
+    {
+      "id": "24",
+      "timestamp": "2026-09-17T11:36:41.273343+03:00",
+      "urls": [
+        "https://ilaios.com/tr/terms"
+      ],
+      "locale": "TR",
+      "theme": "UNVERIFIED",
+      "viewport": "web live fetch; exact visual viewport UNVERIFIED",
+      "dimension": "legal terms product/readiness/authorization boundary",
+      "evidence": "Live Terms separates active development, target state, account authority, commercial terms, acceptable use and external-service boundaries; untranslated tenant/workspace/repository terminology remains under RT-005",
+      "result": "PASS_WITH_FINDING",
+      "finding_ids": [
+        "RT-005"
+      ]
+    },
+    {
+      "id": "25",
+      "timestamp": "2026-09-17T11:36:41.273343+03:00",
+      "urls": [
+        "https://ilaios.com/tr/contact"
+      ],
+      "locale": "TR",
+      "theme": "UNVERIFIED",
+      "viewport": "web live fetch; exact visual viewport UNVERIFIED",
+      "dimension": "localized public contact routing",
+      "evidence": "Live Contact exposes general, support, privacy, security and abuse channels in Turkish with route/footer integrity",
+      "result": "PASS",
+      "finding_ids": []
+    }
   ],
-  "findings":[
-    {"id":"RT-001","first_seen_pass":"UNKNOWN","status":"CI_PASS_NOT_LIVE","summary":"EN/TR docs linked-card light-theme text became unreadable due dark-surface semantics","affected_urls":["https://ilaios.com/docs","https://ilaios.com/tr/docs"],"fix_commit_sha":"UNKNOWN_HISTORICAL_WITHIN_PR","live_revalidation":"PENDING"},
-    {"id":"RT-002","first_seen_pass":"UNKNOWN","status":"CI_PASS_NOT_LIVE","summary":"Long Turkish footer label overlapped adjacent desktop column","affected_urls":["https://ilaios.com/tr"],"fix_commit_sha":"UNKNOWN_HISTORICAL_WITHIN_PR","live_revalidation":"PENDING"},
-    {"id":"RT-003","first_seen_pass":"UNKNOWN","status":"CI_PASS_NOT_LIVE","summary":"Skip-link appeared as ordinary content in earlier capture","affected_urls":["UNKNOWN_MULTI_ROUTE"],"fix_commit_sha":"UNKNOWN_HISTORICAL_WITHIN_PR","live_revalidation":"PENDING"},
-    {"id":"RT-004","first_seen_pass":"UNKNOWN","status":"OPEN","summary":"Visual QA screenshots may retain interaction state before capture; neutral visual baseline still requires repair/revalidation","affected_urls":["UNKNOWN_MULTI_ROUTE"],"live_revalidation":"PENDING"},
-    {"id":"RT-005","first_seen_pass":"03_PREVIOUS_SERIES; fresh observations 02/05/07/10/11/12/14/15/16/17/18/19/22/23","status":"FIX_IN_SOURCE","summary":"TR public product copy contains systematic untranslated engineering jargon across product, architecture, commercial, resource, trust and privacy surfaces","affected_urls":["https://ilaios.com/tr","https://ilaios.com/tr/factories","https://ilaios.com/tr/factories/app","https://ilaios.com/tr/capabilities","https://ilaios.com/tr/security","https://ilaios.com/tr/docs","https://ilaios.com/tr/architecture","https://ilaios.com/tr/how-it-works","https://ilaios.com/tr/solutions","https://ilaios.com/tr/enterprise","https://ilaios.com/tr/individuals","https://ilaios.com/tr/use-ilaios","https://ilaios.com/tr/core","https://ilaios.com/tr/resources","https://ilaios.com/tr/privacy","https://ilaios.com/tr/trust"],"live_evidence":"Live TR surfaces retain English engineering/product terms; privacy specifically exposed tenant/workspace/repository/log/evidence and Trust retains tenant/production terminology.","source_root_cause":"Turkish user-facing copy across shared and route-specific Website components retained English engineering prose. Canonical identifiers may remain unchanged where translation would alter semantics.","fix_commit_shas":["0b3ef69c42b57c83e93955a938b8b3e5179b64c7","1ae1db990ad8f2709ecd6ca84500b0b0a4f9b5b3","cfae2c214184a9ef3cabdf3b49452f332c9a7a95","a03d0716e92ebf725a2f074bb0056d60fe437bbd","cc3320cb1c07948dc50a964390ea5d01b304e86b"],"changed_files":["apps/website/app/tr/factories/app/page.tsx","apps/website/app/CanonicalSystemDetail.tsx","apps/website/app/AudiencePage.tsx","apps/website/app/tr/resources/page.tsx","apps/website/app/tr/privacy/page.tsx"],"regression_evidence":"Exact-head CI required after latest source/checkpoint commits","deployment_attribution":"PENDING","live_revalidation":"PENDING","reopen_history":[]}
+  "findings": [
+    {
+      "id": "RT-001",
+      "first_seen_pass": "UNKNOWN",
+      "status": "CI_PASS_NOT_LIVE",
+      "summary": "EN/TR docs linked-card light-theme text became unreadable due dark-surface semantics",
+      "affected_urls": [
+        "https://ilaios.com/docs",
+        "https://ilaios.com/tr/docs"
+      ],
+      "fix_commit_sha": "UNKNOWN_HISTORICAL_WITHIN_PR",
+      "live_revalidation": "PENDING"
+    },
+    {
+      "id": "RT-002",
+      "first_seen_pass": "UNKNOWN",
+      "status": "CI_PASS_NOT_LIVE",
+      "summary": "Long Turkish footer label overlapped adjacent desktop column",
+      "affected_urls": [
+        "https://ilaios.com/tr"
+      ],
+      "fix_commit_sha": "UNKNOWN_HISTORICAL_WITHIN_PR",
+      "live_revalidation": "PENDING"
+    },
+    {
+      "id": "RT-003",
+      "first_seen_pass": "UNKNOWN",
+      "status": "CI_PASS_NOT_LIVE",
+      "summary": "Skip-link appeared as ordinary content in earlier capture",
+      "affected_urls": [
+        "UNKNOWN_MULTI_ROUTE"
+      ],
+      "fix_commit_sha": "UNKNOWN_HISTORICAL_WITHIN_PR",
+      "live_revalidation": "PENDING"
+    },
+    {
+      "id": "RT-004",
+      "first_seen_pass": "UNKNOWN",
+      "status": "OPEN",
+      "summary": "Visual QA screenshots may retain interaction state before capture; neutral visual baseline still requires repair/revalidation",
+      "affected_urls": [
+        "UNKNOWN_MULTI_ROUTE"
+      ],
+      "live_revalidation": "PENDING"
+    },
+    {
+      "id": "RT-005",
+      "first_seen_pass": "03_PREVIOUS_SERIES; fresh observations 02/05/07/10/11/12/14/15/16/17/18/19/22/23",
+      "status": "FIX_IN_SOURCE",
+      "summary": "TR public product copy contains systematic untranslated engineering jargon across product, architecture, commercial, resource, trust and privacy surfaces",
+      "affected_urls": [
+        "https://ilaios.com/tr",
+        "https://ilaios.com/tr/factories",
+        "https://ilaios.com/tr/factories/app",
+        "https://ilaios.com/tr/capabilities",
+        "https://ilaios.com/tr/security",
+        "https://ilaios.com/tr/docs",
+        "https://ilaios.com/tr/architecture",
+        "https://ilaios.com/tr/how-it-works",
+        "https://ilaios.com/tr/solutions",
+        "https://ilaios.com/tr/enterprise",
+        "https://ilaios.com/tr/individuals",
+        "https://ilaios.com/tr/use-ilaios",
+        "https://ilaios.com/tr/core",
+        "https://ilaios.com/tr/resources",
+        "https://ilaios.com/tr/privacy",
+        "https://ilaios.com/tr/trust"
+      ],
+      "live_evidence": "Live TR surfaces retain English engineering/product terms; privacy specifically exposed tenant/workspace/repository/log/evidence and Trust retains tenant/production terminology.",
+      "source_root_cause": "Turkish user-facing copy across shared and route-specific Website components retained English engineering prose. Canonical identifiers may remain unchanged where translation would alter semantics.",
+      "fix_commit_shas": [
+        "0b3ef69c42b57c83e93955a938b8b3e5179b64c7",
+        "1ae1db990ad8f2709ecd6ca84500b0b0a4f9b5b3",
+        "cfae2c214184a9ef3cabdf3b49452f332c9a7a95",
+        "a03d0716e92ebf725a2f074bb0056d60fe437bbd",
+        "cc3320cb1c07948dc50a964390ea5d01b304e86b"
+      ],
+      "changed_files": [
+        "apps/website/app/tr/factories/app/page.tsx",
+        "apps/website/app/CanonicalSystemDetail.tsx",
+        "apps/website/app/AudiencePage.tsx",
+        "apps/website/app/tr/resources/page.tsx",
+        "apps/website/app/tr/privacy/page.tsx"
+      ],
+      "regression_evidence": "Exact-head CI required after latest source/checkpoint commits",
+      "deployment_attribution": "PENDING",
+      "live_revalidation": "PENDING",
+      "reopen_history": []
+    }
   ],
-  "checkpoint":{"previous_head":"cc3320cb1c07948dc50a964390ea5d01b304e86b","next_unfinished_pass":"24","open_rt_ids":["RT-001","RT-002","RT-003","RT-004","RT-005"],"next_atomic_action":"Continue live route audit from pass 24; finish RT-005 localization on remaining TR surfaces; exact-head CI, attributable deploy and live revalidation remain required."},
-  "completion_state":"IN_PROGRESS"
+  "checkpoint": {
+    "previous_head": "30c19e2c236ff6226c59bbf57e1376aba3aaef0e",
+    "next_unfinished_pass": "26",
+    "open_rt_ids": [
+      "RT-001",
+      "RT-002",
+      "RT-003",
+      "RT-004",
+      "RT-005"
+    ],
+    "next_atomic_action": "Continue distinct live audit from pass 26 with readability, proportion/layout and remaining EN/TR route coverage; exact-head required CI and attributable production deploy remain required before live closure."
+  },
+  "completion_state": "IN_PROGRESS"
 }
