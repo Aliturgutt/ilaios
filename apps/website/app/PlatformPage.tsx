@@ -28,7 +28,7 @@ const copy = {
     current: "ILAIOS remains under active development. Architecture direction is not a claim that every canonical capability is generally available today.",
   },
   tr: {
-    eyebrow: "Platform",
+    eyebrow: "Ürün platformu",
     title: "Sonucu tarif et. ILAIOS işi talepten doğrulanmış teslime kadar yönetir.",
     lead: "Tek ürün sınırı; hedefi, sonucu üretmek için gereken işi, yürütmeyi yöneten kontrolleri ve sonucu kabul etmek için kullanılan kanıtı birbirine bağlar.",
     mapEyebrow: "Platform nasıl çalışır?",

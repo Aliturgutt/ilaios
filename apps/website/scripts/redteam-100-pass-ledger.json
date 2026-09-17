@@ -8,9 +8,9 @@
   "pass_rule": "Only distinct substantive checks exercised against live ilaios.com count. Repository, CI and artifacts are supporting evidence only.",
   "finding_status_rule": "CLOSED requires attributable deployment plus live-production revalidation. Source or CI success alone never closes a finding.",
   "counters": {
-    "TOTAL_FOUND": 5,
-    "OPEN": 5,
-    "FIX_IN_SOURCE": 4,
+    "TOTAL_FOUND": 9,
+    "OPEN": 9,
+    "FIX_IN_SOURCE": 5,
     "CI_PASS_NOT_LIVE": 3,
     "LIVE_REVALIDATED_CLOSED": 0,
     "REOPENED": 0
@@ -551,19 +551,97 @@
       "deployment_attribution": "PENDING",
       "live_revalidation": "PENDING",
       "reopen_history": []
+    },
+    {
+      "id": "RT-006",
+      "first_seen_pass": "USER_RENDERED_ACCEPTANCE_2026-09-17",
+      "status": "FIX_IN_SOURCE",
+      "summary": "Light-theme information cards and security diagrams render text invisible or too low-contrast across Docs, Security and related shared surfaces",
+      "affected_urls": [
+        "https://ilaios.com/tr/docs",
+        "https://ilaios.com/tr/security"
+      ],
+      "live_evidence": "User-provided rendered desktop captures show blank Docs cards, blank five-step Security cards, blank Security principle cards and low-contrast explanatory copy.",
+      "source_root_cause": "Late CSS layers mix dark-surface foreground semantics with light-theme white card surfaces; shared card/diagram selectors do not consistently override inherited foreground colors.",
+      "changed_files": [
+        "apps/website/app/live-acceptance-fixes.css"
+      ],
+      "regression_evidence": "PENDING",
+      "deployment_attribution": "PENDING",
+      "live_revalidation": "PENDING",
+      "reopen_history": []
+    },
+    {
+      "id": "RT-007",
+      "first_seen_pass": "USER_RENDERED_ACCEPTANCE_2026-09-17",
+      "status": "FIX_IN_SOURCE",
+      "summary": "TR Architecture desktop spatial map collapses to character-width columns and becomes unreadable",
+      "affected_urls": [
+        "https://ilaios.com/tr/architecture"
+      ],
+      "live_evidence": "User-provided rendered desktop capture shows architecture text wrapping one character per line with most of the canvas empty.",
+      "source_root_cause": "Architecture desktop grid and spatial-map minimum sizing can collapse under layered responsive overrides.",
+      "changed_files": [
+        "apps/website/app/live-acceptance-fixes.css"
+      ],
+      "regression_evidence": "PENDING",
+      "deployment_attribution": "PENDING",
+      "live_revalidation": "PENDING",
+      "reopen_history": []
+    },
+    {
+      "id": "RT-008",
+      "first_seen_pass": "USER_RENDERED_ACCEPTANCE_2026-09-17",
+      "status": "FIX_IN_SOURCE",
+      "summary": "Desktop editorial/legal composition has disproportionate typography and unused whitespace on About, Contact and Terms",
+      "affected_urls": [
+        "https://ilaios.com/tr/about",
+        "https://ilaios.com/tr/contact",
+        "https://ilaios.com/tr/terms"
+      ],
+      "live_evidence": "User-provided rendered desktop captures show oversized About heading, sparse Contact hero and narrow Terms copy with excessive unused right canvas.",
+      "changed_files": [
+        "apps/website/app/live-acceptance-fixes.css"
+      ],
+      "regression_evidence": "PENDING",
+      "deployment_attribution": "PENDING",
+      "live_revalidation": "PENDING",
+      "reopen_history": []
+    },
+    {
+      "id": "RT-009",
+      "first_seen_pass": "USER_RENDERED_ACCEPTANCE_2026-09-17",
+      "status": "FIX_IN_SOURCE",
+      "summary": "Homepage four-tab demo can imply only four production areas despite canonical nine-area product taxonomy",
+      "affected_urls": [
+        "https://ilaios.com",
+        "https://ilaios.com/tr"
+      ],
+      "live_evidence": "Rendered homepage demo exposes only Website/Video/Software/Application tabs; source now explicitly labels them as examples from nine production areas.",
+      "changed_files": [
+        "apps/website/app/ProductExperience.tsx"
+      ],
+      "regression_evidence": "PENDING",
+      "deployment_attribution": "PENDING",
+      "live_revalidation": "PENDING",
+      "reopen_history": []
     }
   ],
   "checkpoint": {
-    "previous_head": "42f7869a8951e31e3cd328dddab8c3087cf07f92",
+    "previous_head": "271953cc4f74492b1485308dd8b9bd33b7af7d0e",
     "next_unfinished_pass": "30",
     "open_rt_ids": [
       "RT-001",
       "RT-002",
       "RT-003",
       "RT-004",
-      "RT-005"
+      "RT-005",
+      "RT-006",
+      "RT-007",
+      "RT-008",
+      "RT-009"
     ],
-    "next_atomic_action": "Continue distinct LIVE pass 30 onward. RT-005 source localization continues in small Website-only batches; exact-head CI/deploy/live revalidation required. Pixel-level readability, menu proportion, Light/Dark and 390x844 remain UNVERIFIED until real rendered browser evidence is captured."
+    "next_atomic_action": "Validate user-rendered acceptance fixes and RT-005 localization on same successor PR; continue distinct LIVE pass 30 onward while CI runs."
   },
   "completion_state": "IN_PROGRESS"
 }

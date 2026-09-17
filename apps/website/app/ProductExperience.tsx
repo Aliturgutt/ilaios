@@ -26,9 +26,9 @@ const copy = {
     ] as readonly Mode[],
   },
   tr: {
-    label: "Etkileşimli kanonik iş akışı önizlemesi",
+    label: "Dört örnek iş akışı · 9 üretim alanından örnekler",
     title: "Tek bir istek bitmiş işe dönüşebilir.",
-    note: "Dış sistemlerde hiçbir yan etki oluşturmayan açıklayıcı ve etkileşimli bir önizlemedir. Sağlayıcı çalıştırmaz veya production işi oluşturmaz.",
+    note: "Bu dört sekme, dokuz üretim alanından yalnızca örnek akışları gösterir. Dış sistemlerde yan etki oluşturmaz; sağlayıcı çalıştırmaz veya gerçek üretim işi başlatmaz.",
     request: "Örnek istek",
     delivery: "Bitmiş yolun içerdiği sonuç",
     checks: "Tipik kontroller",
@@ -36,8 +36,8 @@ const copy = {
     stages: ["Planlama", "Üretim", "Doğrulama", "Tamamlandı"],
     stageNotes: ["Hedef, izin verilen iş ve bağımlılıklar halinde sınırlandırılır.", "Seçilen üretim yolu sınırlandırılmış işi yürütür.", "Geçerli kontroller mevcut sonucu değerlendirir.", "Kabul edilen iş incelenebilir kanıtla teslim edilmeye hazırdır."],
     modes: [
-      { key: "web", label: "Web sitesi", prompt: "Mobilya şirketim için premium bir web sitesi oluştur.", result: "Responsive site, EN/TR'ye hazır yapı ve yayın yetkilendirildiğinde yayın kanıtı.", checks: ["Tarayıcı QA", "Erişilebilirlik ve SEO", "Kırık varlık ve yayın kontrolleri"], href: "/tr/factories/web" },
-      { key: "video", label: "Video", prompt: "Brief ve referanslarımdan lansman videosu oluştur.", result: "Referansları dikkate alan üretim ve teslim kanıtıyla render edilmiş medya çıktısı.", checks: ["Referans tutarlılığı", "Render doğrulaması", "Teslim kontrolleri"], href: "/tr/factories/video" },
+      { key: "web", label: "Web sitesi", prompt: "Mobilya şirketim için üst düzey bir web sitesi oluştur.", result: "Duyarlı site, EN/TR'ye hazır yapı ve yayın yetkilendirildiğinde yayın kanıtı.", checks: ["Tarayıcı kalite kontrolü", "Erişilebilirlik ve SEO", "Kırık varlık ve yayın kontrolleri"], href: "/tr/factories/web" },
+      { key: "video", label: "Video", prompt: "Proje özeti ve referanslarımdan lansman videosu oluştur.", result: "Referansları dikkate alan üretim ve teslim kanıtıyla işlenmiş medya çıktısı.", checks: ["Referans tutarlılığı", "Görüntü işleme doğrulaması", "Teslim kontrolleri"], href: "/tr/factories/video" },
       { key: "software", label: "Yazılım", prompt: "Kod depomda sınırları belirli bu değişikliği uygula.", result: "Tam değişikliğe ait incelenmiş kod, odaklı testler ve kanıt.", checks: ["Kod deposu kapsamı", "Otomatik testler", "Değişiklik kanıtı"], href: "/tr/factories/software" },
       { key: "app", label: "Uygulama", prompt: "Bu uygulama sonucunu açık yayın sınırları içinde hazırla.", result: "Herhangi bir yayın adımından önce derleme ve test kanıtı bulunan uygulama çalışması.", checks: ["Korunan kapsam", "Derleme ve test", "Yayın sınırı"], href: "/tr/factories/app" },
     ] as readonly Mode[],
