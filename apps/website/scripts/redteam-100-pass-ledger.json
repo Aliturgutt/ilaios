@@ -3,14 +3,14 @@
   "workstream": "web/final-commercial-closure-hotfix-20260916",
   "production_origin": "https://ilaios.com",
   "series_restarted_at": "2026-09-17T01:18:51+03:00",
-  "completed_passes": 29,
+  "completed_passes": 37,
   "target_passes": 100,
   "pass_rule": "Only distinct substantive checks exercised against live ilaios.com count. Repository, CI and artifacts are supporting evidence only.",
   "finding_status_rule": "CLOSED requires attributable deployment plus live-production revalidation. Source or CI success alone never closes a finding.",
   "counters": {
-    "TOTAL_FOUND": 9,
-    "OPEN": 9,
-    "FIX_IN_SOURCE": 5,
+    "TOTAL_FOUND": 10,
+    "OPEN": 10,
+    "FIX_IN_SOURCE": 6,
     "CI_PASS_NOT_LIVE": 3,
     "LIVE_REVALIDATED_CLOSED": 0,
     "REOPENED": 0
@@ -461,6 +461,149 @@
       "finding_ids": [
         "RT-005"
       ]
+    },
+    {
+      "id": "30",
+      "timestamp": "2026-09-17T12:00:00+03:00",
+      "urls": [
+        "https://ilaios.com/tr"
+      ],
+      "locale": "TR",
+      "theme": "LIGHT",
+      "viewport": "390x844 Chrome rendered",
+      "interaction": "fresh headless Chrome live render",
+      "dimension": "mobile homepage readability, header navigation and horizontal containment",
+      "evidence": "Rendered live homepage clips hero/demo copy at right edge and shows logo-only header.",
+      "result": "FINDING",
+      "finding_ids": [
+        "RT-010"
+      ]
+    },
+    {
+      "id": "31",
+      "timestamp": "2026-09-17T12:00:00+03:00",
+      "urls": [
+        "https://ilaios.com/tr/docs"
+      ],
+      "locale": "TR",
+      "theme": "LIGHT",
+      "viewport": "390x844 Chrome rendered",
+      "interaction": "fresh headless Chrome live render",
+      "dimension": "mobile Docs readability and card visibility",
+      "evidence": "Rendered live Docs shows blank linked cards plus right-edge text clipping.",
+      "result": "PASS_WITH_FINDING",
+      "finding_ids": [
+        "RT-001",
+        "RT-006",
+        "RT-010"
+      ]
+    },
+    {
+      "id": "32",
+      "timestamp": "2026-09-17T12:00:00+03:00",
+      "urls": [
+        "https://ilaios.com/tr/security"
+      ],
+      "locale": "TR",
+      "theme": "LIGHT",
+      "viewport": "390x844 Chrome rendered",
+      "interaction": "fresh headless Chrome live render",
+      "dimension": "mobile Security control-map readability and containment",
+      "evidence": "Rendered live Security text is visible in hero but explanatory copy/diagram extends beyond viewport.",
+      "result": "PASS_WITH_FINDING",
+      "finding_ids": [
+        "RT-006",
+        "RT-010"
+      ]
+    },
+    {
+      "id": "33",
+      "timestamp": "2026-09-17T12:00:00+03:00",
+      "urls": [
+        "https://ilaios.com/tr/architecture"
+      ],
+      "locale": "TR",
+      "theme": "LIGHT",
+      "viewport": "390x844 Chrome rendered",
+      "interaction": "fresh headless Chrome live render",
+      "dimension": "mobile Architecture layer readability and containment",
+      "evidence": "Rendered live Architecture layer copy clips at right edge; desktop collapse remains tracked separately.",
+      "result": "PASS_WITH_FINDING",
+      "finding_ids": [
+        "RT-007",
+        "RT-010"
+      ]
+    },
+    {
+      "id": "34",
+      "timestamp": "2026-09-17T12:00:00+03:00",
+      "urls": [
+        "https://ilaios.com/tr/about"
+      ],
+      "locale": "TR",
+      "theme": "LIGHT",
+      "viewport": "390x844 Chrome rendered",
+      "interaction": "fresh headless Chrome live render",
+      "dimension": "mobile About typography hierarchy and containment",
+      "evidence": "Rendered live About H1 and section heading exceed comfortable mobile measure and clip at right edge.",
+      "result": "PASS_WITH_FINDING",
+      "finding_ids": [
+        "RT-008",
+        "RT-010"
+      ]
+    },
+    {
+      "id": "35",
+      "timestamp": "2026-09-17T12:00:00+03:00",
+      "urls": [
+        "https://ilaios.com/tr/contact"
+      ],
+      "locale": "TR",
+      "theme": "LIGHT",
+      "viewport": "390x844 Chrome rendered",
+      "interaction": "fresh headless Chrome live render",
+      "dimension": "mobile Contact information hierarchy and containment",
+      "evidence": "Rendered live Contact directory remains readable but global header/menu defect persists.",
+      "result": "PASS_WITH_FINDING",
+      "finding_ids": [
+        "RT-010"
+      ]
+    },
+    {
+      "id": "36",
+      "timestamp": "2026-09-17T12:00:00+03:00",
+      "urls": [
+        "https://ilaios.com/tr/terms"
+      ],
+      "locale": "TR",
+      "theme": "LIGHT",
+      "viewport": "390x844 Chrome rendered",
+      "interaction": "fresh headless Chrome live render",
+      "dimension": "mobile legal typography, wrapping and containment",
+      "evidence": "Rendered live Terms paragraphs clip horizontally and retained workspace terminology is visible.",
+      "result": "PASS_WITH_FINDING",
+      "finding_ids": [
+        "RT-005",
+        "RT-008",
+        "RT-010"
+      ]
+    },
+    {
+      "id": "37",
+      "timestamp": "2026-09-17T12:00:00+03:00",
+      "urls": [
+        "https://ilaios.com/tr/use-ilaios"
+      ],
+      "locale": "TR",
+      "theme": "LIGHT",
+      "viewport": "390x844 Chrome rendered",
+      "interaction": "fresh headless Chrome live render",
+      "dimension": "mobile pricing CTA proportions and containment",
+      "evidence": "Rendered live Use ILAIOS CTA row and copy extend beyond viewport; plan section inherits the global mobile containment defect.",
+      "result": "PASS_WITH_FINDING",
+      "finding_ids": [
+        "RT-010"
+      ]
     }
   ],
   "findings": [
@@ -625,11 +768,37 @@
       "deployment_attribution": "PENDING",
       "live_revalidation": "PENDING",
       "reopen_history": []
+    },
+    {
+      "id": "RT-010",
+      "first_seen_pass": "30",
+      "status": "FIX_IN_SOURCE",
+      "summary": "Live 390x844 Turkish mobile routes clip content horizontally and do not expose the mobile menu control in the rendered header",
+      "affected_urls": [
+        "https://ilaios.com/tr",
+        "https://ilaios.com/tr/docs",
+        "https://ilaios.com/tr/security",
+        "https://ilaios.com/tr/architecture",
+        "https://ilaios.com/tr/about",
+        "https://ilaios.com/tr/contact",
+        "https://ilaios.com/tr/terms",
+        "https://ilaios.com/tr/use-ilaios"
+      ],
+      "live_evidence": "Fresh Chrome 390x844 rendered captures show right-edge clipping on headings/body/controls across multiple TR routes and header renders logo-only with no visible menu control.",
+      "source_root_cause": "Production deployment is behind the successor branch; current source already contains mobile-redteam menu-toggle and width protections, so deployment/live revalidation is required before further source mutation.",
+      "changed_files": [
+        "apps/website/app/mobile-redteam.css",
+        "apps/website/app/SiteChrome.tsx"
+      ],
+      "regression_evidence": "PENDING",
+      "deployment_attribution": "PENDING",
+      "live_revalidation": "PENDING",
+      "reopen_history": []
     }
   ],
   "checkpoint": {
     "previous_head": "271953cc4f74492b1485308dd8b9bd33b7af7d0e",
-    "next_unfinished_pass": "30",
+    "next_unfinished_pass": "38",
     "open_rt_ids": [
       "RT-001",
       "RT-002",
@@ -639,9 +808,10 @@
       "RT-006",
       "RT-007",
       "RT-008",
-      "RT-009"
+      "RT-009",
+      "RT-010"
     ],
-    "next_atomic_action": "Validate user-rendered acceptance fixes and RT-005 localization on same successor PR; continue distinct LIVE pass 30 onward while CI runs."
+    "next_atomic_action": "Continue fresh rendered LIVE pass 38 onward while exact-head CI runs; revalidate RT-001..RT-010 only after attributable production deployment."
   },
   "completion_state": "IN_PROGRESS"
 }
