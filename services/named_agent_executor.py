@@ -20,6 +20,7 @@ from services.agent_governance import (
     PermissionFirewall,
 )
 from services.agent_registry import CANONICAL_AGENT_REGISTRY, registration_for
+from services.control_plane.live_state import LiveStateTransport
 from services.runtime import ExecutionGrant, GovernedRuntime
 
 
@@ -119,13 +120,41 @@ class NamedAgentExecutor:
         except KeyError as exc:
             raise AgentSecurityError("target agent is unavailable") from exc
         admission = self._firewall.admit(invocation, grant, now)
-        route = self._runtime.execute(
-            registration.manifest.agent_id,
-            skill_id,
-            invocation.capability,
-            payload,
-            preferred_provider_id=preferred_provider_id,
+        live_state = LiveStateTransport(self._runtime.database_path)
+        aggregate_id = f"agent-runtime:{admission.agent_id}"
+        live_state.publish(
+            aggregate_id,
+            "agent.execution.started",
+            {
+                "agent_id": admission.agent_id,
+                "agent_status": "busy",
+                "active_tasks": 1,
+                "current_task": skill_id,
+                "current_task_detail": invocation.capability,
+                "last_activity": now.isoformat(),
+            },
         )
+        try:
+            route = self._runtime.execute(
+                registration.manifest.agent_id,
+                skill_id,
+                invocation.capability,
+                payload,
+                preferred_provider_id=preferred_provider_id,
+            )
+        finally:
+            live_state.publish(
+                aggregate_id,
+                "agent.execution.finished",
+                {
+                    "agent_id": admission.agent_id,
+                    "agent_status": "idle",
+                    "active_tasks": 0,
+                    "current_task": None,
+                    "current_task_detail": None,
+                    "last_activity": now.isoformat(),
+                },
+            )
         if route.get("agent_id") != admission.agent_id:
             raise NamedAgentExecutionError("runtime route identity diverged from admission")
         if admission.verifier_id == admission.agent_id:
