@@ -2,7 +2,10 @@
 
 import pytest
 
-from services.creative_document_factory import CreativeDocumentError, CreativeDocumentFactory
+from services.creative_document_factory import (
+    CreativeDocumentError,
+    CreativeDocumentFactory,
+)
 
 
 def _factory() -> CreativeDocumentFactory:

@@ -12,7 +12,10 @@ from services.commercial_plans import commercial_plan_ids, get_commercial_plan
 from services.subscription_presentation import plan_catalog
 from src.video_automation.managed_credit_store import ManagedCreditLedgerStore
 from tests.test_app_ilaios_http_runtime import (
-    _NOW, _callback, _cookie_header, _runtime,
+    _NOW,
+    _callback,
+    _cookie_header,
+    _runtime,
 )
 
 

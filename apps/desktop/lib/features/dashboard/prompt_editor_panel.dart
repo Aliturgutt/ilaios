@@ -27,16 +27,59 @@ class _PromptEditorPanelState extends State<PromptEditorPanel> {
   PromptRefinementPreview? _preview;
   bool _refining = false;
   String? _error;
+  int _requestSerial = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_onPromptChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant PromptEditorPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_onPromptChanged);
+      widget.controller.addListener(_onPromptChanged);
+      _invalidatePendingRefinement();
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onPromptChanged);
+    super.dispose();
+  }
 
   bool get _canApply {
     final preview = _preview;
-    return preview != null && preview.riskCuesPreserved != false;
+    return preview != null &&
+        preview.originalPrompt == widget.controller.text &&
+        preview.riskCuesPreserved != false;
+  }
+
+  void _invalidatePendingRefinement() {
+    _requestSerial += 1;
+    if (!mounted) return;
+    setState(() {
+      _refining = false;
+      _preview = null;
+      _error = null;
+    });
+  }
+
+  void _onPromptChanged() {
+    final previewMatchesSource = _preview?.originalPrompt == widget.controller.text;
+    if (_refining || (_preview != null && !previewMatchesSource)) {
+      _invalidatePendingRefinement();
+    }
   }
 
   Future<void> _refine() async {
     final callback = widget.onRefine;
     final prompt = widget.controller.text;
     if (callback == null || prompt.trim().isEmpty || _refining) return;
+    final requestSerial = ++_requestSerial;
     setState(() {
       _refining = true;
       _preview = null;
@@ -44,13 +87,19 @@ class _PromptEditorPanelState extends State<PromptEditorPanel> {
     });
     try {
       final result = await callback(prompt, _mode);
-      if (!mounted) return;
+      if (!mounted ||
+          requestSerial != _requestSerial ||
+          widget.controller.text != prompt) {
+        return;
+      }
       setState(() => _preview = result);
-    } on Object catch (error) {
-      if (!mounted) return;
-      setState(() => _error = error.toString());
+    } on Object {
+      if (!mounted || requestSerial != _requestSerial) return;
+      setState(() => _error = 'prompt_refinement_failed');
     } finally {
-      if (mounted) setState(() => _refining = false);
+      if (mounted && requestSerial == _requestSerial) {
+        setState(() => _refining = false);
+      }
     }
   }
 
@@ -138,7 +187,7 @@ class _PromptEditorPanelState extends State<PromptEditorPanel> {
           if (_error != null) ...[
             const SizedBox(height: 8),
             Text(
-              _error!,
+              tr ? 'Prompt önizlemesi oluşturulamadı.' : 'Prompt preview could not be generated.',
               key: const Key('prompt-refinement-error'),
               style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),

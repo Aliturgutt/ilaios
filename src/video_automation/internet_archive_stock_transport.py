@@ -18,6 +18,7 @@ from src.video_automation.stock_source_adapters import (
     StockSearchRequest,
     StockSearchResult,
     StockSourceError,
+    StockSourceFailureCategory,
 )
 
 _SEARCH_URL = "https://archive.org/advancedsearch.php"
@@ -65,10 +66,16 @@ class InternetArchiveStockHttpTransport:
         payload = self._fetch_json(f"{_SEARCH_URL}?{params}")
         response = payload.get("response")
         if not isinstance(response, dict):
-            raise StockSourceError("Internet Archive response must be an object")
+            raise StockSourceError(
+                "Internet Archive response must be an object",
+                diagnostic_category=StockSourceFailureCategory.RESPONSE_CONTRACT,
+            )
         docs = response.get("docs", [])
         if not isinstance(docs, list):
-            raise StockSourceError("Internet Archive docs must be a list")
+            raise StockSourceError(
+                "Internet Archive docs must be a list",
+                diagnostic_category=StockSourceFailureCategory.RESPONSE_CONTRACT,
+            )
 
         retrieved_at = datetime.now(UTC).isoformat()
         candidates: list[StockAssetCandidate] = []
@@ -146,9 +153,7 @@ def _creator(metadata: dict[str, Any]) -> str | None:
         return value.strip()
     if isinstance(value, list):
         creators = [
-            part.strip()
-            for part in value
-            if isinstance(part, str) and part.strip()
+            part.strip() for part in value if isinstance(part, str) and part.strip()
         ]
         if creators:
             return ", ".join(creators)
@@ -188,12 +193,16 @@ def _fetch_json(url: str) -> dict[str, Any]:
         headers={"User-Agent": _USER_AGENT, "Accept": "application/json"},
     )
     try:
-        with urlopen(
-            request, timeout=15
-        ) as response:  # noqa: S310 - fixed HTTPS hosts
+        with urlopen(request, timeout=15) as response:  # noqa: S310 - fixed HTTPS hosts
             raw_payload: object = json.load(response)
     except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as exc:
-        raise StockSourceError("Internet Archive HTTP request failed closed") from exc
+        raise StockSourceError(
+            "Internet Archive HTTP request failed closed",
+            diagnostic_category=StockSourceFailureCategory.HTTP_REQUEST,
+        ) from exc
     if not isinstance(raw_payload, dict):
-        raise StockSourceError("Internet Archive response must be a JSON object")
+        raise StockSourceError(
+            "Internet Archive response must be a JSON object",
+            diagnostic_category=StockSourceFailureCategory.RESPONSE_CONTRACT,
+        )
     return cast(dict[str, Any], raw_payload)

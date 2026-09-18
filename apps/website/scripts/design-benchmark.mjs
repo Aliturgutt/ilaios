@@ -9,7 +9,8 @@ const structureCss = await readFile(path.join(app, "adaptive-structures.css"), "
 const mobileCss = await readFile(path.join(app, "mobile-redteam.css"), "utf8");
 const canonicalCss = await readFile(path.join(app, "canonical-detail.css"), "utf8");
 const finalCss = await readFile(path.join(app, "site-v2-finalization.css"), "utf8");
-const css = `${nativeCss}\n${structureCss}\n${mobileCss}\n${canonicalCss}\n${finalCss}`;
+const acceptanceCss = await readFile(path.join(app, "live-acceptance-fixes.css"), "utf8");
+const css = `${nativeCss}\n${structureCss}\n${mobileCss}\n${canonicalCss}\n${finalCss}\n${acceptanceCss}`;
 const home = await readFile(path.join(app, "HomePage.tsx"), "utf8");
 const homeEntry = await readFile(path.join(app, "page.tsx"), "utf8");
 const homeEntryTr = await readFile(path.join(app, "tr", "page.tsx"), "utf8");
@@ -100,13 +101,19 @@ for (const match of css.matchAll(/box-shadow\s*:\s*([^;}]+)/gi)) {
 
 requireText(layout, "mobile-redteam.css", "mobile correction layer");
 requireText(layout, "canonical-detail.css", "canonical documentation visual layer");
+requireText(layout, "live-acceptance-fixes.css", "live rendered acceptance correction layer");
+requireText(acceptanceCss, ".detail-directory > a", "light-theme Docs card readability coverage");
+requireText(acceptanceCss, ".security-process article", "light-theme Security process readability coverage");
+requireText(acceptanceCss, ".principle-directory article", "light-theme Security principles readability coverage");
+requireText(acceptanceCss, "main:has(.architecture-primary) .spatial-stage", "Architecture collapse regression coverage");
 requireText(homeEntry, "HomePage", "English canonical homepage entrypoint");
 requireText(homeEntryTr, "HomePage", "Turkish canonical homepage entrypoint");
 if (homeEntry.includes("WebsiteV2HomeRecovery") || homeEntryTr.includes("WebsiteV2HomeRecovery")) failures.push("homepage entrypoint: legacy WebsiteV2HomeRecovery still active");
 requireText(home, "homepage-v2-authoritative", "authoritative homepage identity");
 requireText(home, "ProductExperience", "homepage product visibility");
 requireText(home, "home-process-rail-v2", "five-step execution composition");
-requireText(home, "home-output-index-v2", "restrained production index");
+requireText(home, "The four interactive examples are only part of ILAIOS.", "restrained homepage bridge to all production areas");
+requireText(home, "Dört etkileşimli örnek ILAIOS'un yalnızca bir bölümünü gösterir.", "Turkish restrained homepage bridge to all production areas");
 requireText(home, "home-control-ledger-v2", "governed control composition");
 requireText(home, "GovernanceEvidence", "homepage evidence credibility");
 requireText(product, "Planning", "interactive product state progression");
@@ -115,6 +122,8 @@ requireText(product, "Validating", "interactive product state progression");
 requireText(product, "Finished", "interactive product state progression");
 requireText(product, "Interactive canonical workflow preview", "prototype truth label");
 requireText(product, "no external side effects", "prototype truth boundary");
+requireText(product, "Dört örnek iş akışı · 9 üretim alanından örnekler", "Turkish four-tab demo nine-area context");
+requireText(product, "dokuz üretim alanından yalnızca örnek akışları gösterir", "Turkish four-tab demo taxonomy boundary");
 requireText(factory, "onMouseEnter", "factory hover behavior");
 requireText(factory, "factory-pipeline", "factory pipeline preview");
 requireText(spatial, "onPointerMove", "spatial pointer depth");
@@ -142,8 +151,12 @@ requireText(architecture, "SystemVisuals", "Architecture governed execution visu
 requireText(architecture, "Technical depth", "Architecture progressive technical disclosure");
 forbidIn(architecture, /CanonicalSystemDetail|ExecutionGrant|RoutingDecision|worker lease|fencing token|Knowledge \/ RAG|Checkpoint \/ Resume \/ Repair/i, "Architecture public-density boundary");
 
-requireText(factoriesPage, "Cross-factory composition", "cross-factory bounded composition");
-requireText(factoriesPage, "variant=\"knowledge\"", "factories shared knowledge plane");
+requireText(factoriesPage, "Nine production areas", "nine-area commercial catalog");
+requireText(factoriesPage, "Dokuz üretim alanı", "Turkish nine-area commercial catalog");
+requireText(factoriesPage, "Preview", "conservative factory readiness");
+requireText(factoriesPage, "In development", "conservative factory readiness");
+for (const route of ["/factories/web", "/factories/video", "/factories/software", "/factories/app", "/factories/research-data", "/factories/security", "/factories/creative-document", "/factories/commerce-growth", "/factories/personal-operations"]) requireText(factoriesPage, route, "nine-area factory detail coverage");
+forbidIn(factoriesPage, /ThemedDiagram|variant=\"knowledge\"|factory-pipeline/i, "factories rejected workflow/diagram boundary");
 
 for (const text of [
   "Describe what you want finished",
@@ -178,7 +191,7 @@ requireText(useIlaios, "Different outcomes, one governed product boundary.", "Us
 forbidIn(useIlaios, /ilaios-concept\.avif|Product-flow concept|Static illustrative workflow|ThemedDiagram|next\/image/i, "Use ILAIOS fake-or-static product-screen boundary");
 
 requireText(resources, "Resources explains the thinking; Docs carries the technical reference.", "English Resources/Docs separation");
-requireText(resourcesTr, "Resources yaklaşımı açıklar; Docs teknik referansı taşır.", "Turkish Resources/Docs separation");
+requireText(resourcesTr, "Kaynaklar yaklaşımı açıklar; Dokümantasyon teknik referansı taşır.", "Turkish Resources/Docs separation");
 requireText(resources, "detail-directory", "Resources compact editorial directory");
 requireText(resourcesTr, "detail-directory", "Turkish Resources compact editorial directory");
 
@@ -197,8 +210,8 @@ requireText(about, "about-editorial-grid", "compact About editorial composition"
 requireText(chrome, "footer-nav-grid", "dense footer information architecture");
 for (const label of ["Product", "Use", "Resources", "Trust", "Company"]) requireText(chrome, `\"${label}\"`, "footer information architecture");
 
-const requiredVisualRoles = ["interactive-product-demo", "five-step-execution", "factory-explorer", "architecture-spatial-map", "contact-directory"];
-const combined = [home, product, factory, spatial, contact].join("\n");
+const requiredVisualRoles = ["interactive-product-demo", "five-step-execution", "architecture-spatial-map", "contact-directory"];
+const combined = [home, product, spatial, contact].join("\n");
 for (const role of requiredVisualRoles) requireText(combined, role, "rendered visual role");
 
 requireText(mobileCss, "@media (max-width:760px)", "dedicated mobile breakpoint");

@@ -77,9 +77,7 @@ class RemotionCompositionElement:
             )
 
         if self.duration_seconds <= 0:
-            raise RemotionCompositionError(
-                "duration_seconds must be greater than zero"
-            )
+            raise RemotionCompositionError("duration_seconds must be greater than zero")
 
         if self.layer < 0:
             raise RemotionCompositionError(
@@ -133,19 +131,13 @@ class RemotionCompositionArtifact:
         _validate_sha256(self.entry_source_sha256)
 
         if self.duration_seconds <= 0:
-            raise RemotionCompositionError(
-                "duration_seconds must be greater than zero"
-            )
+            raise RemotionCompositionError("duration_seconds must be greater than zero")
 
         if self.fps <= 0:
-            raise RemotionCompositionError(
-                "fps must be greater than zero"
-            )
+            raise RemotionCompositionError("fps must be greater than zero")
 
         if self.width <= 0 or self.height <= 0:
-            raise RemotionCompositionError(
-                "width and height must be greater than zero"
-            )
+            raise RemotionCompositionError("width and height must be greater than zero")
 
 
 class RemotionCompositionAdapter:
@@ -174,44 +166,28 @@ class RemotionCompositionAdapter:
             )
 
         if duration_seconds <= 0:
-            raise RemotionCompositionError(
-                "duration_seconds must be greater than zero"
-            )
+            raise RemotionCompositionError("duration_seconds must be greater than zero")
 
         if fps <= 0:
-            raise RemotionCompositionError(
-                "fps must be greater than zero"
-            )
+            raise RemotionCompositionError("fps must be greater than zero")
 
         if width <= 0 or height <= 0:
-            raise RemotionCompositionError(
-                "width and height must be greater than zero"
-            )
+            raise RemotionCompositionError("width and height must be greater than zero")
 
         if not timeline.items:
-            raise RemotionCompositionError(
-                "timeline must contain at least one item"
-            )
+            raise RemotionCompositionError("timeline must contain at least one item")
 
         if not assets:
             raise RemotionCompositionError(
                 "assets must contain at least one MediaAsset"
             )
 
-        asset_by_id = {
-            asset.asset_id: asset
-            for asset in assets
-        }
+        asset_by_id = {asset.asset_id: asset for asset in assets}
 
         if len(asset_by_id) != len(assets):
-            raise RemotionCompositionError(
-                "asset identifiers must be unique"
-            )
+            raise RemotionCompositionError("asset identifiers must be unique")
 
-        timeline_asset_ids = {
-            item.asset_id
-            for item in timeline.items
-        }
+        timeline_asset_ids = {item.asset_id for item in timeline.items}
 
         if set(asset_by_id) != timeline_asset_ids:
             raise RemotionCompositionError(
@@ -229,10 +205,7 @@ class RemotionCompositionAdapter:
                     f"Remotion input asset must be validated: {asset.asset_id}"
                 )
 
-        element_ids = tuple(
-            element.element_id
-            for element in elements
-        )
+        element_ids = tuple(element.element_id for element in elements)
 
         if len(element_ids) != len(set(element_ids)):
             raise RemotionCompositionError(
@@ -241,13 +214,11 @@ class RemotionCompositionAdapter:
 
         for element in elements:
             if (
-                element.start_seconds
-                + element.duration_seconds
+                element.start_seconds + element.duration_seconds
                 > duration_seconds + 1e-9
             ):
                 raise RemotionCompositionError(
-                    f"composition element exceeds duration: "
-                    f"{element.element_id}"
+                    f"composition element exceeds duration: " f"{element.element_id}"
                 )
 
         ordered_elements = tuple(
@@ -288,15 +259,9 @@ class RemotionCompositionAdapter:
                 {
                     "item_id": item.item_id,
                     "asset_id": item.asset_id,
-                    "file_path": asset_by_id[
-                        item.asset_id
-                    ].file_path,
-                    "checksum_sha256": asset_by_id[
-                        item.asset_id
-                    ].checksum_sha256,
-                    "media_type": asset_by_id[
-                        item.asset_id
-                    ].media_type.value,
+                    "file_path": asset_by_id[item.asset_id].file_path,
+                    "checksum_sha256": asset_by_id[item.asset_id].checksum_sha256,
+                    "media_type": asset_by_id[item.asset_id].media_type.value,
                     "start_seconds": item.start_seconds,
                     "duration_seconds": item.duration_seconds,
                     "start_frame": round(item.start_seconds * fps),
@@ -329,9 +294,7 @@ class RemotionCompositionAdapter:
 
         composition_id = (
             "remotion-composition-"
-            + sha256(
-                canonical_json.encode("utf-8")
-            ).hexdigest()[:24]
+            + sha256(canonical_json.encode("utf-8")).hexdigest()[:24]
         )
 
         output_root = Path(output_directory)
@@ -340,15 +303,9 @@ class RemotionCompositionAdapter:
             exist_ok=True,
         )
 
-        manifest_path = (
-            output_root
-            / f"{composition_id}.json"
-        )
+        manifest_path = output_root / f"{composition_id}.json"
 
-        entry_path = (
-            output_root
-            / f"{composition_id}.tsx"
-        )
+        entry_path = output_root / f"{composition_id}.tsx"
 
         manifest_text = (
             json.dumps(
@@ -374,24 +331,16 @@ class RemotionCompositionAdapter:
             entry_source,
         )
 
-        manifest_digest = sha256(
-            manifest_path.read_bytes()
-        ).hexdigest()
+        manifest_digest = sha256(manifest_path.read_bytes()).hexdigest()
 
-        entry_digest = sha256(
-            entry_path.read_bytes()
-        ).hexdigest()
+        entry_digest = sha256(entry_path.read_bytes()).hexdigest()
 
         return RemotionCompositionArtifact(
             composition_id=composition_id,
             job_id=job_id,
-            manifest_path=str(
-                manifest_path.resolve()
-            ),
+            manifest_path=str(manifest_path.resolve()),
             manifest_sha256=manifest_digest,
-            entry_source_path=str(
-                entry_path.resolve()
-            ),
+            entry_source_path=str(entry_path.resolve()),
             entry_source_sha256=entry_digest,
             duration_seconds=duration_seconds,
             fps=fps,
@@ -457,9 +406,7 @@ def _require_non_blank(
     value: str,
 ) -> None:
     if not value or not value.strip():
-        raise RemotionCompositionError(
-            f"{name} must not be blank"
-        )
+        raise RemotionCompositionError(f"{name} must not be blank")
 
     if value != value.strip():
         raise RemotionCompositionError(

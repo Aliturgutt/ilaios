@@ -202,9 +202,13 @@ class GeminiTtsAdapter:
             language_code=request.language_code,
         )
         if result.request != request:
-            raise AudioSourceError("transport result request must match adapter request")
+            raise AudioSourceError(
+                "transport result request must match adapter request"
+            )
         if result.request.provider is not self.provider:
-            raise AudioSourceError("transport result provider must match adapter provider")
+            raise AudioSourceError(
+                "transport result provider must match adapter provider"
+            )
         return result
 
 
@@ -254,9 +258,13 @@ class PixabayAudioLibraryAdapter:
             max_results=request.max_results,
         )
         if result.request != request:
-            raise AudioSourceError("transport result request must match adapter request")
+            raise AudioSourceError(
+                "transport result request must match adapter request"
+            )
         if result.request.provider is not self.provider:
-            raise AudioSourceError("transport result provider must match adapter provider")
+            raise AudioSourceError(
+                "transport result provider must match adapter provider"
+            )
         return result
 
 

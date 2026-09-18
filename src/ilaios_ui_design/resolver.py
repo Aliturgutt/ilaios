@@ -230,9 +230,7 @@ def resolve_ui_design(prompt: str, *, product: str | None = None) -> UIDesignSpe
             longest = max(len(hit.split()) for hit in hits)
             score = min(
                 0.98,
-                0.68
-                + 0.07 * min(longest, 4)
-                + 0.03 * (len(hits) - 1),
+                0.68 + 0.07 * min(longest, 4) + 0.03 * (len(hits) - 1),
             )
             candidates.append((score, pattern, hits))
 

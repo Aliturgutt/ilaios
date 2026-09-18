@@ -7,9 +7,11 @@ import binascii
 import hashlib
 import hmac
 import json
+import os
 import secrets
 import threading
 import time
+import uuid
 from datetime import datetime, timezone
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -61,6 +63,9 @@ class DesktopIdentityHTTPServer(ThreadingHTTPServer):
         self.coordinator = coordinator
         self.reference_assets = reference_assets or _reference_store_for(coordinator)
         self._next_recovery_sweep = time.monotonic()
+        # Conversation documents belong to this existing authenticated adapter,
+        # not to Li memory, Knowledge, or an independent Assistant service.
+        self.assistant_lock = threading.RLock()
 
     def service_actions(self) -> None:
         """Run bounded crash/orphan reconciliation from the trusted server lifecycle."""
@@ -252,6 +257,14 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
                 )
                 self._send_json(HTTPStatus.CREATED, record)
                 return
+            if path == "/v1/assistant":
+                try:
+                    self._assistant(body)
+                except DesktopIdentityError:
+                    raise
+                except OSError:
+                    self._send_error(HTTPStatus.SERVICE_UNAVAILABLE, "Assistant history unavailable")
+                return
             if path == "/v1/reference-assets":
                 self._upload_reference_asset(body)
                 return
@@ -293,6 +306,141 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
             ),
             flush=True,
         )
+
+    def _assistant(self, body: dict[str, Any]) -> None:
+        """Account-scoped chat transport under the existing session authority.
+
+        Project/workload grants are not inferred from client context. V1 account
+        conversations reject supplied project/workload/persona/user coordinates.
+        No operation here executes tools or writes founder memory.
+        """
+        session = self._authenticated_session()
+        identity = self._require_identity()
+        persona = "li" if identity.is_li_founder_session(session.session_id) else "assistant"
+        allowed = {"operation", "conversation_id", "text", "locale", "version", "message_id"}
+        if set(body) - allowed:
+            raise ValueError("Assistant scope is server-authoritative")
+        operation = body.get("operation")
+        fields = {
+            "list": {"operation"},
+            "create": {"operation"},
+            "get": {"operation", "conversation_id"},
+            "delete": {"operation", "conversation_id"},
+            "send": allowed,
+        }
+        if not isinstance(operation, str) or operation not in fields or set(body) != fields[operation]:
+            raise ValueError("Invalid Assistant request")
+        database = getattr(self.server.coordinator, "_database_path", None)
+        if not isinstance(database, Path):
+            self._send_error(HTTPStatus.SERVICE_UNAVAILABLE, "Assistant history unavailable")
+            return
+        binding = {
+            "user_id": session.principal_id, "tenant_id": session.tenant_id,
+            "project_id": None, "workload_id": None, "persona": persona,
+        }
+        owner = hashlib.sha256(json.dumps(binding, sort_keys=True).encode()).hexdigest()
+        root = database.parent / "assistant-conversations" / owner
+        with self.server.assistant_lock:
+            root.mkdir(parents=True, exist_ok=True, mode=0o700)
+
+            def load(path: Path) -> dict[str, Any]:
+                if path.is_symlink() or path.stat().st_size > 4_000_000:
+                    raise ValueError("Assistant history integrity unavailable")
+                value = json.loads(path.read_text(encoding="utf-8"))
+                if (not isinstance(value, dict) or value.get("binding") != binding
+                        or value.get("schema_version") != 1
+                        or value.get("conversation_id") != path.stem
+                        or not isinstance(value.get("messages"), list)
+                        or len(value["messages"]) > 200
+                        or not isinstance(value.get("version"), int)
+                        or isinstance(value.get("version"), bool)
+                        or value["version"] * 2 != len(value["messages"])):
+                    raise ValueError("Assistant history binding invalid")
+                for index, message in enumerate(value["messages"]):
+                    if (not isinstance(message, dict)
+                            or message.get("role") != ("user" if index % 2 == 0 else "assistant")
+                            or not isinstance(message.get("text"), str)
+                            or len(message["text"]) > 8000):
+                        raise ValueError("Assistant history message invalid")
+                return cast(dict[str, Any], value)
+
+            def save(value: dict[str, Any]) -> None:
+                destination = root / (str(value["conversation_id"]) + ".json")
+                temporary = root / (uuid.uuid4().hex + ".tmp")
+                try:
+                    descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                    with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+                        json.dump(value, stream, ensure_ascii=False, sort_keys=True)
+                        stream.flush()
+                        os.fsync(stream.fileno())
+                    os.replace(temporary, destination)
+                finally:
+                    temporary.unlink(missing_ok=True)
+
+            result: dict[str, Any] = {"binding": binding}
+            if operation == "list":
+                paths = list(root.glob("*.json"))
+                if len(paths) > 100:
+                    raise ValueError("Assistant history limit exceeded")
+                documents = [load(path) for path in paths]
+                result["conversations"] = [
+                    {key: document[key] for key in ("conversation_id", "created_at", "updated_at", "version")}
+                    for document in sorted(documents, key=lambda item: item["updated_at"], reverse=True)
+                ]
+            elif operation == "create":
+                if len(list(root.glob("*.json"))) >= 100:
+                    raise ValueError("Assistant conversation limit reached")
+                now = datetime.now(timezone.utc).isoformat()
+                document: dict[str, Any] = {"schema_version": 1, "binding": binding,
+                            "conversation_id": uuid.uuid4().hex, "version": 0,
+                            "created_at": now, "updated_at": now, "messages": []}
+                save(document)
+                result["conversation"] = document
+            else:
+                conversation_id = _required_string(body, "conversation_id")
+                if len(conversation_id) != 32 or any(c not in "0123456789abcdef" for c in conversation_id):
+                    raise ValueError("Invalid conversation identifier")
+                path = root / (conversation_id + ".json")
+                if not path.is_file():
+                    self._send_error(HTTPStatus.FORBIDDEN, "Conversation unavailable")
+                    return
+                document = load(path)
+                if operation == "delete":
+                    path.unlink()
+                    result["deleted"] = True
+                elif operation == "send":
+                    text = _required_string(body, "text")
+                    locale = body.get("locale")
+                    message_id = _required_string(body, "message_id")
+                    if len(text) > 8000 or locale not in {"tr", "en"} or len(message_id) > 128:
+                        raise ValueError("Invalid Assistant message")
+                    fingerprint = hashlib.sha256(json.dumps([text, locale]).encode()).hexdigest()
+                    messages = document["messages"]
+                    replay = next((m for m in messages if m.get("message_id") == message_id), None)
+                    if replay is not None:
+                        if replay.get("fingerprint") != fingerprint:
+                            raise ValueError("Assistant message replay mismatch")
+                    else:
+                        if (not isinstance(body.get("version"), int)
+                                or isinstance(body.get("version"), bool)
+                                or body["version"] != document["version"]):
+                            raise ValueError("Assistant conversation changed; reload required")
+                        if len(messages) >= 200:
+                            raise ValueError("Assistant message limit reached")
+                        answer = _assistant_guidance(text, cast(str, locale))
+                        now = datetime.now(timezone.utc).isoformat()
+                        messages.extend([
+                            {"role": "user", "text": text, "created_at": now,
+                             "message_id": message_id, "fingerprint": fingerprint},
+                            {"role": "assistant", "created_at": now, **answer},
+                        ])
+                        document["version"] += 1
+                        document["updated_at"] = now
+                        save(document)
+                    result["conversation"] = document
+                else:
+                    result["conversation"] = document
+            self._send_json(HTTPStatus.OK, result)
 
     def _complete_browser_callback(self, query: dict[str, list[str]]) -> None:
         identity = self._require_identity()
@@ -613,6 +761,64 @@ def _reference_store_for(
         root / "reference-assets.sqlite3",
         root / "reference-assets" / "blobs",
     )
+
+
+def _assistant_guidance(text: str, locale: str) -> dict[str, object]:
+    """Read-only product guidance, never a model/price/runtime authority.
+
+    Unconnected live and privileged sources remain UNKNOWN. Registry names are
+    identities, not claims of deployment or execution maturity. Chat messages
+    never become Knowledge records or founder memories.
+    """
+    from services.capability_registry import CAPABILITIES
+
+    tr = locale == "tr"
+    query = text.casefold()
+    status = "UNKNOWN"
+    sources: list[dict[str, str]] = []
+    answer = (
+        "UNKNOWN — Bu soruya ait güncel, yetkili kaynak bağlı değil. İş başlat alanında hedefinizi yazabilir, "
+        "Onaylar ve Kanıtlar üzerinden gerçek işlem durumunu inceleyebilirsiniz."
+        if tr else
+        "UNKNOWN — A current authorized source for this question is not connected. Describe your goal in "
+        "Start work; use Approvals and Evidence to inspect the actual operation."
+    )
+    if any(word in query for word in ("price", "cost", "free", "paid", "ücret", "fiyat", "maliyet")):
+        answer = (
+            "UNKNOWN — Güncel fiyat teklifi bağlı değil. Ücretsiz veya ücretli olduğunu varsaymayın. "
+            "İşi mevcut akışta hazırlayın; gerekli fiyat, bütçe ve onay kontrolleri çalıştırılmadan harcama yapılamaz."
+            if tr else
+            "UNKNOWN — No current quote is connected. Do not assume this is free or paid. Prepare the work "
+            "through the existing flow; required quote, budget and approval checks must precede spending."
+        )
+    elif any(word in query for word in ("factory", "fabrika", "workflow", "iş akışı", "video", "web sitesi")):
+        names = [item.display_name for item in CAPABILITIES if item.display_name.endswith("Factory")]
+        answer = (
+            "Kayıtlı fabrika adları: " + ", ".join(names) +
+            ". İş başlat alanında istediğiniz çıktıyı ve kısıtları belirtin. Dosyalar için mevcut ekleri kullanın. "
+            "Bu liste çalıştırılabilirlik veya yayına alınma kanıtı değildir."
+            if tr else
+            "Registered factory names: " + ", ".join(names) +
+            ". Describe the desired output and constraints in Start work. Use the existing attachments for files. "
+            "This list does not prove runtime availability or deployment."
+        )
+        status = "GUIDANCE"
+        sources = [{"source_id": "canonical-capability-registry", "visibility": "PUBLIC_PRODUCT",
+                    "source_version": hashlib.sha256(json.dumps(names).encode()).hexdigest()}]
+    elif any(word in query for word in ("ilaios", "help", "yardım", "publish", "yayın")):
+        answer = (
+            "ILAIOS'ta hedefinizi İş başlat alanına yazın. Mevcut dosya eklerini kullanın; "
+            "onay gerektiren işleri Onaylar'da, üretilen çıktıları Çıktılar'da, doğrulama kayıtlarını "
+            "Kanıtlar'da inceleyin. Yayınlama veya üretimin başarılı olduğunu yalnız ilgili sonuç kaydı doğrular."
+            if tr else
+            "Describe your goal in Start work. Use the existing file attachments; review work requiring "
+            "approval in Approvals, outputs in Artifacts, and verification records in Evidence. "
+            "Publishing or production success requires the corresponding result record."
+        )
+        status = "GUIDANCE"
+        sources = [{"source_id": "desktop-assistant-navigation-guidance", "visibility": "USER_DOCUMENTATION",
+                    "source_version": hashlib.sha256(answer.encode()).hexdigest()}]
+    return {"text": answer, "status": status, "provenance": sources}
 
 
 def _require_reference_store(

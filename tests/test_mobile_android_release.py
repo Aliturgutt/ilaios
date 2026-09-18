@@ -23,7 +23,6 @@ from services.store_release_certification import (
     build_submission_profile,
 )
 
-
 SHA = "a" * 64
 SOURCE = "b" * 40
 

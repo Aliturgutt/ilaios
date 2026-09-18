@@ -18,7 +18,6 @@ from services.identity import (
     VerifiedOIDCClaims,
 )
 
-
 NOW = datetime(2026, 8, 26, 2, 0, tzinfo=timezone.utc)
 CUTOFF = "2026-08-25T00:00:00+00:00"
 

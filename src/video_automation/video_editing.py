@@ -20,7 +20,8 @@ from .video_skills import EditKind, EditOperation, VideoSkillError
 class RegisteredAssetResolver(Protocol):
     """Narrow read boundary implemented by canonical M13 Asset Store."""
 
-    def require_registered_path(self, asset_id: str) -> Path: ...
+    def require_registered_path(self, asset_id: str) -> Path:
+        ...
 
 
 class VideoEditEngine(Protocol):
@@ -31,14 +32,16 @@ class VideoEditEngine(Protocol):
         output_path: str | Path,
         start_seconds: float,
         duration_seconds: float,
-    ) -> MediaCommandResult: ...
+    ) -> MediaCommandResult:
+        ...
 
     def concatenate(
         self,
         *,
         input_paths: tuple[str | Path, ...],
         output_path: str | Path,
-    ) -> MediaCommandResult: ...
+    ) -> MediaCommandResult:
+        ...
 
     def overlay(
         self,
@@ -48,7 +51,8 @@ class VideoEditEngine(Protocol):
         output_path: str | Path,
         x: int = 0,
         y: int = 0,
-    ) -> MediaCommandResult: ...
+    ) -> MediaCommandResult:
+        ...
 
     def normalize_video(
         self,
@@ -60,14 +64,16 @@ class VideoEditEngine(Protocol):
         fps: int,
         video_codec: str,
         audio_codec: str,
-    ) -> MediaCommandResult: ...
+    ) -> MediaCommandResult:
+        ...
 
     def mix_audio(
         self,
         *,
         input_paths: tuple[str | Path, ...],
         output_path: str | Path,
-    ) -> MediaCommandResult: ...
+    ) -> MediaCommandResult:
+        ...
 
     def crop(
         self,
@@ -78,7 +84,8 @@ class VideoEditEngine(Protocol):
         height: int,
         x: int = 0,
         y: int = 0,
-    ) -> MediaCommandResult: ...
+    ) -> MediaCommandResult:
+        ...
 
 
 @dataclass(frozen=True, slots=True)

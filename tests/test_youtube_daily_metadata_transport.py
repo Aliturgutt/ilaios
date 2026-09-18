@@ -13,8 +13,12 @@ from services.integrations.social_publishing_transports import (
     SocialHttpResponse,
     SocialPublicationTransportError,
 )
-from services.integrations.youtube_thumbnail_transport import YouTubeThumbnailUploadTransport
-from src.video_automation.publishing_package_preparation import PlatformPublishingPackage
+from services.integrations.youtube_thumbnail_transport import (
+    YouTubeThumbnailUploadTransport,
+)
+from src.video_automation.publishing_package_preparation import (
+    PlatformPublishingPackage,
+)
 
 
 class _Inner:

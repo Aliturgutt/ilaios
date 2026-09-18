@@ -81,8 +81,7 @@ class LocalTestVoiceProvider(VoiceProvider):
                 request,
                 error_code="invalid_request",
                 message=(
-                    "payload text must be non-blank without surrounding "
-                    "whitespace"
+                    "payload text must be non-blank without surrounding " "whitespace"
                 ),
             )
 
@@ -137,9 +136,7 @@ class LocalTestVoiceProvider(VoiceProvider):
                 f"wav_sha256={checksum}",
             )
         )
-        identity_sha256 = sha256(
-            identity_material.encode("utf-8")
-        ).hexdigest()
+        identity_sha256 = sha256(identity_material.encode("utf-8")).hexdigest()
 
         resolved_path = output_path.resolve()
 
@@ -187,8 +184,7 @@ class VoiceGenerationCoordinator:
 
         if not isinstance(provider, VoiceProvider):
             raise VoiceGenerationError(
-                "registered provider is not a VoiceProvider: "
-                f"{provider_name}"
+                "registered provider is not a VoiceProvider: " f"{provider_name}"
             )
 
         if not provider.capabilities.supports(_DEFAULT_OPERATION):
@@ -229,14 +225,12 @@ class VoiceGenerationCoordinator:
 
         if not isinstance(checksum_value, str):
             raise VoiceGenerationError(
-                "successful voice provider result requires string "
-                "checksum_sha256"
+                "successful voice provider result requires string " "checksum_sha256"
             )
 
         if not isinstance(source_reference_value, str):
             raise VoiceGenerationError(
-                "successful voice provider result requires string "
-                "source_reference"
+                "successful voice provider result requires string " "source_reference"
             )
 
         asset_path = Path(asset_path_value)
@@ -245,16 +239,14 @@ class VoiceGenerationCoordinator:
             payload = asset_path.read_bytes()
         except OSError as exc:
             raise VoiceGenerationError(
-                "successful voice provider asset is unreadable: "
-                f"{asset_path}"
+                "successful voice provider asset is unreadable: " f"{asset_path}"
             ) from exc
 
         actual_checksum = sha256(payload).hexdigest()
 
         if actual_checksum != checksum_value:
             raise VoiceGenerationError(
-                "successful voice provider checksum does not match "
-                "asset bytes"
+                "successful voice provider checksum does not match " "asset bytes"
             )
 
         identity_material = "\n".join(
@@ -266,10 +258,7 @@ class VoiceGenerationCoordinator:
             )
         )
 
-        asset_id = (
-            "voice-"
-            + sha256(identity_material.encode("utf-8")).hexdigest()[:24]
-        )
+        asset_id = "voice-" + sha256(identity_material.encode("utf-8")).hexdigest()[:24]
 
         asset = MediaAsset(
             asset_id=asset_id,
@@ -310,22 +299,9 @@ def _write_placeholder_wav(path: Path, text: str) -> None:
         sample = int(
             amplitude
             * (
-                0.65
-                * math.sin(
-                    2.0
-                    * math.pi
-                    * base_frequency
-                    * index
-                    / _SAMPLE_RATE
-                )
+                0.65 * math.sin(2.0 * math.pi * base_frequency * index / _SAMPLE_RATE)
                 + 0.35
-                * math.sin(
-                    2.0
-                    * math.pi
-                    * second_frequency
-                    * index
-                    / _SAMPLE_RATE
-                )
+                * math.sin(2.0 * math.pi * second_frequency * index / _SAMPLE_RATE)
             )
         )
 
@@ -358,6 +334,4 @@ def _require_non_blank(name: str, value: str) -> None:
         raise VoiceGenerationError(f"{name} must not be blank")
 
     if value != value.strip():
-        raise VoiceGenerationError(
-            f"{name} must not contain surrounding whitespace"
-        )
+        raise VoiceGenerationError(f"{name} must not contain surrounding whitespace")

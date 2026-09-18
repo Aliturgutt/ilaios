@@ -29,7 +29,6 @@ from services.web_app_auth_contract import (
 )
 from services.web_app_spec import WebAppResourceSpec, WebAppSpec
 
-
 NOW = datetime(2026, 8, 21, 6, 0, tzinfo=timezone.utc)
 
 

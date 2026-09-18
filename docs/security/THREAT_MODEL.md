@@ -1,15 +1,15 @@
 # ILAIOS — THREAT MODEL
 
-**Document Type:** Canonical Threat Model  
-**Format:** GitHub Markdown + ASCII attack-path diagrams  
-**Status:** Canonical Baseline v1.0 — Published in Repository  
-**Architecture Authority:** `SYSTEM_ARCHITECTURE.md`  
-**Product Authority:** `PRODUCT_REQUIREMENTS.md`  
-**Implementation Authority:** `IMPLEMENTATION_SPEC.md`  
-**Dependency Authority:** `DEPENDENCY_GRAPH.md`  
-**Security Control Authority:** `SECURITY_ARCHITECTURE.md`  
-**Data Authority:** `DATA_ARCHITECTURE.md`  
-**API Authority:** `API_CONTRACTS.md`  
+**Document Type:** Canonical Threat Model
+**Format:** GitHub Markdown + ASCII attack-path diagrams
+**Status:** Canonical Baseline v1.0 — Published in Repository
+**Architecture Authority:** `SYSTEM_ARCHITECTURE.md`
+**Product Authority:** `PRODUCT_REQUIREMENTS.md`
+**Implementation Authority:** `IMPLEMENTATION_SPEC.md`
+**Dependency Authority:** `DEPENDENCY_GRAPH.md`
+**Security Control Authority:** `SECURITY_ARCHITECTURE.md`
+**Data Authority:** `DATA_ARCHITECTURE.md`
+**API Authority:** `API_CONTRACTS.md`
 **Core Threat Principle:** **UNTRUSTED INPUT MAY INFLUENCE DECISIONS; IT MUST NEVER GRANT AUTHORITY**
 
 > This document defines the canonical adversaries, protected assets, trust boundaries, abuse cases, attack paths, security objectives, mandatory mitigations, detection/evidence requirements, and verification requirements for ILAIOS. It models threats against the target architecture. It does not claim that every mitigation is currently implemented, tested, deployed, or production-verified.
@@ -548,9 +548,9 @@ Cause bounded operational or product degradation.
 
 # 13. T-ID-001 — Credential Theft
 
-**Asset:** User account / Principal session  
-**Attacker:** External attacker  
-**Entry Surface:** Login/session  
+**Asset:** User account / Principal session
+**Attacker:** External attacker
+**Entry Surface:** Login/session
 **Attack Path:**
 
 ```text
@@ -591,7 +591,7 @@ user privileges
 
 # 14. T-ID-002 — Account Linking Takeover
 
-**Asset:** Canonical Principal  
+**Asset:** Canonical Principal
 **Attack Path:**
 
 ```text
@@ -687,8 +687,8 @@ Mitigation:
 
 # 18. T-AUTHZ-001 — IDOR / Object Reference Abuse
 
-**Asset:** Project/artifact/job/evidence  
-**Attacker:** Authenticated user  
+**Asset:** Project/artifact/job/evidence
+**Attacker:** Authenticated user
 **Attack:**
 
 ```text

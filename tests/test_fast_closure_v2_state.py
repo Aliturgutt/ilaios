@@ -8,7 +8,6 @@ import pytest
 
 from scripts.validate_fast_closure_v2_state import validate
 
-
 STATE_PATH = Path(".github/automation/fast-closure-v2-state.json")
 
 

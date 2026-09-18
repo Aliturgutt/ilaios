@@ -18,6 +18,7 @@ from src.video_automation.stock_source_adapters import (
     StockSearchRequest,
     StockSearchResult,
     StockSourceError,
+    StockSourceFailureCategory,
 )
 
 _SEARCH_URL = "https://api.unsplash.com/search/photos"
@@ -32,7 +33,10 @@ class UnsplashStockHttpTransport:
 
     def __init__(self, access_key: str, fetch_json: JsonFetcher | None = None) -> None:
         if not access_key or not access_key.strip() or access_key != access_key.strip():
-            raise StockSourceError("Unsplash access key must be non-blank and trimmed")
+            raise StockSourceError(
+                "Unsplash access key must be non-blank and trimmed",
+                diagnostic_category=StockSourceFailureCategory.CONFIGURATION,
+            )
         self._access_key = access_key
         self._fetch_json = fetch_json or _fetch_json
 
@@ -73,7 +77,9 @@ class UnsplashStockHttpTransport:
         remaining = _non_negative_int_header(headers, "x-ratelimit-remaining")
         reset = headers.get("x-ratelimit-reset")
         if remaining == 0 and not reset:
-            raise StockSourceError("Unsplash rate-limit reset is required at zero remaining")
+            raise StockSourceError(
+                "Unsplash rate-limit reset is required at zero remaining"
+            )
 
         return StockSearchResult(
             request=request,
@@ -93,7 +99,11 @@ def _candidate(photo: Any, retrieved_at: str) -> StockAssetCandidate | None:
     height = photo.get("height")
     if not isinstance(asset_id, str) or not asset_id.strip():
         return None
-    if not isinstance(links, dict) or not isinstance(urls, dict) or not isinstance(user, dict):
+    if (
+        not isinstance(links, dict)
+        or not isinstance(urls, dict)
+        or not isinstance(user, dict)
+    ):
         return None
     source_url = links.get("html")
     media_url = urls.get("full")
@@ -161,8 +171,14 @@ def _fetch_json(url: str, access_key: str) -> tuple[dict[str, Any], dict[str, st
             raw_payload: object = json.load(response)
             headers = {key.casefold(): value for key, value in response.headers.items()}
     except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as exc:
-        raise StockSourceError("Unsplash HTTP request failed closed") from exc
+        raise StockSourceError(
+            "Unsplash HTTP request failed closed",
+            diagnostic_category=StockSourceFailureCategory.HTTP_REQUEST,
+        ) from exc
     if not isinstance(raw_payload, dict):
-        raise StockSourceError("Unsplash response must be a JSON object")
+        raise StockSourceError(
+            "Unsplash response must be a JSON object",
+            diagnostic_category=StockSourceFailureCategory.RESPONSE_CONTRACT,
+        )
     payload = cast(dict[str, Any], raw_payload)
     return payload, headers

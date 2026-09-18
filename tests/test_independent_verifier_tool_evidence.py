@@ -14,7 +14,12 @@ from services.independent_verifier_execution import (
     IndependentVerifierExecutor,
 )
 from services.p0_runtime_composition import compose_p0_runtime
-from services.runtime import BlastRadiusBudget, ExecutionGrant, GovernedRuntime, GrantPolicy
+from services.runtime import (
+    BlastRadiusBudget,
+    ExecutionGrant,
+    GovernedRuntime,
+    GrantPolicy,
+)
 from services.runtime.browser_tool_adapter import BROWSER_AGENT_ID, BROWSER_TOOL_NAME
 from services.runtime.security_agent_adapters import SecurityAgentRuntimeAdapters
 

@@ -45,11 +45,17 @@ class ManagedImageGateway:
         provider: ImageGenerationProvider,
     ) -> ProviderResult:
         if request.operation != "generate_image":
-            raise ManagedImageGatewayError("managed image gateway requires generate_image")
+            raise ManagedImageGatewayError(
+                "managed image gateway requires generate_image"
+            )
         if not provider.capabilities.is_paid:
-            raise ManagedImageGatewayError("managed image fallback requires paid provider")
+            raise ManagedImageGatewayError(
+                "managed image fallback requires paid provider"
+            )
         if provider.capabilities.provider_name != request.provider_name:
-            raise ManagedImageGatewayError("image provider does not match governed request")
+            raise ManagedImageGatewayError(
+                "image provider does not match governed request"
+            )
 
         side_effect_ledger = ProviderSideEffectLedger(self._credit_store)
         try:

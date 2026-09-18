@@ -38,6 +38,7 @@ from services.runtime import (
     ExecutionGrant,
     SchedulingError,
 )
+from src.video_automation.governed_stock_selection import GovernedStockSelectionError
 from src.video_automation.models import JobState
 
 
@@ -1137,6 +1138,7 @@ class ExecutionCoordinator:
                 "execution" if adapter_started else "grant",
                 next_attempt,
             )
+            payload.update(_governed_stock_diagnostic_metadata(error))
             if latest_state in {
                 ExecutionState.EXECUTING,
                 ExecutionState.VERIFYING,
@@ -3130,6 +3132,13 @@ def _error_payload(
         "attempt": attempt,
         "evidence_id": None,
     }
+
+
+def _governed_stock_diagnostic_metadata(error: Exception) -> dict[str, str]:
+    """Persist only typed diagnostics emitted by the governed-stock boundary."""
+    if not isinstance(error, GovernedStockSelectionError):
+        return {}
+    return error.diagnostic_metadata()
 
 
 def _load_json_object(raw: object, label: str) -> dict[str, object]:

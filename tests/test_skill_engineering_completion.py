@@ -9,7 +9,6 @@ from services.skill_engineering_catalog import (
 )
 from services.skill_taxonomy import resolve_logical_skill
 
-
 REQUIRED_SOURCE_PACKAGES = {
     "skill-create": "skill-engineering/create",
     "skill-lint": "skill-engineering/lint",

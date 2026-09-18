@@ -16,6 +16,17 @@ from typing import Protocol
 class StockSourceError(ValueError):
     """Raised when stock-source data violates the governed contract."""
 
+    def __init__(
+        self,
+        message: str,
+        *,
+        diagnostic_category: StockSourceFailureCategory | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.diagnostic_category = (
+            diagnostic_category or StockSourceFailureCategory.UNKNOWN
+        )
+
 
 class StockProvider(str, Enum):
     PEXELS = "pexels"
@@ -24,6 +35,16 @@ class StockProvider(str, Enum):
     WIKIMEDIA = "wikimedia"
     NASA = "nasa"
     INTERNET_ARCHIVE = "internet_archive"
+
+
+class StockSourceFailureCategory(str, Enum):
+    """Allowlisted, non-sensitive classifications for provider failures."""
+
+    CONFIGURATION = "configuration"
+    HTTP_REQUEST = "http_request"
+    REQUEST_CONTRACT = "request_contract"
+    RESPONSE_CONTRACT = "response_contract"
+    UNKNOWN = "unknown"
 
 
 @dataclass(frozen=True, slots=True)
@@ -155,7 +176,8 @@ class _BoundProviderAdapter:
         if request.provider is not self.provider:
             raise StockSourceError(
                 f"{self.provider.value} adapter cannot execute "
-                f"{request.provider.value} request"
+                f"{request.provider.value} request",
+                diagnostic_category=StockSourceFailureCategory.REQUEST_CONTRACT,
             )
         result = self._transport.search(
             provider=self.provider,
@@ -165,9 +187,15 @@ class _BoundProviderAdapter:
             max_results=request.max_results,
         )
         if result.request != request:
-            raise StockSourceError("transport result request must match adapter request")
+            raise StockSourceError(
+                "transport result request must match adapter request",
+                diagnostic_category=StockSourceFailureCategory.RESPONSE_CONTRACT,
+            )
         if result.request.provider is not self.provider:
-            raise StockSourceError("transport result provider must match adapter provider")
+            raise StockSourceError(
+                "transport result provider must match adapter provider",
+                diagnostic_category=StockSourceFailureCategory.RESPONSE_CONTRACT,
+            )
         return result
 
 

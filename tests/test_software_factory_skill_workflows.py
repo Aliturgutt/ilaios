@@ -4,7 +4,12 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 
-from services.software_factory_skills import SkillExecutionRequest, SkillExecutor, SkillRegistry, default_skills_root
+from services.software_factory_skills import (
+    SkillExecutionRequest,
+    SkillExecutor,
+    SkillRegistry,
+    default_skills_root,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 SKILLS = default_skills_root(ROOT)

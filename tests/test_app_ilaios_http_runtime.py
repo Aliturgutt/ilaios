@@ -33,8 +33,8 @@ from services.google_web_canonical_identity import GoogleWebCanonicalIdentityErr
 from services.google_web_oauth import (
     GoogleWebOAuthExpiredTokenError,
     GoogleWebOAuthIDTokenVerificationError,
-    GoogleWebOAuthIssuerAudienceError,
     GoogleWebOAuthIssuedAtFutureError,
+    GoogleWebOAuthIssuerAudienceError,
     GoogleWebOAuthJwksResolutionError,
     GoogleWebOAuthJWTDecodeError,
     GoogleWebOAuthLifetimeExceededError,

@@ -30,6 +30,24 @@ def test_amateur_video_prompt_routes_to_video_and_extracts_duration() -> None:
     assert compiled.canonical_objective == compiled.normalized_objective
 
 
+def test_video_about_named_program_does_not_route_to_software() -> None:
+    compiled = compile_prompt(
+        "NASA Artemis Ay program\u0131 hakk\u0131nda 30 saniyelik bir video olu\u015ftur"
+    )
+
+    assert compiled.domain is PromptDomain.VIDEO
+    assert compiled.domains == (PromptDomain.VIDEO,)
+    assert compiled.suggested_capabilities == (
+        "ilaios.capability.video-media-factory",
+    )
+
+
+def test_program_prompt_still_routes_to_software() -> None:
+    compiled = compile_prompt("customer records program build")
+
+    assert compiled.domain is PromptDomain.SOFTWARE
+
+
 def test_software_prompt_routes_to_software() -> None:
     compiled = compile_prompt("müşteri taleplerini takip eden basit bir yazılım yap")
 

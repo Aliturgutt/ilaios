@@ -122,9 +122,7 @@ class CodeEntity:
         if not value or not value.strip():
             raise ValueError(f"{field_name} must not be empty")
         if value != value.strip():
-            raise ValueError(
-                f"{field_name} must not contain surrounding whitespace"
-            )
+            raise ValueError(f"{field_name} must not contain surrounding whitespace")
 
     @property
     def id(self) -> str:
