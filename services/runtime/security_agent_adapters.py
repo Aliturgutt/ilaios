@@ -146,7 +146,7 @@ class SecurityAgentRuntimeAdapters:
                 "InfrastructureSec skill is not authorized"
             )
         report = self._factory.scan_repository(scope)
-        return _report_json(_filter_report(report, {"infrastructure"}))
+        return _report_json(_filter_report(report, {"infrastructure", "container"}))
 
     def _web_api(self, payload: dict[str, Any]) -> dict[str, Any]:
         skill_id = _skill_id(payload, default=_PRIMARY_WEB_API_SKILL)

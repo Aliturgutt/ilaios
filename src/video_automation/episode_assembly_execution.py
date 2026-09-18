@@ -11,6 +11,8 @@ from types import MappingProxyType
 from typing import Protocol
 
 from .episode_assembly_request_planning import EpisodeAssemblyRequest
+from .ffmpeg_media_engine import FfmpegMediaEngine
+from .final_mastering import Final1080pMasterer, FinalMasteringError
 from .media_technical_validation import (
     EpisodeMediaTechnicalValidationManifest,
     MediaTechnicalValidationStatus,
@@ -220,8 +222,16 @@ class EpisodeAssemblyArtifact:
 
 
 class EpisodeAssemblyExecutionCoordinator:
-    def __init__(self, executor: EpisodeAssemblyExecutor) -> None:
+    def __init__(
+        self,
+        executor: EpisodeAssemblyExecutor,
+        *,
+        final_masterer: Final1080pMasterer | None = None,
+    ) -> None:
         self._executor = executor
+        if final_masterer is None and isinstance(executor, FfmpegEpisodeAssemblyExecutor):
+            final_masterer = Final1080pMasterer(FfmpegMediaEngine(timeout_seconds=600))
+        self._final_masterer = final_masterer
 
     def execute(
         self,
@@ -261,8 +271,56 @@ class EpisodeAssemblyExecutionCoordinator:
             raise EpisodeAssemblyExecutionError(
                 "executor output_path does not match requested output_path"
             )
-        body = _read_output(output)
-        digest = sha256(body).hexdigest()
+
+        source_body = _read_output(output)
+        source_digest = sha256(source_body).hexdigest()
+        final_output = output
+        body = source_body
+        digest = source_digest
+        final_width = request.output_policy.width
+        final_height = request.output_policy.height
+        mastering_metadata: dict[str, str] = {}
+        if self._final_masterer is not None:
+            master_output = output.with_name(f"{output.stem}.master{output.suffix}")
+            try:
+                receipt = self._final_masterer.master(
+                    input_path=output,
+                    output_path=master_output,
+                    fps=request.output_policy.frame_rate,
+                    video_codec=request.output_policy.video_codec,
+                    audio_codec=request.output_policy.audio_codec,
+                )
+            except FinalMasteringError as exc:
+                raise EpisodeAssemblyExecutionError(
+                    f"final mastering failed: {exc}"
+                ) from exc
+            if receipt.provider_cost_usd != 0.0:
+                raise EpisodeAssemblyExecutionError(
+                    "final mastering must not add external provider cost"
+                )
+            final_output = Path(receipt.output_path)
+            body = _read_output(final_output)
+            digest = sha256(body).hexdigest()
+            if digest != receipt.sha256_hex or len(body) != receipt.byte_length:
+                raise EpisodeAssemblyExecutionError(
+                    "final mastering receipt does not match output artifact"
+                )
+            final_width = receipt.output_width
+            final_height = receipt.output_height
+            mastering_metadata = {
+                "final_mastering": "upgraded" if receipt.upgraded else "preserved",
+                "final_mastering_source_sha256": source_digest,
+                "final_mastering_source_resolution": (
+                    f"{receipt.source_width}x{receipt.source_height}"
+                ),
+                "final_mastering_output_resolution": (
+                    f"{receipt.output_width}x{receipt.output_height}"
+                ),
+                "final_mastering_sha256": receipt.sha256_hex,
+                "final_mastering_byte_length": str(receipt.byte_length),
+                "final_mastering_provider_cost_usd": "0",
+            }
+
         material = "|".join(
             (
                 request.request_id,
@@ -277,19 +335,20 @@ class EpisodeAssemblyExecutionCoordinator:
         metadata["technical_validation_manifest_id"] = (
             manifest.technical_validation_manifest_id
         )
+        metadata.update(mastering_metadata)
         return EpisodeAssemblyArtifact(
             artifact_id=f"episode-assembly-artifact-{sha256(material.encode()).hexdigest()[:16]}",
             request_id=request.request_id,
             episode_id=request.episode_id,
             executor_id=self._executor.executor_id,
-            output_path=str(output),
+            output_path=str(final_output),
             sha256_hex=digest,
             byte_length=len(body),
             container_format=request.output_policy.container_format,
             video_codec=request.output_policy.video_codec,
             audio_codec=request.output_policy.audio_codec,
-            width=request.output_policy.width,
-            height=request.output_policy.height,
+            width=final_width,
+            height=final_height,
             frame_rate=request.output_policy.frame_rate,
             source_asset_ids=tuple(c.asset_id for c in clips),
             metadata=metadata,

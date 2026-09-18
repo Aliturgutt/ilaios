@@ -287,6 +287,17 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
     return submission;
   }
 
+  Future<PromptRefinementPreview> _refinePrompt(
+    String prompt,
+    PromptRefinementMode mode,
+  ) {
+    final client = _client;
+    if (client == null) {
+      throw const ControlPlaneClientException('Control plane is unavailable');
+    }
+    return client.refinePrompt(prompt, mode);
+  }
+
   Future<String> _saveArtifact(EvidenceRecord record) async {
     final client = _client;
     if (client == null) {
@@ -485,6 +496,7 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
           _identityClient == null || _identityProviders.isEmpty ? null : _signIn,
       onLogout: _userSession == null ? null : _logout,
       onPromptSubmit: promptEnabled ? _submitPrompt : null,
+      onPromptRefine: _client == null ? null : _refinePrompt,
       onSaveArtifact: _client == null ? null : _saveArtifact,
       onFetchLiState: _userSession?.liFounder == true ? _fetchLiState : null,
       onFetchLiMemories:

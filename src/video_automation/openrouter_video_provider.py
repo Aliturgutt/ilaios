@@ -220,6 +220,7 @@ class OpenRouterVideoGenerationProvider:
         try:
             self._validate_request(request)
             model_id, item = _parse_single_item_payload(request.payload)
+            _required_integral_duration(item, "duration_seconds")
             _require_free_model_id(model_id)
         except OpenRouterVideoProviderError as exc:
             return _failure_result(request, "invalid_request", str(exc))
@@ -228,7 +229,7 @@ class OpenRouterVideoGenerationProvider:
             return _failure_result(request, "invalid_request", message)
 
         try:
-            catalog_evidence = self._catalog_zero_cost_evidence(model_id)
+            catalog_evidence = self._catalog_zero_cost_evidence(model_id, item=item)
         except OpenRouterVideoProviderError as exc:
             code, message = _coded_error(str(exc), "FREE_VIDEO_CATALOG_UNAVAILABLE")
             return _failure_result(request, code, message)
@@ -300,7 +301,7 @@ class OpenRouterVideoGenerationProvider:
             ),
             "catalog_zero_cost": True,
             "catalog_zero_cost_evidence_json": json.dumps(
-                dict(catalog_evidence), sort_keys=True, separators=(",", ":")
+                _sanitize_payload(catalog_evidence), sort_keys=True, separators=(",", ":")
             ),
             "catalog_zero_cost_evidence_source": str(
                 catalog_evidence.get("source", "openrouter_videos_models")
@@ -317,8 +318,13 @@ class OpenRouterVideoGenerationProvider:
             metadata=metadata,
         )
 
-    def _catalog_zero_cost_evidence(self, model_id: str) -> Mapping[str, object]:
-        """Prove free-variant pricing and current video capability before POST."""
+    def _catalog_zero_cost_evidence(
+        self,
+        model_id: str,
+        *,
+        item: Mapping[str, object],
+    ) -> Mapping[str, object]:
+        """Prove free-variant pricing and current video shape capability before POST."""
 
         try:
             response = self._transport.get_json(
@@ -360,6 +366,11 @@ class OpenRouterVideoGenerationProvider:
                 base_model = cast(Mapping[str, object], candidate)
 
         if exact_model is not None:
+            shape_evidence = _validate_catalog_shape(
+                exact_model,
+                item,
+                default_resolution=self._default_resolution,
+            )
             pricing = exact_model.get("pricing_skus")
             if not isinstance(pricing, Mapping) or not pricing:
                 raise OpenRouterVideoProviderError(
@@ -387,6 +398,7 @@ class OpenRouterVideoGenerationProvider:
                     "model_id": model_id,
                     "catalog_zero_cost": True,
                     "pricing_skus": normalized_pricing,
+                    "shape": shape_evidence,
                 }
             )
 
@@ -397,6 +409,11 @@ class OpenRouterVideoGenerationProvider:
                 f"{model_id}"
             )
 
+        shape_evidence = _validate_catalog_shape(
+            base_model,
+            item,
+            default_resolution=self._default_resolution,
+        )
         variant_evidence = self._free_variant_zero_cost_evidence(model_id)
         return MappingProxyType(
             {
@@ -405,6 +422,7 @@ class OpenRouterVideoGenerationProvider:
                 "video_catalog_model_id": base_model_id,
                 "catalog_zero_cost": True,
                 "variant_pricing": variant_evidence["pricing"],
+                "shape": shape_evidence,
             }
         )
 
@@ -790,6 +808,69 @@ def _build_openrouter_request_body(
             raise OpenRouterVideoProviderError("generation item seed must be an integer")
         body["seed"] = seed
     return MappingProxyType(body)
+
+
+def _validate_catalog_shape(
+    model: Mapping[str, object],
+    item: Mapping[str, object],
+    *,
+    default_resolution: str,
+) -> Mapping[str, object]:
+    aspect_ratio = _required_string(item, "aspect_ratio")
+    duration = _required_integral_duration(item, "duration_seconds")
+    raw_resolution = item.get("resolution")
+    if raw_resolution is None:
+        resolution = default_resolution
+    elif isinstance(raw_resolution, str) and raw_resolution.strip():
+        resolution = raw_resolution
+    else:
+        raise OpenRouterVideoProviderError("generation item resolution must be non-empty")
+
+    ratios = model.get("supported_aspect_ratios")
+    durations = model.get("supported_durations")
+    resolutions = model.get("supported_resolutions")
+    if not isinstance(ratios, list) or not ratios:
+        raise OpenRouterVideoProviderError(
+            "FREE_VIDEO_SHAPE_UNPROVEN: catalog does not publish supported_aspect_ratios"
+        )
+    if not isinstance(durations, list) or not durations:
+        raise OpenRouterVideoProviderError(
+            "FREE_VIDEO_SHAPE_UNPROVEN: catalog does not publish supported_durations"
+        )
+    if not isinstance(resolutions, list) or not resolutions:
+        raise OpenRouterVideoProviderError(
+            "FREE_VIDEO_SHAPE_UNPROVEN: catalog does not publish supported_resolutions"
+        )
+    normalized_ratios = tuple(str(value) for value in ratios)
+    normalized_resolutions = tuple(str(value) for value in resolutions)
+    normalized_durations = tuple(
+        int(value)
+        for value in durations
+        if isinstance(value, int) and not isinstance(value, bool) and value > 0
+    )
+    if len(normalized_durations) != len(durations):
+        raise OpenRouterVideoProviderError(
+            "FREE_VIDEO_SHAPE_UNPROVEN: catalog supported_durations is malformed"
+        )
+    if aspect_ratio not in normalized_ratios:
+        raise OpenRouterVideoProviderError(
+            f"FREE_VIDEO_SHAPE_UNSUPPORTED: catalog does not support aspect ratio {aspect_ratio}"
+        )
+    if duration not in normalized_durations:
+        raise OpenRouterVideoProviderError(
+            f"FREE_VIDEO_SHAPE_UNSUPPORTED: catalog does not support duration {duration}s"
+        )
+    if resolution not in normalized_resolutions:
+        raise OpenRouterVideoProviderError(
+            f"FREE_VIDEO_SHAPE_UNSUPPORTED: catalog does not support resolution {resolution}"
+        )
+    return MappingProxyType(
+        {
+            "aspect_ratio": aspect_ratio,
+            "duration_seconds": duration,
+            "resolution": resolution,
+        }
+    )
 
 
 def _normalize_poll_observation(

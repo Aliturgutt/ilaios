@@ -107,6 +107,7 @@ from src.video_automation.shot_request_planning import (
 )
 
 from .desktop_video_runtime import requested_duration
+from .video_product_intelligence import derive_video_product_spec
 from .video_runtime import DeterministicLocalVideoRuntime, VideoRuntimeError
 
 ObjectiveResolver = Callable[[str], str]
@@ -339,6 +340,7 @@ class ProviderBackedDesktopVideoRuntime(DeterministicLocalVideoRuntime):
                 "provider_cost_ceiling_microusd": outcome[
                     "provider_cost_ceiling_microusd"
                 ],
+                "requested_aspect_ratio": outcome["requested_aspect_ratio"],
                 "duration_seconds": outcome["duration_seconds"],
                 "width": outcome["width"],
                 "height": outcome["height"],
@@ -367,6 +369,7 @@ class ProviderBackedDesktopVideoRuntime(DeterministicLocalVideoRuntime):
                 "provider_cost_ceiling_microusd": outcome[
                     "provider_cost_ceiling_microusd"
                 ],
+                "requested_aspect_ratio": outcome["requested_aspect_ratio"],
                 "latency_ms": latency_ms,
                 "latency_budget_ms": latency_budget_ms,
                 "latency_passed": True,
@@ -403,6 +406,8 @@ class ProviderBackedDesktopVideoRuntime(DeterministicLocalVideoRuntime):
         objective: str,
         duration_seconds: float,
     ) -> dict[str, object]:
+        product_spec = derive_video_product_spec(objective)
+        output_width, output_height = _output_dimensions(product_spec.aspect_ratio)
         episode_id = f"{job_id}-episode"
         durations = _partition_duration(duration_seconds)
         prompts = _shot_prompts(objective, len(durations))
@@ -436,7 +441,7 @@ class ProviderBackedDesktopVideoRuntime(DeterministicLocalVideoRuntime):
         compiler = ShotPromptCompiler()
         request_planner = ShotGenerationRequestPlanner(
             ShotGenerationPolicy(
-                aspect_ratio="16:9",
+                aspect_ratio=product_spec.aspect_ratio,
                 frames_per_second=24,
                 output_count=1,
             )
@@ -584,8 +589,8 @@ class ProviderBackedDesktopVideoRuntime(DeterministicLocalVideoRuntime):
                 container_format="mp4",
                 video_codec="libx264",
                 audio_codec="aac",
-                width=1920,
-                height=1080,
+                width=output_width,
+                height=output_height,
                 frame_rate=24,
             ),
         )
@@ -606,6 +611,8 @@ class ProviderBackedDesktopVideoRuntime(DeterministicLocalVideoRuntime):
         observation = assembled_technical.observation
         if abs(observation.duration_seconds - duration_seconds) > 1.0:
             raise VideoRuntimeError("assembled video duration differs from user request")
+        if observation.width != output_width or observation.height != output_height:
+            raise VideoRuntimeError("assembled video dimensions differ from requested aspect ratio")
         if observation.audio_stream_count < 1:
             raise VideoRuntimeError("assembled finished product is missing its audio stream")
 
@@ -636,6 +643,7 @@ class ProviderBackedDesktopVideoRuntime(DeterministicLocalVideoRuntime):
             "provider_cost_zero": cost_evidence.zero,
             "provider_cost_microusd": cost_evidence.actual_microusd,
             "provider_cost_ceiling_microusd": cost_evidence.ceiling_microusd,
+            "requested_aspect_ratio": product_spec.aspect_ratio,
             "duration_seconds": observation.duration_seconds,
             "width": observation.width,
             "height": observation.height,
@@ -672,6 +680,18 @@ class UnavailableProviderVideoRuntime(DeterministicLocalVideoRuntime):
     ) -> dict[str, object]:
         del request_id, job_id, grant_id, now
         raise VideoRuntimeError(self._reason)
+
+
+def _output_dimensions(aspect_ratio: str) -> tuple[int, int]:
+    dimensions = {
+        "16:9": (1920, 1080),
+        "9:16": (1080, 1920),
+        "1:1": (1080, 1080),
+    }
+    try:
+        return dimensions[aspect_ratio]
+    except KeyError as error:
+        raise VideoRuntimeError(f"unsupported video aspect ratio: {aspect_ratio}") from error
 
 
 def _partition_duration(duration: float) -> tuple[float, ...]:

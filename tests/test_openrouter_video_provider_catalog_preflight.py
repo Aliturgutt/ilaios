@@ -73,7 +73,11 @@ class _CatalogTransport(OpenRouterTransport):
         raise AssertionError("catalog preflight test must not retrieve media")
 
 
-def _request(model_id: str = SEEDANCE_FREE_MODEL_ID) -> ProviderRequest:
+def _request(
+    model_id: str = SEEDANCE_FREE_MODEL_ID,
+    *,
+    aspect_ratio: str = "16:9",
+) -> ProviderRequest:
     item = {
         "sequence_number": 1,
         "request_id": "request-catalog-test",
@@ -81,7 +85,7 @@ def _request(model_id: str = SEEDANCE_FREE_MODEL_ID) -> ProviderRequest:
         "shot_id": "shot-catalog-test",
         "prompt_text": "cinematic futuristic city in rain",
         "duration_seconds": 4,
-        "aspect_ratio": "16:9",
+        "aspect_ratio": aspect_ratio,
         "frames_per_second": 24,
         "output_count": 1,
         "seed": None,
@@ -103,10 +107,20 @@ def _request(model_id: str = SEEDANCE_FREE_MODEL_ID) -> ProviderRequest:
 def _catalog_entry(
     model_id: str = SEEDANCE_FREE_MODEL_ID,
     pricing_skus: object = None,
+    *,
+    supported_aspect_ratios: object = None,
 ) -> dict[str, object]:
     if pricing_skus is None:
         pricing_skus = {"per-video-second": "0"}
-    return {"id": model_id, "pricing_skus": pricing_skus}
+    if supported_aspect_ratios is None:
+        supported_aspect_ratios = ["16:9", "9:16", "1:1"]
+    return {
+        "id": model_id,
+        "pricing_skus": pricing_skus,
+        "supported_aspect_ratios": supported_aspect_ratios,
+        "supported_durations": [4, 5, 6],
+        "supported_resolutions": ["480p", "720p"],
+    }
 
 
 def test_exact_catalog_model_with_explicit_zero_price_allows_post() -> None:
@@ -125,6 +139,32 @@ def test_exact_catalog_model_with_explicit_zero_price_allows_post() -> None:
     assert result.metadata["catalog_zero_cost"] is True
     assert result.metadata["catalog_zero_cost_evidence_source"] == "openrouter_videos_models"
     assert "test-secret" not in str(result)
+
+
+def test_catalog_supported_vertical_and_square_shapes_allow_post() -> None:
+    for ratio in ("9:16", "1:1"):
+        transport = _CatalogTransport(catalog_payload={"data": [_catalog_entry()]})
+        result = OpenRouterVideoGenerationProvider(
+            "test-secret",
+            transport=transport,
+        ).execute(_request(aspect_ratio=ratio))
+        assert result.success
+        assert transport.post_count == 1
+
+
+def test_catalog_unsupported_shape_blocks_before_post() -> None:
+    transport = _CatalogTransport(
+        catalog_payload={
+            "data": [_catalog_entry(supported_aspect_ratios=["16:9", "1:1"])]
+        }
+    )
+    result = OpenRouterVideoGenerationProvider(
+        "test-secret",
+        transport=transport,
+    ).execute(_request(aspect_ratio="9:16"))
+    assert not result.success
+    assert result.error_code == "FREE_VIDEO_SHAPE_UNSUPPORTED"
+    assert transport.post_count == 0
 
 
 def test_base_paid_model_does_not_satisfy_exact_free_alias() -> None:
@@ -180,8 +220,10 @@ def test_observed_provider_cost_catalog_price_blocks_before_post() -> None:
 
 
 def _assert_malformed_pricing_blocks(pricing_skus: object) -> None:
-    entry: dict[str, object] = {"id": SEEDANCE_FREE_MODEL_ID}
-    if pricing_skus is not None:
+    entry = _catalog_entry()
+    if pricing_skus is None:
+        entry.pop("pricing_skus")
+    else:
         entry["pricing_skus"] = pricing_skus
     transport = _CatalogTransport(catalog_payload={"data": [entry]})
 
