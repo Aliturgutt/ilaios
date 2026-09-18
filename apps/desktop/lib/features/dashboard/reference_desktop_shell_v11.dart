@@ -104,6 +104,18 @@ class _ReferenceDesktopShellV11State extends State<ReferenceDesktopShellV11> {
   DesktopSection _section = DesktopSection.home;
   bool _assistantOpen = false;
   bool _assistantMounted = false;
+  final _assistantTriggerFocus = FocusNode(debugLabel: 'Assistant trigger');
+
+  @override
+  void dispose() {
+    _assistantTriggerFocus.dispose();
+    super.dispose();
+  }
+
+  void _closeAssistant() {
+    setState(() => _assistantOpen = false);
+    _assistantTriggerFocus.requestFocus();
+  }
 
   @override
   void didUpdateWidget(covariant ReferenceDesktopShellV11 oldWidget) {
@@ -214,6 +226,7 @@ class _ReferenceDesktopShellV11State extends State<ReferenceDesktopShellV11> {
                       snapshot: widget.operationalSnapshot,
                       onSelected: _select,
                       onAssistant: widget.userSession == null ? null : _toggleAssistant,
+                      assistantFocusNode: _assistantTriggerFocus,
                     ),
                     Container(
                       width: 1,
@@ -243,7 +256,8 @@ class _ReferenceDesktopShellV11State extends State<ReferenceDesktopShellV11> {
                       child: AssistantOverlay(
                         key: ValueKey('assistant-${widget.userSession!.sessionId}'),
                         session: widget.userSession!,
-                        onClose: () => setState(() => _assistantOpen = false),
+                        onClose: _closeAssistant,
+                        isOpen: _assistantOpen,
                         onRequest: widget.onAssistantRequest,
                         onFetchLiState: widget.onFetchLiState,
                         onFetchLiMemories: widget.onFetchLiMemories,
@@ -281,6 +295,7 @@ class _CanonicalSidebar extends StatelessWidget {
     required this.snapshot,
     required this.onSelected,
     required this.onAssistant,
+    required this.assistantFocusNode,
   });
 
   static const _darkLogo = '../../brand/assets/02-ilaios-primary-horizontal-dark.jpg';
@@ -300,6 +315,7 @@ class _CanonicalSidebar extends StatelessWidget {
   final OperationalSnapshot snapshot;
   final ValueChanged<DesktopSection> onSelected;
   final VoidCallback? onAssistant;
+  final FocusNode assistantFocusNode;
 
   Widget _logoWidget(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
@@ -357,6 +373,7 @@ class _CanonicalSidebar extends StatelessWidget {
       Material(color: Colors.transparent,
         borderRadius: BorderRadius.circular(8),
         child: InkWell(key: const Key('nav-assistant'), onTap: onAssistant,
+          focusNode: assistantFocusNode,
           child: SizedBox(height: 54, child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14),
             child: Row(children: [

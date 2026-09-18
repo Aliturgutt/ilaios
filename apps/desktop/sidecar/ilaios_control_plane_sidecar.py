@@ -15,15 +15,16 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from services.agent_readiness_store import AgentReadinessStore
-from services.company_knowledge_desktop import (
-    CompanyKnowledgeDesktopIdentityHTTPServer,
-    TenantCompanyKnowledgeRegistry,
-)
+from services.assistant_conversation_runtime import AssistantConversationRuntime
+from services.company_knowledge_desktop import TenantCompanyKnowledgeRegistry
 from services.control_plane.api import ControlPlane, ControlPlaneConfig
 from services.control_plane.live_state import LiveStateTransport
 from services.control_plane.migrations import current_schema_version
 from services.control_plane.server import ControlPlaneHTTPServer
 from services.control_plane.workflows import WorkflowStore, WorkflowStoreConfig
+from services.desktop_assistant_composition import (
+    AssistantRuntimeCompanyKnowledgeDesktopIdentityHTTPServer,
+)
 from services.desktop_execution_coordinator import DesktopExecutionCoordinator
 from services.desktop_oidc_windows import DesktopIdentityError, DesktopOIDCService
 from services.evidence import EvidenceStore
@@ -136,6 +137,16 @@ def main(argv: Sequence[str] | None = None) -> int:
             if ai_configuration is not None
             else None
         ),
+    )
+    assistant_runtime = (
+        AssistantConversationRuntime(
+            named_executor=p0_agents.named_executor,
+            provider_adapter=ai_configuration.adapter,
+            grants=grant_policy,
+            request_cost_zero_verified=ai_configuration.request_cost_zero_verified,
+        )
+        if ai_configuration is not None
+        else None
     )
     web_ai_covered = False
     if ai_configuration is not None:
@@ -281,7 +292,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         control_server.server_close()
         raise SystemExit(f"Desktop identity configuration rejected: {error}") from error
 
-    identity_server = CompanyKnowledgeDesktopIdentityHTTPServer(
+    identity_server = AssistantRuntimeCompanyKnowledgeDesktopIdentityHTTPServer(
         ("127.0.0.1", 0),
         bearer_token=token,
         identity=identity,
@@ -289,6 +300,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         reference_assets=reference_assets,
         source_media=source_media,
         company_knowledge=company_knowledge,
+        assistant_runtime=assistant_runtime,
     )
     identity_host, identity_port = identity_server.server_address[:2]
 
@@ -314,6 +326,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         "p0_ai_runtime_configured": p0_agents.ai_configured,
         "p0_ai_provider_count": p0_agents.ai_provider_count,
         "p0_ai_configuration_source": ai_configuration_source,
+        "assistant_model_runtime_configured": assistant_runtime is not None,
+        "assistant_zero_cost_ready": (
+            assistant_runtime.zero_cost_ready if assistant_runtime is not None else False
+        ),
         "web_agent_target_count": web_agents.target_agent_count,
         "web_agent_provisioned_identity_count": web_agents.provisioned_identity_count,
         "web_agent_skill_count": web_agents.skill_count,
