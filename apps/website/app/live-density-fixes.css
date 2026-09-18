@@ -106,7 +106,7 @@
 
   .factory-pipeline ol {
     display: grid !important;
-    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    grid-template-columns: repeat(auto-fit, minmax(72px, 1fr)) !important;
   }
 
   .factory-boundary {
