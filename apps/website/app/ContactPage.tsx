@@ -1,3 +1,6 @@
+import Link from "next/link";
+import { motion } from "motion/react";
+
 type Locale = "en" | "tr";
 
 const copy = {
@@ -15,43 +18,52 @@ const copy = {
   },
 } as const;
 
-const heroStyle = {
-  display: "grid",
-  gridTemplateColumns: "minmax(0, 0.9fr) minmax(300px, 1.1fr)",
-  alignItems: "center",
-  gap: "24px",
-  paddingTop: "22px",
-  paddingBottom: "18px",
-} as const;
-
-const titleStyle = {
-  maxWidth: "480px",
-  marginTop: "7px",
-  marginBottom: 0,
-  fontSize: "clamp(1.45rem, 2vw, 1.9rem)",
-  lineHeight: 1.08,
-  letterSpacing: "-0.03em",
-} as const;
-
-const leadWrapStyle = {
-  justifySelf: "end",
-  width: "min(100%, 500px)",
-} as const;
-
-const leadStyle = {
-  margin: 0,
-  maxWidth: "42ch",
-  fontSize: "clamp(.95rem, 1.05vw, 1.08rem)",
-  lineHeight: 1.48,
-} as const;
-
 export default function ContactPage({ locale }: { locale: Locale }) {
   const c = copy[locale];
+  const base = locale === "tr" ? "/tr" : "";
   return <>
-    <section className="shell contact-intro" style={heroStyle}>
-      <div><div className="eyebrow">{c.eyebrow}</div><h1 style={titleStyle}>{c.title}</h1></div>
-      <div style={leadWrapStyle}><p className="lead" style={leadStyle}>{c.lead}</p></div>
+    {/* Hero Section with Motion */}
+    <section className="shell page-hero compact-page-hero pt-20 pb-20">
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1, transition: { duration: 0.8, ease: [0.4, 0, 0.2, 1] } }}
+      >
+        <div>
+          <div className="eyebrow text-sm tracking-wider text-gray-400">{c.eyebrow}</div>
+          <h1 className="text-5xl font-bold tracking-tighter mb-4">{c.title}</h1>
+        </div>
+        <div className="text-base leading-relaxed max-w-2xl mt-4 text-gray-300">{c.lead}</div>
+      </motion.div>
     </section>
-    <section className="section compact-section" style={{paddingTop: "16px", paddingBottom: "24px"}}><div className="shell contact-directory" data-visual-role="contact-directory">{c.topics.map(([title, description, email], index) => <article key={title}><span>{String(index + 1).padStart(2,"0")}</span><div><strong>{title}</strong><p>{description}</p></div><a href={`mailto:${email}`}>{email}</a></article>)}</div></section>
+    <section className="section pt-24 pb-24">
+      <motion.div
+        initial={{ x: -20, opacity: 0 }}
+        whileInView={{ x: 0, opacity: 1, transition: { duration: 0.6, ease: [0.4, 0, 0.2, 1] } }}
+      >
+        <div className="shell">
+          <div className="contact-directory grid gap-8">
+            {c.topics.map(([title, description, email], index) => (
+              <motion.div
+                key={title}
+                initial={{ x: -10, opacity: 0 }}
+                whileInView={{ x: 0, opacity: 1, transition: { duration: 0.4, delay: index * 0.1 } }}
+                className="border border-gray-600 rounded-lg p-6 hover:bg-gray-700 hover:border-gray-600 hover:text-white transition-all duration-200 hover-lift hover-scale"
+              >
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-start gap-3">
+                    <span className="text-xs font-bold text-gray-400 shrink-0">{String(index + 1).padStart(2, "0")}</span>
+                    <div>
+                      <strong className="text-lg font-semibold">{title}</strong>
+                    </div>
+                  </div>
+                  <p className="text-base leading-relaxed text-gray-400">{description}</p>
+                  <a href={`mailto:${email}`} className="flex items-center gap-2 text-base font-medium text-white hover:text-white transition-colors duration-200 mt-2 hover-lift hover-scale">{email}</a>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </motion.div>
+    </section>
   </>;
 }

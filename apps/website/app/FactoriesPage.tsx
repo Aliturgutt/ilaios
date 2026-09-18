@@ -1,6 +1,7 @@
 import Link from "next/link";
 import CanonicalSystemDetail from "./CanonicalSystemDetail";
 import FactoryExplorer from "./FactoryExplorer";
+import { motion } from "motion/react";
 
 type Locale = "en" | "tr";
 
@@ -51,11 +52,113 @@ export default function FactoriesPage({ locale }: { locale: Locale }) {
   const c = copy[locale];
   const base = locale === "tr" ? "/tr" : "";
   return <>
-    <section className="shell page-hero compact-page-hero"><div className="eyebrow">{c.eyebrow}</div><h1>{c.title}</h1><p className="lead">{c.lead}</p></section>
-    <section className="section surface-section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">{c.visualEyebrow}</div><h2>{c.visualTitle}</h2></div><p>{c.visualLead}</p></div><FactoryExplorer locale={locale} /></div></section>
-    <section className="section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">{c.combineEyebrow}</div><h2>{c.combineTitle}</h2></div><p>{c.combineLead}</p></div><div className="runtime-line">{c.combine.map(([title, detail], index) => <div key={title}><span>{String(index + 1).padStart(2, "0")}</span><strong>{title}</strong><small>{detail}</small></div>)}</div></div></section>
-    <section className="section factory-shared-context" style={{ paddingTop: "32px", paddingBottom: "32px" }}><div className="shell"><div className="architecture-story-copy" style={{ maxWidth: "760px" }}><div className="eyebrow">{c.sharedEyebrow}</div><h2>{c.sharedTitle}</h2><p>{c.sharedLead}</p></div></div></section>
-    <section className="section surface-section"><div className="shell"><div className="section-heading"><div><h2>{c.assuranceTitle}</h2></div><p>{c.assuranceLead}</p></div><CanonicalSystemDetail locale={locale} variant="knowledge" /></div></section>
-    <section className="section compact-section"><div className="shell compact-cta"><div><h2>{c.closeTitle}</h2></div><div className="actions"><Link className="button" href={`${base}/capabilities`}>{c.closePrimary}</Link><Link className="button secondary" href={`${base}/how-it-works`}>{c.closeSecondary}</Link></div></div></section>
+    {/* Hero Section with Motion */}
+    <section className="shell page-hero compact-page-hero pt-20 pb-20">
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1, transition: { duration: 0.8, ease: [0.4, 0, 0.2, 1] } }}
+      >
+        <div className="eyebrow text-sm tracking-wider text-gray-400">{c.eyebrow}</div>
+        <h1 className="text-5xl font-semibold tracking-tighter mb-4 text-white">{c.title}</h1>
+        <p className="text-base leading-relaxed max-w-2xl mb-6 text-gray-300">{c.lead}</p>
+      </motion.div>
+    </section>
+    <section className="section surface-section pt-24 pb-24 bg-gray-800">
+      <motion.div
+        initial={{ x: -20, opacity: 0 }}
+        whileInView={{ x: 0, opacity: 1, transition: { duration: 0.6, ease: [0.4, 0, 0.2, 1] } }}
+      >
+        <div className="shell">
+          <div className="section-heading">
+            <div>
+              <div className="eyebrow text-sm tracking-wider text-gray-400">{c.visualEyebrow}</div>
+              <h2 className="text-3xl font-semibold tracking-tighter mb-4 text-white">{c.visualTitle}</h2>
+            </div>
+            <p className="text-base leading-relaxed mb-6 text-gray-300">{c.visualLead}</p>
+          </div>
+          <FactoryExplorer locale={locale} />
+        </div>
+      </motion.div>
+    </section>
+    <section className="section pt-20 pb-20">
+      <motion.div
+        initial={{ x: -20, opacity: 0 }}
+        whileInView={{ x: 0, opacity: 1, transition: { duration: 0.6, ease: [0.4, 0, 0.2, 1] } }}
+      >
+        <div className="shell">
+          <div className="section-heading">
+            <div>
+              <div className="eyebrow text-sm tracking-wider text-gray-400">{c.combineEyebrow}</div>
+              <h2 className="text-3xl font-semibold tracking-tighter mb-4 text-white">{c.combineTitle}</h2>
+            </div>
+            <p className="text-base leading-relaxed mb-6 text-gray-300">{c.combineLead}</p>
+          </div>
+          <div className="runtime-line grid gap-6 pt-8">
+            {c.combine.map(([title, detail], index) => (
+              <motion.div
+                key={title}
+                initial={{ x: -10, opacity: 0 }}
+                whileInView={{ x: 0, opacity: 1, transition: { duration: 0.4, delay: index * 0.1 } }}
+                className="flex flex-col items-start gap-2"
+              >
+                <span className="text-xs font-semibold text-gray-500 shrink-0">{String(index + 1).padStart(2, "0")}</span>
+                <strong className="text-lg font-semibold text-white">{title}</strong>
+                <small className="text-sm text-gray-500">{detail}</small>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </motion.div>
+    </section>
+    <section className="section factory-shared-context pt-10 pb-10">
+      <motion.div
+        initial={{ x: -20, opacity: 0 }}
+        whileInView={{ x: 0, opacity: 1, transition: { duration: 0.6, ease: [0.4, 0, 0.2, 1] } }}
+      >
+        <div className="shell">
+          <div className="architecture-story-copy" style={{ maxWidth: "760px" }}>
+            <div className="eyebrow text-sm tracking-wider text-gray-400">{c.sharedEyebrow}</div>
+            <h2 className="text-3xl font-semibold tracking-tighter mb-4 text-white">{c.sharedTitle}</h2>
+            <p className="text-base leading-relaxed mb-6 text-gray-300">{c.sharedLead}</p>
+          </div>
+        </div>
+      </motion.div>
+    </section>
+    <section className="section surface-section pt-24 pb-24 bg-gray-800">
+      <motion.div
+        initial={{ x: -20, opacity: 0 }}
+        whileInView={{ x: 0, opacity: 1, transition: { duration: 0.6, ease: [0.4, 0, 0.2, 1] } }}
+      >
+        <div className="shell">
+          <div className="section-heading">
+            <div>
+              <h2 className="text-3xl font-semibold tracking-tighter mb-4 text-white">{c.assuranceTitle}</h2>
+            </div>
+            <p className="text-base leading-relaxed mb-6 text-gray-300">{c.assuranceLead}</p>
+          </div>
+          <CanonicalSystemDetail locale={locale} variant="knowledge" />
+        </div>
+      </motion.div>
+    </section>
+    <section className="section compact-section pt-20 pb-20">
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1, transition: { duration: 0.8, ease: [0.4, 0, 0.2, 1] } }}
+      >
+        <div className="shell compact-cta text-center">
+          <div>
+            <h2 className="text-3xl font-semibold tracking-tighter mb-4 text-white">{c.closeTitle}</h2>
+          </div>
+          <div className="actions flex items-center justify-center gap-4 mt-8">
+            <Link className="button bg-gray-900 text-white px-8 py-3 rounded-md font-semibold hover:bg-gray-700 transition-colors duration-200 hover-lift hover-scale" href={`${base}/capabilities`}>
+              {c.closePrimary}
+            </Link>
+            <Link className="button secondary border border-gray-600 px-8 py-3 rounded-md font-semibold hover:bg-gray-700 hover:text-white transition-colors duration-200 hover-lift hover-scale" href={`${base}/how-it-works`}>
+              {c.closeSecondary}
+            </Link>
+          </div>
+        </div>
+      </motion.div>
+    </section>
   </>;
 }

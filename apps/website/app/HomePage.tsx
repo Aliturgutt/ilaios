@@ -1,8 +1,14 @@
+"use client";
+
 import Link from "next/link";
+import Image from "next/image";
 import GovernanceEvidence from "./GovernanceEvidence";
 import ProductExperience from "./ProductExperience";
+import { motion, AnimatePresence } from "motion/react";
+import { useState, useEffect, useRef } from "react";
 
 type Locale = "en" | "tr";
+type Audience = "enterprise" | "individuals";
 
 const copy = {
   en: {
@@ -68,15 +74,146 @@ const copy = {
 export default function HomePage({ locale }: { locale: Locale }) {
   const c = copy[locale];
   const base = locale === "tr" ? "/tr" : "";
+
   return <>
-    <section className="homepage-v2 home-hero shell" data-visual-role="home-hero" style={{ backgroundColor: "var(--bg)" }}>
-      <div className="home-hero-copy" data-visual-role="homepage-v2-authoritative"><div className="eyebrow">{c.eyebrow}</div><h1>{c.title}</h1><p className="lead">{c.lead}</p><div className="actions"><Link className="button" href={`${base}/use-ilaios`}>{c.primary}</Link><Link className="button secondary" href={`${base}/how-it-works`}>{c.secondary}</Link></div></div>
-      <ProductExperience locale={locale} />
+    {/* Hero Section with Motion */}
+    <section className="shell page-hero compact-page-hero pt-20 pb-20" data-visual-role="home-hero">
+      <div className="home-hero-copy container" data-visual-role="homepage-v2-authoritative">
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1, transition: { duration: 0.8, ease: [0.4, 0, 0.2, 1] } }}
+        >
+          <div className="eyebrow text-sm tracking-wider text-gray-400">{c.eyebrow}</div>
+          <h1 className="text-5xl font-semibold tracking-tighter mb-6">{c.title}</h1>
+          <p className="text-xl leading-relaxed mb-8">{c.lead}</p>
+          <div className="actions flex items-center gap-4">
+            <Link className="button bg-gray-900 text-white px-6 py-3 rounded-md font-semibold hover:bg-gray-700 transition-colors duration-200" href={`${base}/use-ilaios`}>{c.primary}</Link>
+            <Link className="button secondary border border-gray-600 px-6 py-3 rounded-md font-semibold hover:bg-gray-700 hover:text-white transition-colors duration-200" href={`${base}/how-it-works`}>{c.secondary}</Link>
+          </div>
+        </motion.div>
+        <div className="hidden md:block">
+          <Image
+            src="/brand/assets/11-ilaios-website-hero.jpg"
+            alt="ILAIOS Governed AI Operating System"
+            width={1920}
+            height={1080}
+            className="rounded-lg shadow-lg"
+            style={{ mixBlendMode: "lighten" }}
+          />
+        </div>
+      </div>
     </section>
-    <section className="proof-strip"><div className="shell proof-strip-grid">{c.proof.map(([title, text]) => <div key={title}><strong>{title}</strong><span>{text}</span></div>)}</div></section>
-    <section className="section surface-section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">{c.outcomesEyebrow}</div><h2>{c.outcomesTitle}</h2></div><p>{c.outcomesLead}</p></div><div className="outcome-showcase home-output-index-v2">{c.outcomes.map(([title,text,href], index) => <Link className="outcome-row" href={href} key={title}><span>{String(index + 1).padStart(2, "0")}</span><div><h3>{title}</h3><p>{text}</p></div><strong aria-hidden="true">→</strong></Link>)}</div></div></section>
-    <section className="section"><div className="shell"><div className="compact-heading-row"><div><div className="eyebrow">{c.processEyebrow}</div><h2>{c.processTitle}</h2></div></div><div className="process-rail home-process-rail-v2" data-visual-role="five-step-execution">{c.process.map(([n, title, text]) => <article key={n}><span>{n}</span><strong>{title}</strong><p>{text}</p></article>)}</div></div></section>
-    <section className="section surface-section home-control-ledger-v2"><div className="shell evidence-story"><div className="evidence-story-copy"><div className="eyebrow">{c.controlEyebrow}</div><h2>{c.controlTitle}</h2><p>{c.controlLead}</p><Link className="text-link" href={`${base}/architecture`}>{c.architecture} →</Link></div><GovernanceEvidence locale={locale} /></div></section>
-    <section className="section compact-section"><div className="shell compact-cta"><div><div className="eyebrow">{c.closeEyebrow}</div><h2>{c.closeTitle}</h2></div><div className="actions"><Link className="button" href={`${base}/factories`}>{c.closePrimary}</Link><Link className="button secondary" href={`${base}/capabilities`}>{c.closeSecondary}</Link></div></div></section>
+    <ProductExperience locale={locale} />
+    <section className="proof-strip bg-gray-800">
+      <div className="shell proof-strip-grid grid grid-cols-1 gap-6 pt-16 pb-16">
+        {c.proof.map(([title, text]) => (
+          <motion.div
+            key={title}
+            initial={{ x: -20, opacity: 0 }}
+            whileInView={{ x: 0, opacity: 1, transition: { duration: 0.6, ease: [0.4, 0, 0.2, 1] } }}
+          >
+            <div key={title} className="border border-gray-600 rounded-lg p-6 hover:bg-gray-700 hover:border-gray-600 hover:text-white transition-all duration-200">
+              <div className="flex items-start gap-4">
+                <strong className="text-base font-semibold text-white">{title}</strong>
+                <span className="text-base leading-relaxed">{text}</span>
+              </div>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+    </section>
+    <section className="section surface-section pt-20 pb-20">
+      <div className="shell">
+        <div className="section-heading">
+          <div><div className="eyebrow text-sm tracking-wider text-gray-400">{c.outcomesEyebrow}</div><h2 className="text-3xl font-semibold tracking-tighter mb-4">{c.outcomesTitle}</h2></div>
+          <p className="text-base leading-relaxed mb-8">{c.outcomesLead}</p>
+        </div>
+        {/* Outcome Showcase with Motion Stagger */}
+        <motion.ul
+          className="outcome-showcase home-output-index-v2 grid gap-6 pt-8"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          transition={{ delayChildren: 0.1, staggerChildren: 0.2 }}
+        >
+          {c.outcomes.map(([title, text, href], index) => (
+            <motion.li
+              key={title}
+              className="outcome-row flex flex-col items-start gap-3 border border-gray-600 rounded-lg p-6 hover:bg-gray-700 hover:border-gray-600 hover:text-white transition-all duration-200"
+            >
+              <Link href={href}>
+                <span className="text-xs font-bold text-gray-400">{String(index + 1).padStart(2, "0")}</span>
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">{title}</h3>
+                  <p className="text-sm leading-relaxed">{text}</p>
+                </div>
+                <strong aria-hidden="true" className="mt-2 text-white">→</strong>
+              </Link>
+            </motion.li>
+          ))}
+        </motion.ul>
+      </div>
+    </section>
+    <section className="section pt-20 pb-20">
+      <div className="shell">
+        <div className="compact-heading-row">
+          <div>
+            <div className="eyebrow text-sm tracking-wider text-gray-400">{c.processEyebrow}</div>
+            <h2 className="text-3xl font-semibold tracking-tighter mb-4">{c.processTitle}</h2>
+          </div>
+        </div>
+        {/* Process Rail with Motion Stagger */}
+        <motion.ul
+          className="process-rail home-process-rail-v2 grid gap-8 pt-8"
+          data-visual-role="five-step-execution"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          transition={{ delayChildren: 0.1, staggerChildren: 0.2 }}
+        >
+          {c.process.map(([n, title, text], index) => (
+            <motion.li
+              key={n}
+              className="flex flex-col items-start gap-4"
+            >
+              <span className="text-xs font-bold text-gray-400">{n}</span>
+              <strong className="text-lg font-semibold">{title}</strong>
+              <p className="text-base leading-relaxed">{text}</p>
+            </motion.li>
+          ))}
+        </motion.ul>
+      </div>
+    </section>
+    <section className="section surface-section home-control-ledger-v2 pt-20 pb-20">
+      <div className="shell evidence-story grid gap-8">
+        <div className="evidence-story-copy">
+          <motion.div
+            initial={{ x: -20, opacity: 0 }}
+            whileInView={{ x: 0, opacity: 1, transition: { duration: 0.6, ease: [0.4, 0, 0.2, 1] } }}
+          >
+            <div className="eyebrow text-sm tracking-wider text-gray-400">{c.controlEyebrow}</div>
+            <h2 className="text-3xl font-semibold tracking-tighter mb-4">{c.controlTitle}</h2>
+            <p className="text-base leading-relaxed mb-6">{c.controlLead}</p>
+            <Link className="text-link inline-flex items-center gap-2 text-white font-medium hover:bg-gray-700 hover:text-white transition-colors duration-200" href={`${base}/architecture`}>{c.architecture} →</Link>
+          </motion.div>
+        </div>
+        <GovernanceEvidence locale={locale} />
+      </div>
+    </section>
+    <section className="section compact-section pt-20 pb-20">
+      <div className="shell compact-cta text-center">
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1, transition: { duration: 0.8, ease: [0.4, 0, 0.2, 1] } }}
+        >
+          <div>
+            <div className="eyebrow text-sm tracking-wider text-gray-400">{c.closeEyebrow}</div>
+            <h2 className="text-3xl font-semibold tracking-tighter mb-4">{c.closeTitle}</h2>
+          </div>
+          <div className="actions flex items-center justify-center gap-4 mt-8">
+            <Link className="button bg-gray-900 text-white px-6 py-3 rounded-md font-semibold hover:bg-gray-700 transition-colors duration-200" href={`${base}/factories`}>{c.closePrimary}</Link>
+            <Link className="button secondary border border-gray-600 px-6 py-3 rounded-md font-semibold hover:bg-gray-700 hover:text-white transition-colors duration-200" href={`${base}/capabilities`}>{c.closeSecondary}</Link>
+          </div>
+        </motion.div>
+      </div>
+    </section>
   </>;
 }

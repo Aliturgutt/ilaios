@@ -1,5 +1,6 @@
 import Link from "next/link";
 import CanonicalSystemDetail from "./CanonicalSystemDetail";
+import { motion } from "motion/react";
 
 type Locale = "en" | "tr";
 
@@ -31,7 +32,7 @@ const copy = {
     capabilities: [["Araştır", "Hedef için kaynak temelli bilgiyi bul ve düzenle."], ["Planla", "Hedefi sınırları ve bağımlılıkları belirli bir iş akışına dönüştür."], ["Üret", "Web, yazılım, uygulama, video ve diğer dijital sonuçları oluştur."], ["Doğrula", "Kabulden önce teslimata ait kontrolleri uygula."], ["Otomatikleştir", "Tekrarlanabilir işi açık izinler ve sınırlar içinde koordine et."], ["Yönet", "Kimlik, onaylar, proje bağlamı ve yürütme sınırlarını birlikte tut."], ["Ölç", "Sonucu kanıt ve operasyon sinyalleriyle değerlendir."], ["Kurtar", "İş beklendiği gibi gitmediğinde güvenli biçimde devam et, düzelt veya dur." ]],
     exampleEyebrow: "Tek hedef, birleşik yetenekler",
     exampleTitle: "Bir ürün lansmanı, kullanıcı için beş ayrı iş akışına dönüşmeden araştırmadan üretime ilerleyebilir.",
-    exampleLead: "ILAIOS gerekli yetenekleri aynı kontrollü yürütme yolu içinde koordine edebilir.",
+    exampleLead: "ILAIOS gerekli yetenekleri aynı controllü yürütme yolu içinde koordine edebilir.",
     example: [["Araştır", "Pazarı ve kaynak materyali anla."], ["Planla", "Gerekli teslimatları ve bağımlılıkları belirle."], ["Üret", "Gereken web sitesi, yazılım veya medyayı oluştur."], ["Doğrula", "Her sonucu geçerli kabul ölçütleriyle kontrol et."], ["Teslim et", "Kabul edilen işi incelenebilir kanıtla sun." ]],
     productionEyebrow: "Üretim sonuçları",
     productionTitle: "Bu yeteneklerin neler üretebildiğini keşfet.",
@@ -48,11 +49,135 @@ export default function CapabilitiesPage({ locale }: { locale: Locale }) {
   const c = copy[locale];
   const base = locale === "tr" ? "/tr" : "";
   return <>
-    <section className="shell page-hero compact-page-hero"><div className="eyebrow">{c.eyebrow}</div><h1>{c.title}</h1><p className="lead">{c.lead}</p></section>
-    <section className="section"><div className="shell"><div className="compact-heading-row"><div><h2>{c.capabilityTitle}</h2></div></div><div className="grid two-up capability-matrix">{c.capabilities.map(([title,text]) => <article className="card dark-surface" key={title}><h3>{title}</h3><p>{text}</p></article>)}</div></div></section>
-    <section className="section surface-section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">{c.exampleEyebrow}</div><h2>{c.exampleTitle}</h2></div><p>{c.exampleLead}</p></div><div className="runtime-line">{c.example.map(([title, detail], index) => <div key={title}><span>{String(index + 1).padStart(2, "0")}</span><strong>{title}</strong><small>{detail}</small></div>)}</div></div></section>
-    <section className="section"><div className="shell capability-factory-band"><div><div className="eyebrow">{c.productionEyebrow}</div><h2>{c.productionTitle}</h2></div><div className="factory-link-cloud">{c.factories.map(([label, href], index) => <Link key={href} href={href}><span>{String(index + 1).padStart(2, "0")}</span>{label}</Link>)}</div></div></section>
-    <section className="section surface-section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">{c.truthEyebrow}</div><h2>{c.truthTitle}</h2></div><p>{c.truthLead}</p></div><CanonicalSystemDetail locale={locale} variant="maturity" /><CanonicalSystemDetail locale={locale} variant="cost" /></div></section>
-    <section className="section compact-section"><div className="shell compact-cta"><div><h2>{c.productionTitle}</h2></div><div className="actions"><Link className="button" href={`${base}/factories`}>{c.all}</Link><Link className="button secondary" href={`${base}/how-it-works`}>{c.how}</Link></div></div></section>
+    {/* Hero Section with Motion */}
+    <section className="shell page-hero compact-page-hero pt-20 pb-20">
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1, transition: { duration: 0.8, ease: [0.4, 0, 0.2, 1] } }}
+      >
+        <div className="eyebrow text-sm tracking-wider text-gray-400">{c.eyebrow}</div>
+        <h1 className="text-5xl font-bold tracking-tighter mb-4">{c.title}</h1>
+        <p className="text-base leading-relaxed max-w-2xl mb-6">{c.lead}</p>
+      </motion.div>
+    </section>
+    <section className="section pt-20 pb-20">
+      <motion.div
+        initial={{ x: -20, opacity: 0 }}
+        whileInView={{ x: 0, opacity: 1, transition: { duration: 0.6, ease: [0.4, 0, 0.2, 1] } }}
+      >
+        <div className="shell">
+          <div className="section-heading">
+            <div>
+              <h2 className="text-3xl font-bold tracking-tighter mb-4">{c.capabilityTitle}</h2>
+            </div>
+          </div>
+          <div className="grid two-up capability-matrix gap-6 pt-8">
+            {c.capabilities.map(([title, text], index) => (
+              <motion.div
+                key={title}
+                initial={{ x: -10, opacity: 0 }}
+                whileInView={{ x: 0, opacity: 1, transition: { duration: 0.4, delay: index * 0.1 } }}
+                className="border border-gray-600 rounded-lg p-6 hover:bg-gray-700 hover:border-gray-600 hover:text-white transition-all duration-200 hover-lift hover-scale"
+              >
+                <h3 className="text-lg font-semibold mb-2">{title}</h3>
+                <p className="text-base leading-relaxed">{text}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </motion.div>
+    </section>
+    <section className="section surface-section pt-24 pb-24">
+      <motion.div
+        initial={{ x: -20, opacity: 0 }}
+        whileInView={{ x: 0, opacity: 1, transition: { duration: 0.6, ease: [0.4, 0, 0.2, 1] } }}
+      >
+        <div className="shell">
+          <div className="section-heading">
+            <div>
+              <div className="eyebrow text-sm tracking-wider text-gray-400">{c.exampleEyebrow}</div>
+              <h2 className="text-3xl font-bold tracking-tighter mb-4">{c.exampleTitle}</h2>
+            </div>
+            <p className="text-base leading-relaxed mb-6">{c.exampleLead}</p>
+          </div>
+          <div className="runtime-line grid gap-6 pt-8">
+            {c.example.map(([title, detail], index) => (
+              <motion.div
+                key={title}
+                initial={{ x: -10, opacity: 0 }}
+                whileInView={{ x: 0, opacity: 1, transition: { duration: 0.4, delay: index * 0.1 } }}
+                className="flex flex-col items-start gap-2"
+              >
+                <span className="text-xs font-bold text-gray-400">{String(index + 1).padStart(2, "0")}</span>
+                <strong className="text-lg font-semibold text-white">{title}</strong>
+                <small className="text-sm text-gray-400">{detail}</small>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </motion.div>
+    </section>
+    <section className="section"><motion.div
+        initial={{ x: -20, opacity: 0 }}
+        whileInView={{ x: 0, opacity: 1, transition: { duration: 0.6, ease: [0.4, 0, 0.2, 1] } }}
+      >
+        <div className="shell capability-factory-band pt-16 pb-16">
+          <div>
+            <div className="eyebrow text-sm tracking-wider text-gray-400">{c.productionEyebrow}</div>
+            <h2 className="text-3xl font-bold tracking-tighter mb-4">{c.productionTitle}</h2>
+          </div>
+          <div className="factory-link-cloud flex flex-wrap gap-4 pt-4">
+            {c.factories.map(([label, href], index) => (
+              <motion.div
+                key={href}
+                initial={{ x: -10, opacity: 0 }}
+                whileInView={{ x: 0, opacity: 1, transition: { duration: 0.4, delay: index * 0.1 } }}
+                className="flex items-center gap-2 px-3 py-2 bg-gray-800 rounded-md text-sm font-medium hover:bg-gray-700 hover:text-white transition-colors duration-200 hover-lift hover-scale"
+              >
+                <span className="text-xs font-bold text-gray-400">{String(index + 1).padStart(2, "0")}</span>
+                {label}
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </motion.div></section>
+    <section className="section surface-section pt-24 pb-24">
+      <motion.div
+        initial={{ x: -20, opacity: 0 }}
+        whileInView={{ x: 0, opacity: 1, transition: { duration: 0.6, ease: [0.4, 0, 0.2, 1] } }}
+      >
+        <div className="shell">
+          <div className="section-heading">
+            <div>
+              <div className="eyebrow text-sm tracking-wider text-gray-400">{c.truthEyebrow}</div>
+              <h2 className="text-3xl font-bold tracking-tighter mb-4">{c.truthTitle}</h2>
+            </div>
+            <p className="text-base leading-relaxed mb-6">{c.truthLead}</p>
+          </div>
+          <CanonicalSystemDetail locale={locale} variant="maturity" />
+          <CanonicalSystemDetail locale={locale} variant="cost" />
+        </div>
+      </motion.div>
+    </section>
+    <section className="section compact-section pt-20 pb-20">
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1, transition: { duration: 0.8, ease: [0.4, 0, 0.2, 1] } }}
+      >
+        <div className="shell compact-cta text-center">
+          <div>
+            <h2 className="text-3xl font-bold tracking-tighter mb-4">{c.productionTitle}</h2>
+          </div>
+          <div className="actions flex items-center justify-center gap-4 mt-8">
+            <Link className="button bg-gray-900 text-white px-8 py-3 rounded-md font-semibold hover:bg-gray-700 transition-colors duration-200 hover-lift hover-scale" href={`${base}/factories`}>
+              {c.all}
+            </Link>
+            <Link className="button secondary border border-gray-600 px-8 py-3 rounded-md font-semibold hover:bg-gray-700 hover:text-white transition-colors duration-200 hover-lift hover-scale" href={`${base}/how-it-works`}>
+              {c.how}
+            </Link>
+          </div>
+        </div>
+      </motion.div>
+    </section>
   </>;
 }

@@ -1,9 +1,11 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import process from "node:process";
 
-const root = path.resolve(process.cwd());
-const app = path.join(root, "app");
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const app = path.join(__dirname, "..", "app");
 
 const spatial = await readFile(path.join(app, "SpatialArchitecture.tsx"), "utf8");
 const governance = await readFile(path.join(app, "GovernanceEvidence.tsx"), "utf8");
