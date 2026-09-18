@@ -1,49 +1,56 @@
 import Link from "next/link";
-import CanonicalSystemDetail from "./CanonicalSystemDetail";
-import FactoryExplorer from "./FactoryExplorer";
-import { motion } from "motion/react";
 
 type Locale = "en" | "tr";
 
+type Factory = readonly [name: string, outcome: string, readiness: string, href: string];
+
 const copy = {
   en: {
-    eyebrow: "Production outcomes",
-    title: "Create different kinds of finished work from one goal.",
-    lead: "Websites, video, software, applications and research are different outcomes, but you should not have to operate them as separate AI products.",
-    visualEyebrow: "One goal, the right production path",
-    visualTitle: "ILAIOS coordinates the work needed for the outcome.",
-    visualLead: "A request can use one or more production areas while the user stays focused on the result rather than provider, model or tool configuration.",
-    combineEyebrow: "Cross-factory composition",
-    combineTitle: "A single launch can require more than one kind of work.",
-    combineLead: "For example, a product launch may require research, a website, software changes and media. ILAIOS is designed to coordinate the relevant work under the same control model.",
-    combine: [["Research", "Understand the market and source material."], ["Website", "Create the customer-facing product surface."], ["Software / App", "Implement the bounded product work that is needed."], ["Video", "Create supporting media from approved material."], ["Verify", "Apply the checks that belong to each deliverable."]],
-    sharedEyebrow: "Shared project context",
-    sharedTitle: "Production areas can use the same authorized project knowledge.",
-    sharedLead: "That keeps context consistent across deliverables without turning project knowledge into another product surface or a separate authority.",
-    assuranceTitle: "Shared knowledge remains governed context, not another production authority.",
-    assuranceLead: "The technical assurance view below keeps authorization and provenance boundaries explicit without putting infrastructure jargon in the primary marketing flow.",
-    closeTitle: "Choose the outcome you want to explore.",
-    closePrimary: "See all capabilities",
+    eyebrow: "Nine production areas",
+    title: "Different outcomes. One governed product.",
+    lead: "ILAIOS has nine bounded production areas. Each focuses on a different kind of finished work while shared platform controls keep identity, permissions, approvals and evidence connected.",
+    catalogTitle: "Choose the outcome you want to explore.",
+    catalogLead: "Public readiness is shown conservatively. Preview means a bounded evidence-backed path exists; in-development areas are not presented as generally available production services.",
+    open: "Explore",
+    factories: [
+      ["Web", "Websites and site revisions with browser, accessibility and release checks.", "Preview", "/factories/web"],
+      ["Video / Media", "Reference-driven media work spanning script, assets, render and validation.", "Preview", "/factories/video"],
+      ["Software", "Bounded repository engineering with reviewed code, tests and change evidence.", "Preview", "/factories/software"],
+      ["Applications", "Application planning, bounded build, tests and release-readiness work.", "Preview", "/factories/app"],
+      ["Research / Data", "Source-grounded research and structured analysis with reviewable provenance.", "In development", "/factories/research-data"],
+      ["Security", "Authorized defensive assessment and remediation inside explicit scope.", "In development", "/factories/security"],
+      ["Creative / Documents", "Controlled document composition, validation and reviewable export paths.", "In development", "/factories/creative-document"],
+      ["Commerce / Growth", "Evidence-backed growth proposals and review-gated commercial work.", "In development", "/factories/commerce-growth"],
+      ["Personal Operations", "Reviewable personal workflows whose consequential side effects remain separately governed.", "In development", "/factories/personal-operations"],
+    ] as readonly Factory[],
+    combineEyebrow: "Work can combine",
+    combineTitle: "One goal can use more than one production area.",
+    combineLead: "A launch may combine research, a website, software changes and media while the user stays focused on the finished result.",
+    closePrimary: "See capabilities",
     closeSecondary: "How ILAIOS works",
   },
   tr: {
-    eyebrow: "Üretim sonuçları",
-    title: "Tek bir hedeften farklı türde bitmiş işler üret.",
-    lead: "Web sitesi, video, yazılım, uygulama ve araştırma farklı sonuçlardır; ancak bunları ayrı ayrı yapay zekâ ürünleri gibi işletmek zorunda olmamalısın.",
-    visualEyebrow: "Tek hedef, doğru üretim yolu",
-    visualTitle: "ILAIOS sonuç için gereken işi koordine eder.",
-    visualLead: "Bir istek bir veya birden fazla üretim alanını kullanabilir; kullanıcı sağlayıcı, model veya araç ayarı yerine sonuca odaklanır.",
-    combineEyebrow: "Üretim alanları arası bileşim",
-    combineTitle: "Tek bir lansman birden fazla iş türü gerektirebilir.",
-    combineLead: "Örneğin bir ürün lansmanı araştırma, web sitesi, yazılım değişiklikleri ve medya gerektirebilir. ILAIOS ilgili işi aynı kontrol modeli altında koordine etmek üzere tasarlanmıştır.",
-    combine: [["Araştırma", "Pazarı ve kaynak materyali anla."], ["Web sitesi", "Müşteriye açık ürün yüzeyini oluştur."], ["Yazılım / Uygulama", "Gereken sınırları belirli ürün işini uygula."], ["Video", "Onaylı materyalden destekleyici medya üret."], ["Doğrula", "Her teslimata ait kontrolleri uygula."]],
-    sharedEyebrow: "Paylaşılan proje bağlamı",
-    sharedTitle: "Üretim alanları aynı yetkili proje bilgisinden yararlanabilir.",
-    sharedLead: "Bu, proje bilgisini ayrı bir ürün yüzeyine veya ikinci bir otoriteye dönüştürmeden teslimatlar arasındaki bağlamı tutarlı tutar.",
-    assuranceTitle: "Paylaşılan bilgi, yeni bir üretim yetkisi değil yönetilen bağlam olarak kalır.",
-    assuranceLead: "Aşağıdaki teknik güvence görünümü, ana pazarlama akışını altyapı jargonuyla doldurmadan yetki ve kaynak kökeni sınırlarını açık tutar.",
-    closeTitle: "Keşfetmek istediğin sonucu seç.",
-    closePrimary: "Tüm yetenekleri gör",
+    eyebrow: "Dokuz üretim alanı",
+    title: "Farklı sonuçlar. Tek yönetilen ürün.",
+    lead: "ILAIOS'un dokuz sınırlandırılmış üretim alanı vardır. Her biri farklı bir bitmiş iş türüne odaklanırken kimlik, izinler, onaylar ve kanıt ortak platform kontrollerinde bağlı kalır.",
+    catalogTitle: "Keşfetmek istediğin sonucu seç.",
+    catalogLead: "Kullanıma hazırlık seviyesi temkinli biçimde gösterilir. Önizleme, sınırları belirli ve kanıtlı bir yol bulunduğunu; geliştiriliyor ise alanın genel kullanıma açık production hizmeti olarak sunulmadığını belirtir.",
+    open: "İncele",
+    factories: [
+      ["Web", "Tarayıcı, erişilebilirlik ve yayın kontrolleriyle web sitesi ve site revizyonları.", "Önizleme", "/tr/factories/web"],
+      ["Video / Medya", "Senaryo, varlıklar, render ve doğrulamayı kapsayan referans odaklı medya işi.", "Önizleme", "/tr/factories/video"],
+      ["Yazılım", "İncelenmiş kod, testler ve değişiklik kanıtıyla sınırları belirli repository mühendisliği.", "Önizleme", "/tr/factories/software"],
+      ["Uygulamalar", "Uygulama planlama, sınırlandırılmış build, test ve yayına hazırlık çalışması.", "Önizleme", "/tr/factories/app"],
+      ["Araştırma / Veri", "İncelenebilir kaynak kökeniyle kaynak temelli araştırma ve yapılandırılmış analiz.", "Geliştiriliyor", "/tr/factories/research-data"],
+      ["Güvenlik", "Açık yetki kapsamı içinde savunma odaklı değerlendirme ve düzeltme.", "Geliştiriliyor", "/tr/factories/security"],
+      ["Yaratıcı / Dokümanlar", "Kontrollü doküman oluşturma, doğrulama ve incelenebilir dışa aktarma yolları.", "Geliştiriliyor", "/tr/factories/creative-document"],
+      ["Ticaret / Büyüme", "Kanıta dayalı büyüme önerileri ve inceleme kapılı ticari çalışma.", "Geliştiriliyor", "/tr/factories/commerce-growth"],
+      ["Kişisel Operasyon", "Önemli dış etkileri ayrıca yönetilen, incelenebilir kişisel iş akışları.", "Geliştiriliyor", "/tr/factories/personal-operations"],
+    ] as readonly Factory[],
+    combineEyebrow: "Birlikte çalışabilir",
+    combineTitle: "Tek hedef birden fazla üretim alanını kullanabilir.",
+    combineLead: "Bir lansman araştırma, web sitesi, yazılım değişiklikleri ve medyayı birleştirebilir; kullanıcı ise bitmiş sonuca odaklanır.",
+    closePrimary: "Yetenekleri gör",
     closeSecondary: "ILAIOS nasıl çalışır?",
   },
 } as const;
@@ -52,113 +59,8 @@ export default function FactoriesPage({ locale }: { locale: Locale }) {
   const c = copy[locale];
   const base = locale === "tr" ? "/tr" : "";
   return <>
-    {/* Hero Section with Motion */}
-    <section className="shell page-hero compact-page-hero pt-20 pb-20">
-      <motion.div
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1, transition: { duration: 0.8, ease: [0.4, 0, 0.2, 1] } }}
-      >
-        <div className="eyebrow text-sm tracking-wider text-gray-400">{c.eyebrow}</div>
-        <h1 className="text-5xl font-semibold tracking-tighter mb-4 text-white">{c.title}</h1>
-        <p className="text-base leading-relaxed max-w-2xl mb-6 text-gray-300">{c.lead}</p>
-      </motion.div>
-    </section>
-    <section className="section surface-section pt-24 pb-24 bg-gray-800">
-      <motion.div
-        initial={{ x: -20, opacity: 0 }}
-        whileInView={{ x: 0, opacity: 1, transition: { duration: 0.6, ease: [0.4, 0, 0.2, 1] } }}
-      >
-        <div className="shell">
-          <div className="section-heading">
-            <div>
-              <div className="eyebrow text-sm tracking-wider text-gray-400">{c.visualEyebrow}</div>
-              <h2 className="text-3xl font-semibold tracking-tighter mb-4 text-white">{c.visualTitle}</h2>
-            </div>
-            <p className="text-base leading-relaxed mb-6 text-gray-300">{c.visualLead}</p>
-          </div>
-          <FactoryExplorer locale={locale} />
-        </div>
-      </motion.div>
-    </section>
-    <section className="section pt-20 pb-20">
-      <motion.div
-        initial={{ x: -20, opacity: 0 }}
-        whileInView={{ x: 0, opacity: 1, transition: { duration: 0.6, ease: [0.4, 0, 0.2, 1] } }}
-      >
-        <div className="shell">
-          <div className="section-heading">
-            <div>
-              <div className="eyebrow text-sm tracking-wider text-gray-400">{c.combineEyebrow}</div>
-              <h2 className="text-3xl font-semibold tracking-tighter mb-4 text-white">{c.combineTitle}</h2>
-            </div>
-            <p className="text-base leading-relaxed mb-6 text-gray-300">{c.combineLead}</p>
-          </div>
-          <div className="runtime-line grid gap-6 pt-8">
-            {c.combine.map(([title, detail], index) => (
-              <motion.div
-                key={title}
-                initial={{ x: -10, opacity: 0 }}
-                whileInView={{ x: 0, opacity: 1, transition: { duration: 0.4, delay: index * 0.1 } }}
-                className="flex flex-col items-start gap-2"
-              >
-                <span className="text-xs font-semibold text-gray-500 shrink-0">{String(index + 1).padStart(2, "0")}</span>
-                <strong className="text-lg font-semibold text-white">{title}</strong>
-                <small className="text-sm text-gray-500">{detail}</small>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </motion.div>
-    </section>
-    <section className="section factory-shared-context pt-10 pb-10">
-      <motion.div
-        initial={{ x: -20, opacity: 0 }}
-        whileInView={{ x: 0, opacity: 1, transition: { duration: 0.6, ease: [0.4, 0, 0.2, 1] } }}
-      >
-        <div className="shell">
-          <div className="architecture-story-copy" style={{ maxWidth: "760px" }}>
-            <div className="eyebrow text-sm tracking-wider text-gray-400">{c.sharedEyebrow}</div>
-            <h2 className="text-3xl font-semibold tracking-tighter mb-4 text-white">{c.sharedTitle}</h2>
-            <p className="text-base leading-relaxed mb-6 text-gray-300">{c.sharedLead}</p>
-          </div>
-        </div>
-      </motion.div>
-    </section>
-    <section className="section surface-section pt-24 pb-24 bg-gray-800">
-      <motion.div
-        initial={{ x: -20, opacity: 0 }}
-        whileInView={{ x: 0, opacity: 1, transition: { duration: 0.6, ease: [0.4, 0, 0.2, 1] } }}
-      >
-        <div className="shell">
-          <div className="section-heading">
-            <div>
-              <h2 className="text-3xl font-semibold tracking-tighter mb-4 text-white">{c.assuranceTitle}</h2>
-            </div>
-            <p className="text-base leading-relaxed mb-6 text-gray-300">{c.assuranceLead}</p>
-          </div>
-          <CanonicalSystemDetail locale={locale} variant="knowledge" />
-        </div>
-      </motion.div>
-    </section>
-    <section className="section compact-section pt-20 pb-20">
-      <motion.div
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1, transition: { duration: 0.8, ease: [0.4, 0, 0.2, 1] } }}
-      >
-        <div className="shell compact-cta text-center">
-          <div>
-            <h2 className="text-3xl font-semibold tracking-tighter mb-4 text-white">{c.closeTitle}</h2>
-          </div>
-          <div className="actions flex items-center justify-center gap-4 mt-8">
-            <Link className="button bg-gray-900 text-white px-8 py-3 rounded-md font-semibold hover:bg-gray-700 transition-colors duration-200 hover-lift hover-scale" href={`${base}/capabilities`}>
-              {c.closePrimary}
-            </Link>
-            <Link className="button secondary border border-gray-600 px-8 py-3 rounded-md font-semibold hover:bg-gray-700 hover:text-white transition-colors duration-200 hover-lift hover-scale" href={`${base}/how-it-works`}>
-              {c.closeSecondary}
-            </Link>
-          </div>
-        </div>
-      </motion.div>
-    </section>
+    <section className="shell page-hero compact-page-hero"><div className="eyebrow">{c.eyebrow}</div><h1>{c.title}</h1><p className="lead">{c.lead}</p></section>
+    <section className="section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">{c.eyebrow}</div><h2>{c.catalogTitle}</h2></div><p>{c.catalogLead}</p></div><div className="grid three-up">{c.factories.map(([name, outcome, readiness, href], index) => <article className="card" key={href}><span className="micro-label">{String(index + 1).padStart(2, "0")} · {readiness}</span><h3>{name}</h3><p>{outcome}</p><Link className="text-link" href={href}>{c.open} →</Link></article>)}</div></div></section>
+    <section className="section surface-section"><div className="shell compact-cta"><div><div className="eyebrow">{c.combineEyebrow}</div><h2>{c.combineTitle}</h2><p>{c.combineLead}</p></div><div className="actions"><Link className="button" href={`${base}/capabilities`}>{c.closePrimary}</Link><Link className="button secondary" href={`${base}/how-it-works`}>{c.closeSecondary}</Link></div></div></section>
   </>;
 }

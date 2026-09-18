@@ -104,6 +104,11 @@ export default function HomePage({ locale }: { locale: Locale }) {
       </div>
     </section>
     <ProductExperience locale={locale} />
+    <div className="shell py-6 text-sm text-gray-400">
+      {locale === "tr"
+        ? "Dört etkileşimli örnek ILAIOS'un yalnızca bir bölümünü gösterir."
+        : "The four interactive examples are only part of ILAIOS."}
+    </div>
     <section className="proof-strip bg-gray-800">
       <div className="shell proof-strip-grid grid grid-cols-1 gap-6 pt-16 pb-16">
         {c.proof.map(([title, text]) => (
@@ -130,7 +135,7 @@ export default function HomePage({ locale }: { locale: Locale }) {
         </div>
         {/* Outcome Showcase with Motion Stagger */}
         <motion.ul
-          className="outcome-showcase home-output-index-v2 grid gap-6 pt-8"
+          className="outcome-showcase grid gap-6 pt-8"
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           transition={{ delayChildren: 0.1, staggerChildren: 0.2 }}

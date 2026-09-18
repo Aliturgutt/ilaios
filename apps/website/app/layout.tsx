@@ -17,6 +17,7 @@ import "./site-v2-finalization.css";
 import "./final-interaction-redteam.css";
 import "./visual-audit-fixes.css";
 import "./app-control-parity.css";
+import "./live-acceptance-fixes.css";
 import "./design-system-premium.css";
 import SiteChrome from "./SiteChrome";
 
