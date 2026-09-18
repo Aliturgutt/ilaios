@@ -10,56 +10,16 @@
   "external_spend_authorized": false,
   "direct_app_factory_publication_authorized": false,
   "phases": [
-    {
-      "id": 1,
-      "name": "common-store-certification-foundation",
-      "status": "VERIFIED"
-    },
-    {
-      "id": 2,
-      "name": "android-implementation-executor",
-      "status": "VERIFIED"
-    },
-    {
-      "id": 3,
-      "name": "android-build-google-play-certification",
-      "status": "BLOCKED_EXTERNAL_EVIDENCE"
-    },
-    {
-      "id": 4,
-      "name": "ilaios-mobile-android-golden-reference",
-      "status": "NOT_STARTED"
-    },
-    {
-      "id": 5,
-      "name": "ios-implementation-executor",
-      "status": "NOT_STARTED"
-    },
-    {
-      "id": 6,
-      "name": "ios-build-app-store-certification",
-      "status": "NOT_STARTED"
-    },
-    {
-      "id": 7,
-      "name": "ilaios-mobile-ios-golden-reference",
-      "status": "NOT_STARTED"
-    },
-    {
-      "id": 8,
-      "name": "unified-store-submission-gateway",
-      "status": "NOT_STARTED"
-    },
-    {
-      "id": 9,
-      "name": "rejection-recovery-appeal",
-      "status": "NOT_STARTED"
-    },
-    {
-      "id": 10,
-      "name": "cross-store-golden-certification-suite",
-      "status": "NOT_STARTED"
-    }
+    {"id": 1, "name": "common-store-certification-foundation", "status": "VERIFIED"},
+    {"id": 2, "name": "android-implementation-executor", "status": "VERIFIED"},
+    {"id": 3, "name": "android-build-google-play-certification", "status": "BLOCKED_EXTERNAL_EVIDENCE"},
+    {"id": 4, "name": "ilaios-mobile-android-golden-reference", "status": "NOT_STARTED"},
+    {"id": 5, "name": "ios-implementation-executor", "status": "NOT_STARTED"},
+    {"id": 6, "name": "ios-build-app-store-certification", "status": "NOT_STARTED"},
+    {"id": 7, "name": "ilaios-mobile-ios-golden-reference", "status": "NOT_STARTED"},
+    {"id": 8, "name": "unified-store-submission-gateway", "status": "NOT_STARTED"},
+    {"id": 9, "name": "rejection-recovery-appeal", "status": "NOT_STARTED"},
+    {"id": 10, "name": "cross-store-golden-certification-suite", "status": "NOT_STARTED"}
   ],
   "blocking_invariants": [
     "NO_CORE_REWRITE",
