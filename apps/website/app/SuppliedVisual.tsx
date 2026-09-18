@@ -1,3 +1,5 @@
+import NextImage from "next/image";
+
 type Props = {
   light: string;
   dark: string;
@@ -13,8 +15,30 @@ export default function SuppliedVisual({ light, dark, alt, caption, priority = f
     <>
       <figure className={`supplied-visual ${className}`.trim()}>
         <div className="supplied-visual-frame" role="img" aria-label={alt}>
-          <img className="supplied-visual-image supplied-visual-dark" src={dark} width={1672} height={941} loading={loading} decoding="async" alt="" aria-hidden="true" />
-          <img className="supplied-visual-image supplied-visual-light" src={light} width={1672} height={941} loading={loading} decoding="async" alt="" aria-hidden="true" />
+          <NextImage
+            className="supplied-visual-image supplied-visual-dark"
+            src={dark}
+            alt=""
+            width={1672}
+            height={941}
+            loading={loading}
+            sizes="(max-width: 760px) 100vw, 1672px"
+            priority={priority}
+            unoptimized
+            aria-hidden="true"
+          />
+          <NextImage
+            className="supplied-visual-image supplied-visual-light"
+            src={light}
+            alt=""
+            width={1672}
+            height={941}
+            loading={loading}
+            sizes="(max-width: 760px) 100vw, 1672px"
+            priority={priority}
+            unoptimized
+            aria-hidden="true"
+          />
         </div>
         <figcaption>{caption}</figcaption>
       </figure>
