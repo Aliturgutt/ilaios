@@ -1,7 +1,18 @@
 import type { Metadata } from "next";
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://ilaios.com";
+
 export const metadata: Metadata = {
   title: "Sign In - ILAIOS",
+  description: "Sign in to ILAIOS Governed AI Operating System",
+  canonical: `${siteUrl}/sign-in`,
+  alternates: {
+    languages: {
+      en: `${siteUrl}/sign-in`,
+      tr: `${siteUrl}/tr/sign-in`,
+      'x-default': `${siteUrl}/sign-in`,
+    },
+  },
 };
 
 export default function SignInPage() {
