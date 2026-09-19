@@ -32,7 +32,7 @@ async function walk(dir) {
     const full = path.join(dir, entry);
     const info = await stat(full);
     if (info.isDirectory()) out.push(...await walk(full));
-    else if (/\.(?:tsx?|css|mjs|json)$/.test(entry)) out.push(full);
+    else if (/\.(?:tsx?|ts|css|mjs|json)$/.test(entry)) out.push(full);
   }
   return out;
 }
