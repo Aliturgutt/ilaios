@@ -8,6 +8,7 @@ from services.integrations.desktop_video_composition import (
     _governed_stock_selector_from_environment,
     _official_brand_logo,
 )
+from services.integrations.governed_stock_video_runtime import _stock_query
 from src.video_automation.stock_source_adapters import StockProvider
 
 
@@ -98,3 +99,10 @@ def test_canonical_brand_logo_is_reused_without_recolor_or_replacement() -> None
     logo = _official_brand_logo()
     assert logo.name == "05-ilaios-app-icon.jpg"
     assert logo.is_file()
+
+
+def test_stock_query_extracts_artemis_subject_from_turkish_video_request() -> None:
+    assert _stock_query(
+        "NASA'n\u0131n Artemis Ay program\u0131 hakk\u0131nda, denetimli kamuya a\u00e7\u0131k stok "
+        "g\u00f6r\u00fcnt\u00fclerini kullanarak 30 saniyelik bir video olu\u015ftur."
+    ) == "NASA Artemis"
