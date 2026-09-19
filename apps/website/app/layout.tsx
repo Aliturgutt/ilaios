@@ -8,12 +8,24 @@ import "./professional-final.css";
 import "./website-final.css";
 import "./adaptive-native.css";
 import "./adaptive-structures.css";
+import "./mobile-redteam.css";
+import "./canonical-detail.css";
+import "./visual-redteam-fixes.css";
+import "./brand-palette.css";
+import "./live-density-fixes.css";
+import "./site-v2-finalization.css";
+import "./final-interaction-redteam.css";
+import "./visual-audit-fixes.css";
+import "./app-control-parity.css";
+import "./live-acceptance-fixes.css";
+import "./design-system-premium.css";
 import "./new-design.css";
 import SiteChrome from "./SiteChrome";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://ilaios.com";
 const organizationId = `${siteUrl}/#organization`;
 const websiteId = `${siteUrl}/#website`;
+const softwareId = `${siteUrl}/#software`;
 const founderId = `${siteUrl}/about#founder`;
 const productDescription = "ILAIOS is a Governed AI Operating System with native finished-product factories for controlled, verifiable digital work.";
 
@@ -33,13 +45,17 @@ export const metadata: Metadata = {
 const structuredData = {
   "@context": "https://schema.org",
   "@graph": [
-    { "@type": "Organization", "@id": organizationId, name: "ILAIOS", url: siteUrl, logo: { "@type": "ImageObject", url: `${siteUrl}/brand/logo-horizontal-dark.jpg` }, description: productDescription, founder: { "@id": founderId }, sameAs: ["https://www.linkedin.com/company/ilaios/", "https://x.com/ilaios"] },
+    { "@type": "Organization", "@id": organizationId, name: "ILAIOS", url: siteUrl, logo: { "@type": "ImageObject", url: `${siteUrl}/brand/logo-horizontal-dark.jpg` }, description: productDescription, founder: { "@id": founderId }, subjectOf: { "@id": websiteId }, sameAs: ["https://www.linkedin.com/company/ilaios/", "https://x.com/ilaios", "https://www.crunchbase.com/organization/ilaios"] },
     { "@type": "Person", "@id": founderId, name: "Ali Turgut", url: `${siteUrl}/about#founder`, jobTitle: "Founder", worksFor: { "@id": organizationId }, sameAs: ["https://www.linkedin.com/in/ali-turgut-ilaios/", "https://github.com/Aliturgutt"] },
-    { "@type": "WebSite", "@id": websiteId, url: siteUrl, name: "ILAIOS", publisher: { "@id": organizationId }, inLanguage: ["en", "tr"] },
+    { "@type": "WebSite", "@id": websiteId, url: siteUrl, name: "ILAIOS", publisher: { "@id": organizationId }, about: { "@id": softwareId }, inLanguage: ["en", "tr"] },
+    { "@type": ["SoftwareApplication", "Product"], "@id": softwareId, name: "ILAIOS", url: siteUrl, description: productDescription, applicationCategory: "BusinessApplication", manufacturer: { "@id": organizationId }, publisher: { "@id": organizationId }, mainEntityOfPage: { "@id": websiteId } },
   ],
 };
 
+const themeBootstrap = `(() => { const stored = localStorage.getItem("ilaios-theme"); const theme = stored === "light" || stored === "dark" ? stored : "light"; document.documentElement.dataset.theme = theme; document.documentElement.style.colorScheme = theme; })();`;
+
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const locale = (await headers()).get("x-ilaios-locale") === "tr" ? "tr" : "en";
-  return <html lang={locale}><body><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} /><SiteChrome>{children}</SiteChrome></body></html>;
+  return <html lang={locale} suppressHydrationWarning><body><script dangerouslySetInnerHTML={{ __html: themeBootstrap }} /><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} /><SiteChrome>{children}</SiteChrome></body></html>;
 }
+s/[[:space:]]*$//

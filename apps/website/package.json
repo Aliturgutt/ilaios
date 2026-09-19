@@ -8,10 +8,17 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test:site": "node scripts/site-quality.mjs"
+    "test:site": "node scripts/site-quality.mjs",
+    "test:design": "node scripts/design-benchmark.mjs",
+    "test:redteam": "node scripts/public-ux-redteam.mjs",
+    "test:motion": "node scripts/motion-signature-quality.mjs",
+    "test:docs": "node scripts/docs-hub-quality.mjs",
+    "test:brand": "node scripts/canonical-brand-palette-guard.mjs",
+    "test:quality": "npm run test:site && npm run test:design && npm run test:redteam && npm run test:motion && npm run test:docs && npm run test:brand"
   },
   "dependencies": {
-    "next": "16.2.11",
+    "motion": "^13.4.0",
+    "next": "16.3.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
@@ -20,7 +27,13 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "eslint": "^9.0.0",
-    "eslint-config-next": "16.2.11",
+    "eslint-config-next": "16.3.3",
     "typescript": "^5.9.0"
+  },
+  "overrides": {
+    "js-yaml": "4.3.2",
+    "postcss": "8.5.23",
+    "sharp": "0.35.4"
   }
 }
+s/[[:space:]]*$//
