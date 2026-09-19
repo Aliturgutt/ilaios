@@ -5,8 +5,8 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://ilaios.com";
 export const metadata: Metadata = {
   title: "Giriş Yap - ILAIOS",
   description: "ILAIOS Yönetilen Yapay Zeka İşletim Sistemi'ne giriş yapın",
-  canonical: `${siteUrl}/tr/sign-in`,
   alternates: {
+    canonical: `${siteUrl}/tr/sign-in`,
     languages: {
       en: `${siteUrl}/sign-in`,
       tr: `${siteUrl}/tr/sign-in`,
