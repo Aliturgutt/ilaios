@@ -1,0 +1,185 @@
+.page {
+  min-height: calc(100vh - 156px);
+  display: grid;
+  align-items: center;
+  padding: 72px 0;
+}
+
+.frame {
+  width: min(1080px, calc(100% - 40px));
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, .85fr);
+  gap: 24px;
+  align-items: stretch;
+}
+
+.copy,
+.assurance {
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: var(--v2-surface, rgba(12, 20, 29, .78));
+}
+
+.copy {
+  padding: clamp(28px, 5vw, 56px);
+}
+
+.brandLockup {
+  width: min(190px, 48vw);
+  margin-bottom: 28px;
+}
+
+.brandLogo {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 0;
+}
+
+.brandLogoLight {
+  display: none;
+}
+
+.brandLogoDark {
+  display: block;
+}
+
+:global(html[data-theme="light"]) .brandLogoLight {
+  display: block;
+}
+
+:global(html[data-theme="light"]) .brandLogoDark {
+  display: none;
+}
+
+.title {
+  margin: 14px 0 18px;
+  max-width: 620px;
+  font-size: clamp(2.6rem, 6vw, 5rem);
+  line-height: .96;
+}
+
+.lead {
+  max-width: 650px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 1.04rem;
+}
+
+.providers {
+  display: grid;
+  gap: 12px;
+  margin-top: 34px;
+}
+
+.provider {
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: 38px 1fr 22px;
+  gap: 14px;
+  align-items: center;
+  padding: 10px 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: transparent;
+  font-weight: 750;
+  transition: border-color .16s ease, background .16s ease, transform .16s ease;
+}
+
+.provider:hover {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  transform: translateY(-1px);
+}
+
+.provider:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.providerMark {
+  width: 34px;
+  height: 34px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--accent);
+  font-size: .76rem;
+  font-weight: 900;
+  letter-spacing: -.02em;
+}
+
+.arrow {
+  color: var(--muted);
+  font-size: 1.1rem;
+}
+
+.legal {
+  margin: 20px 0 0;
+  color: var(--muted);
+  font-size: .8rem;
+}
+
+.assurance {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: clamp(28px, 4vw, 42px);
+  overflow: hidden;
+}
+
+.assurance::after {
+  content: "";
+  position: absolute;
+  width: 180px;
+  height: 180px;
+  right: -70px;
+  bottom: -70px;
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  border-radius: 50%;
+}
+
+.assuranceIndex {
+  color: var(--accent);
+  font-size: .76rem;
+  font-weight: 900;
+  letter-spacing: .14em;
+}
+
+.assurance strong {
+  display: block;
+  margin-top: 56px;
+  font-size: clamp(1.35rem, 2.2vw, 1.8rem);
+}
+
+.assurance p {
+  margin: 10px 0 0;
+  color: var(--muted);
+}
+
+.securityLine {
+  position: relative;
+  z-index: 1;
+  margin-top: 42px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: .78rem;
+}
+
+@media (max-width: 860px) {
+  .page { padding: 40px 0; }
+  .frame { grid-template-columns: 1fr; }
+  .assurance strong { margin-top: 28px; }
+}
+
+@media (max-width: 560px) {
+  .frame { width: min(100% - 24px, 1080px); }
+  .copy,
+  .assurance { border-radius: 18px; }
+  .copy { padding: 26px 20px; }
+  .provider { min-height: 56px; padding-inline: 12px; }
+}

@@ -1,0 +1,633 @@
+/* Final interaction/density red-team layer.
+   Loaded last so live system visuals are compact, interactive and mobile-safe. */
+
+/* A 2x2 grid must not stretch the shorter card to the height of its taller peer. */
+.system-visuals.is-grid {
+  align-items: start !important;
+}
+
+.system-visual {
+  align-self: start !important;
+  height: auto !important;
+  min-height: 0 !important;
+}
+
+.system-visual-instruction {
+  margin: -4px 0 10px !important;
+  color: var(--brand-muted) !important;
+  font-size: .72rem !important;
+  line-height: 1.4 !important;
+}
+
+/* All system-diagram elements are real controls, not decorative boxes. */
+.system-visual-control {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  font: inherit !important;
+  color: inherit !important;
+  cursor: pointer !important;
+  text-align: left !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.system-visual-control:focus-visible {
+  border-color: #2A2A2A !important;
+  outline: 2px solid #2A2A2A !important;
+  outline-offset: 2px !important;
+}
+
+.system-visual-control.is-active {
+  background: #1E1E1E !important;
+  border-color: #2A2A2A !important;
+  box-shadow: inset 0 -2px 0 #B3B3B3 !important;
+}
+
+.node-flow .node.system-visual-control {
+  border-left: 0 !important;
+}
+
+.node-flow .node.system-visual-control:first-child {
+  border-left: 1px solid var(--brand-line) !important;
+}
+
+.node-flow .node.system-visual-control:hover,
+.plane-box.system-visual-control:hover,
+.lifecycle-step.system-visual-control:hover,
+.trust-node.system-visual-control:hover {
+  background: #1E1E1E !important;
+  border-color: #2A2A2A !important;
+}
+
+.plane-box.system-visual-control {
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+.lifecycle-flow > .lifecycle-step {
+  min-width: 0 !important;
+  padding: 11px 9px !important;
+  border: 0 !important;
+  border-right: 1px solid var(--brand-line) !important;
+  background: transparent !important;
+}
+
+.lifecycle-flow > .lifecycle-step:last-child {
+  border-right: 0 !important;
+}
+
+.lifecycle-step span {
+  display: block !important;
+  color: var(--brand-muted) !important;
+  font-size: .58rem !important;
+}
+
+.lifecycle-step strong {
+  display: block !important;
+  margin-top: 6px !important;
+  font-size: .76rem !important;
+  line-height: 1.3 !important;
+}
+
+.trust-visual {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+}
+
+.trust-node-wrap {
+  display: flex !important;
+  align-items: stretch !important;
+  min-width: 0 !important;
+}
+
+.trust-node {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  padding: 12px !important;
+  border: 1px solid var(--brand-line) !important;
+  border-radius: 3px !important;
+  background: var(--brand-panel-dark) !important;
+}
+
+.trust-node.is-core {
+  background: var(--brand-charcoal) !important;
+  border-color: var(--brand-line-strong) !important;
+}
+
+.trust-node strong,
+.trust-node small {
+  display: block !important;
+}
+
+.trust-node small {
+  margin-top: 5px !important;
+  color: var(--brand-muted) !important;
+  font-size: .68rem !important;
+  line-height: 1.4 !important;
+}
+
+.trust-node-wrap > i {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 18px !important;
+  color: var(--brand-muted) !important;
+  font-style: normal !important;
+}
+
+.trust-node-wrap:last-child > i {
+  display: none !important;
+}
+
+/* Selected content fills the card with useful product explanation instead of dead space. */
+.system-inline-detail {
+  display: grid !important;
+  grid-template-columns: minmax(110px, .28fr) minmax(160px, .45fr) minmax(0, 1fr) !important;
+  gap: 12px 18px !important;
+  align-items: start !important;
+  margin-top: 12px !important;
+  padding: 12px 0 0 !important;
+  border-top: 1px solid var(--brand-line) !important;
+}
+
+.system-inline-detail > span,
+.system-inline-detail > strong,
+.system-inline-detail > p {
+  margin: 0 !important;
+  min-width: 0 !important;
+}
+
+.system-inline-detail > strong {
+  font-size: .86rem !important;
+  line-height: 1.35 !important;
+}
+
+.system-inline-detail > p {
+  color: var(--brand-muted) !important;
+  font-size: .76rem !important;
+  line-height: 1.48 !important;
+}
+
+/* Keep architecture/governance detail panels compact and product-facing. */
+.spatial-map-detail,
+.governance-evidence-detail {
+  min-height: 0 !important;
+  height: auto !important;
+}
+
+.spatial-map-detail p,
+.governance-evidence-detail p {
+  max-width: 82ch !important;
+}
+
+@media (max-width: 1020px) {
+  .system-visuals.is-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .system-inline-detail {
+    grid-template-columns: 120px minmax(150px, .42fr) minmax(0, 1fr) !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .system-visual {
+    padding: 13px !important;
+  }
+
+  .system-visual header {
+    margin-bottom: 9px !important;
+  }
+
+  .system-visual-instruction {
+    margin: 0 0 9px !important;
+    font-size: .78rem !important;
+  }
+
+  .node-flow {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    overflow: visible !important;
+    border-top: 1px solid var(--brand-line) !important;
+  }
+
+  .node-flow .node.system-visual-control {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    padding: 11px 10px !important;
+    border: 0 !important;
+    border-bottom: 1px solid var(--brand-line) !important;
+  }
+
+  .node-flow .node.system-visual-control:first-child {
+    border-left: 0 !important;
+  }
+
+  .node-flow .node strong,
+  .node-flow .node small {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .node-flow .node i {
+    display: none !important;
+  }
+
+  .node-flow .node strong,
+  .node-flow .node small,
+  .plane-box b,
+  .plane-box span,
+  .lifecycle-step strong,
+  .trust-node strong,
+  .trust-node small {
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+    hyphens: none !important;
+  }
+
+  .plane-visual {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .plane-column {
+    gap: 7px !important;
+  }
+
+  .lifecycle-flow {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .lifecycle-flow > .lifecycle-step {
+    border-right: 1px solid var(--brand-line) !important;
+    border-bottom: 1px solid var(--brand-line) !important;
+    min-height: 70px !important;
+  }
+
+  .lifecycle-flow > .lifecycle-step:nth-child(2n) {
+    border-right: 0 !important;
+  }
+
+  .trust-visual {
+    grid-template-columns: 1fr !important;
+  }
+
+  .trust-node-wrap {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+  }
+
+  .trust-node-wrap > i {
+    width: auto !important;
+    height: 20px !important;
+    transform: rotate(90deg) !important;
+  }
+
+  .system-inline-detail {
+    grid-template-columns: 1fr !important;
+    gap: 5px !important;
+    margin-top: 10px !important;
+    padding-top: 10px !important;
+  }
+
+  .system-inline-detail > p {
+    font-size: .88rem !important;
+    line-height: 1.5 !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .lifecycle-flow {
+    grid-template-columns: 1fr !important;
+  }
+
+  .lifecycle-flow > .lifecycle-step,
+  .lifecycle-flow > .lifecycle-step:nth-child(2n) {
+    border-right: 0 !important;
+  }
+}
+
+/* Canonical light-theme completion. Earlier responsive layers contain legacy
+   hard-coded dark/navy surfaces; neutralize them here without creating a
+   parallel theme authority. */
+html[data-theme="light"] body,
+html[data-theme="light"] main,
+html[data-theme="light"] .site-header,
+html[data-theme="light"] .section,
+html[data-theme="light"] .surface-section,
+html[data-theme="light"] .evidence-section,
+html[data-theme="light"] .architecture-section,
+html[data-theme="light"] .site-footer,
+html[data-theme="light"] .nav-panel,
+html[data-theme="light"] .explore-menu-panel,
+html[data-theme="light"] .card,
+html[data-theme="light"] .detail-link-card,
+html[data-theme="light"] .flow-card,
+html[data-theme="light"] .plane-card,
+html[data-theme="light"] .journey-card,
+html[data-theme="light"] .factory-availability-banner,
+html[data-theme="light"] .factory-detail,
+html[data-theme="light"] .factory-explorer,
+html[data-theme="light"] .product-experience,
+html[data-theme="light"] .proof-strip,
+html[data-theme="light"] .canonical-detail-panel,
+html[data-theme="light"] .boundary-core,
+html[data-theme="light"] .authority-layer,
+html[data-theme="light"] .core-node,
+html[data-theme="light"] .contact-directory article,
+html[data-theme="light"] .system-visual,
+html[data-theme="light"] .system-inline-detail,
+html[data-theme="light"] .spatial-map-detail,
+html[data-theme="light"] .spatial-stage,
+html[data-theme="light"] .governance-evidence-detail,
+html[data-theme="light"] .canonical-linear > div,
+html[data-theme="light"] .canonical-dual > div,
+html[data-theme="light"] .output-card,
+html[data-theme="light"] .goal-composer textarea,
+html[data-theme="light"] .callout,
+html[data-theme="light"] .themed-diagram,
+html[data-theme="light"] .workflow-concept,
+html[data-theme="light"] .trust-node,
+html[data-theme="light"] .trust-node.is-core {
+  background: #FFFFFF !important;
+  color: #0A0A0A !important;
+  border-color: #B3B3B3 !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="light"] :where(.lead,.muted,.card p,.flow-card p,.plane-card p,.journey-card p,.factory-detail p,.factory-detail small,.system-visual p,.system-visual small,.system-inline-detail p,.site-footer p,.site-footer a,.trust-node small,.product-experience p,.product-experience small,.product-stage-control p,.evidence-preview,.evidence-preview li,.proof-strip span,.contact-directory article p,.status-note p,.factory-truth-note p) {
+  color: #2A2A2A !important;
+}
+
+html[data-theme="light"] :where(.button.secondary,.text-link,.contact-directory article > a) {
+  color: #0A0A0A !important;
+  -webkit-text-fill-color: #0A0A0A !important;
+  border-color: #2A2A2A !important;
+  opacity: 1 !important;
+}
+
+html[data-theme="light"] .button:not(.secondary) {
+  background: #0A0A0A !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  border-color: #0A0A0A !important;
+  opacity: 1 !important;
+}
+
+html[data-theme="light"] :where(.button.secondary:hover,.button.secondary:focus-visible,.text-link:hover,.text-link:focus-visible,.contact-directory article > a:hover,.contact-directory article > a:focus-visible) {
+  color: #0A0A0A !important;
+  -webkit-text-fill-color: #0A0A0A !important;
+  background: #E6E6E6 !important;
+  border-color: #2A2A2A !important;
+  outline-color: #2A2A2A !important;
+}
+
+html[data-theme="light"] :where(h1,h2,h3,strong,.eyebrow,.micro-label,.panel-kicker,.nav-primary a,.nav-utility a,.explore-menu summary,.explore-menu-panel a) {
+  color: #0A0A0A !important;
+}
+
+html[data-theme="light"] .result-preview {
+  background: #141414 !important;
+  border-color: #2A2A2A !important;
+}
+
+html[data-theme="light"] .result-preview :where(span,strong),
+html[data-theme="light"] .result-preview strong {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+
+html[data-theme="light"] .product-mode-tabs button {
+  color: #2A2A2A !important;
+  -webkit-text-fill-color: #2A2A2A !important;
+}
+
+html[data-theme="light"] .product-mode-tabs button.is-active {
+  background: #0A0A0A !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  border-color: #0A0A0A !important;
+}
+
+html[data-theme="light"] .system-visual-control:focus-visible {
+  border-color: #2A2A2A !important;
+  outline-color: #2A2A2A !important;
+}
+
+html[data-theme="light"] .system-visual-control.is-active,
+html[data-theme="light"] .node-flow .node.system-visual-control:hover,
+html[data-theme="light"] .plane-box.system-visual-control:hover,
+html[data-theme="light"] .lifecycle-step.system-visual-control:hover,
+html[data-theme="light"] .trust-node.system-visual-control:hover,
+html[data-theme="light"] .nav-primary a:hover,
+html[data-theme="light"] .nav-utility a:hover,
+html[data-theme="light"] .nav-primary a[aria-current="page"],
+html[data-theme="light"] .nav-utility a[aria-current="page"] {
+  background: #E6E6E6 !important;
+  border-color: #B3B3B3 !important;
+  color: #0A0A0A !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="light"] .diagram-sprite-frame {
+  background: #FFFFFF !important;
+}
+
+html[data-theme="light"] .factory-index button,
+html[data-theme="light"] .factory-index button:hover,
+html[data-theme="light"] .factory-index button:focus-visible,
+html[data-theme="light"] .factory-index button.is-active {
+  background: #FFFFFF !important;
+  color: #0A0A0A !important;
+  border-color: #B3B3B3 !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="light"] .factory-index button:hover,
+html[data-theme="light"] .factory-index button:focus-visible,
+html[data-theme="light"] .factory-index button.is-active {
+  background: #E6E6E6 !important;
+}
+
+html[data-theme="light"] .factory-index button > span,
+html[data-theme="light"] .factory-index button > small,
+html[data-theme="light"] .factory-detail p,
+html[data-theme="light"] .factory-detail small,
+html[data-theme="light"] .factory-explorer-heading p {
+  color: #2A2A2A !important;
+}
+
+/* Dark-theme public chrome must remain neutral grayscale; no legacy blue/cyan UI accents. */
+html[data-theme="dark"] .site-footer {
+  background: #0A0A0A !important;
+  color: #B3B3B3 !important;
+  border-color: #2A2A2A !important;
+}
+
+html[data-theme="dark"] .site-footer :where(a,p,span,small) {
+  color: #B3B3B3 !important;
+  -webkit-text-fill-color: #B3B3B3 !important;
+}
+
+html[data-theme="dark"] .site-footer :where(strong,h2,h3) {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+
+html[data-theme="dark"] .site-footer a:hover,
+html[data-theme="dark"] .site-footer a:focus-visible {
+  color: #E6E6E6 !important;
+  -webkit-text-fill-color: #E6E6E6 !important;
+  outline-color: #B3B3B3 !important;
+}
+
+@media (max-width: 940px) {
+  .site-header .nav-panel.is-open {
+    left: auto !important;
+    right: 16px !important;
+    width: min(320px, calc(100vw - 32px)) !important;
+    max-width: calc(100vw - 32px) !important;
+    grid-template-columns: 1fr !important;
+  }
+
+  html[data-theme="light"] .site-header,
+  html[data-theme="light"] .nav-panel,
+  html[data-theme="light"] .explore-menu-panel {
+    background: #FFFFFF !important;
+    color: #0A0A0A !important;
+    border-color: #B3B3B3 !important;
+    box-shadow: none !important;
+  }
+
+  html[data-theme="light"] .nav-utility {
+    border-top-color: #B3B3B3 !important;
+  }
+
+  html[data-theme="light"] .menu-toggle {
+    background: #FFFFFF !important;
+    border-color: #2A2A2A !important;
+    color: #0A0A0A !important;
+  }
+
+  html[data-theme="light"] .menu-toggle span,
+  html[data-theme="light"] .menu-toggle i {
+    display: inline-block !important;
+    color: #0A0A0A !important;
+    border-color: #0A0A0A !important;
+  }
+}
+
+/* Final surface-aware neutral authority. Loaded last; this is the only new rule block.
+   It neutralizes legacy cyan/blue/navy UI without touching canonical logo asset pixels. */
+html[data-theme="dark"] .site-header,
+html[data-theme="dark"] .site-header .brand-link,
+html[data-theme="dark"] .site-header .header-inner {
+  background: #0A0A0A !important;
+  border-color: #2A2A2A !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="dark"] :where(.nav-panel,.explore-menu-panel) {
+  background: #141414 !important;
+  border-color: #2A2A2A !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="dark"] :where(.nav-primary a,.nav-utility a,.explore-menu summary,.explore-menu-panel a) {
+  color: #E6E6E6 !important;
+  -webkit-text-fill-color: #E6E6E6 !important;
+}
+
+html[data-theme="dark"] :where(.nav-primary a:hover,.nav-utility a:hover,.nav-primary a[aria-current="page"],.nav-utility a[aria-current="page"],.explore-menu-panel a:hover,.explore-menu-panel a:focus-visible,.explore-menu-panel a[aria-current="page"]) {
+  background: #242424 !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  border-color: #2A2A2A !important;
+}
+
+html[data-theme="dark"] :where(.card,.detail-link-card,.flow-card,.plane-card,.journey-card,.detail-directory > a,.runtime-line > div,.capability-matrix-row,.factory-link-cloud a,.security-process article,.principle-directory article,.trust-gate > div,.plane-box,.system-visual,.product-experience,.result-preview,.factory-detail,.factory-availability-banner,.canonical-detail-panel,.output-card,.workflow-concept,.trust-node,.trust-node.is-core,.core-node,.authority-layer,.boundary-core,.callout) {
+  background: #141414 !important;
+  background-image: none !important;
+  border-color: #2A2A2A !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="dark"] :where(.card,.detail-link-card,.flow-card,.plane-card,.journey-card,.detail-directory > a,.runtime-line > div,.capability-matrix-row,.factory-link-cloud a,.security-process article,.principle-directory article,.trust-gate > div,.plane-box,.system-visual,.product-experience,.result-preview,.factory-detail,.factory-availability-banner,.canonical-detail-panel,.output-card,.workflow-concept,.trust-node,.core-node,.authority-layer,.boundary-core,.callout) :where(h1,h2,h3,h4,strong,b) {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+
+html[data-theme="dark"] :where(.card,.detail-link-card,.flow-card,.plane-card,.journey-card,.detail-directory > a,.runtime-line > div,.capability-matrix-row,.factory-link-cloud a,.security-process article,.principle-directory article,.trust-gate > div,.plane-box,.system-visual,.product-experience,.result-preview,.factory-detail,.factory-availability-banner,.canonical-detail-panel,.output-card,.workflow-concept,.trust-node,.core-node,.authority-layer,.boundary-core,.callout) :where(p,small,span,li,i) {
+  color: #B3B3B3 !important;
+  -webkit-text-fill-color: #B3B3B3 !important;
+}
+
+html[data-theme="dark"] .product-experience :where(.micro-label,.text-link,.evidence-preview,.evidence-preview span,.evidence-preview li,.product-stage-control p,.product-stage-tabs button,.product-mode-tabs button) {
+  color: #B3B3B3 !important;
+  -webkit-text-fill-color: #B3B3B3 !important;
+}
+
+html[data-theme="dark"] .product-experience :where(.text-link:hover,.text-link:focus-visible,.product-mode-tabs button.is-active,.product-stage-tabs button.is-active) {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+
+html[data-theme="dark"] .product-mode-tabs button.is-active,
+html[data-theme="dark"] .product-stage-tabs button.is-active {
+  background: #2F2F2F !important;
+  border-color: #B3B3B3 !important;
+}
+
+html[data-theme="light"] :where(.detail-directory > a,.runtime-line > div,.capability-matrix-row,.factory-link-cloud a,.security-process article,.principle-directory article,.trust-gate > div,.plane-box,.system-visual-control,.spatial-stage) {
+  background: #FFFFFF !important;
+  background-image: none !important;
+  color: #0A0A0A !important;
+  border-color: #B3B3B3 !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="light"] :where(.detail-directory > a,.runtime-line > div,.capability-matrix-row,.factory-link-cloud a,.security-process article,.principle-directory article,.trust-gate > div,.plane-box,.system-visual-control,.spatial-stage) :where(h1,h2,h3,h4,strong,b) {
+  color: #0A0A0A !important;
+  -webkit-text-fill-color: #0A0A0A !important;
+}
+
+html[data-theme="light"] :where(.detail-directory > a,.runtime-line > div,.capability-matrix-row,.factory-link-cloud a,.security-process article,.principle-directory article,.trust-gate > div,.plane-box,.system-visual-control,.spatial-stage) :where(p,small,span,li,i) {
+  color: #2A2A2A !important;
+  -webkit-text-fill-color: #2A2A2A !important;
+}
+
+html[data-theme="light"] .result-preview,
+html[data-theme="light"] .result-preview * {
+  background-image: none !important;
+}
+
+html[data-theme="light"] .result-preview :where(span,strong,p,small,li) {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+
+html[data-theme="light"] .product-experience :where(.evidence-preview,.evidence-preview span,.evidence-preview li,.product-stage-control p,.product-stage-tabs button,.micro-label) {
+  color: #2A2A2A !important;
+  -webkit-text-fill-color: #2A2A2A !important;
+}
+
+html[data-theme="light"] :where(.lead,.section-heading > p,.compact-heading-row p,.audience-hero p,.about-intro p,.contact-intro p,.status-note p,.factory-truth-note p) {
+  color: #2A2A2A !important;
+  -webkit-text-fill-color: #2A2A2A !important;
+}
+
+html[data-theme="light"] :where(.text-link,.button.secondary,.security-detail-links a,.factory-link-cloud a,.detail-directory > a) {
+  color: #141414 !important;
+  -webkit-text-fill-color: #141414 !important;
+}
+
+html[data-theme="light"] :where(.text-link:hover,.text-link:focus-visible,.button.secondary:hover,.button.secondary:focus-visible,.security-detail-links a:hover,.security-detail-links a:focus-visible,.factory-link-cloud a:hover,.factory-link-cloud a:focus-visible,.detail-directory > a:hover,.detail-directory > a:focus-visible) {
+  background: #E6E6E6 !important;
+  color: #0A0A0A !important;
+  -webkit-text-fill-color: #0A0A0A !important;
+  border-color: #2A2A2A !important;
+}
