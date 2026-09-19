@@ -1,10 +1,27 @@
 import type { Metadata } from "next";
-import UseILAIOSPage from "../UseILAIOSPage";
+
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://ilaios.com";
 
 export const metadata: Metadata = {
   title: "Use ILAIOS",
-  description: "Learn what to provide, what ILAIOS can create, how governed execution works, what current factory readiness means, and what evidence accompanies accepted results.",
-  alternates: { canonical: "/use-ilaios", languages: { en: "/use-ilaios", tr: "/tr/use-ilaios", "x-default": "/use-ilaios" } },
+  description: "Learn how to use ILAIOS for governed AI operations.",
+  alternates: {
+    canonical: `${siteUrl}/use-ilaios`,
+    languages: {
+      en: `${siteUrl}/use-ilaios`,
+      tr: `${siteUrl}/tr/use-ilaios`,
+      'x-default': `${siteUrl}/use-ilaios`,
+    },
+  },
 };
 
-export default function Page() { return <UseILAIOSPage locale="en" />; }
+export default function UseILAIOSPage() {
+  return (
+    <main className="min-h-screen flex items-center justify-center bg-[var(--bg)] text-[var(--text)] p-4">
+      <div className="max-w-md w-full space-y-6">
+        <h1 className="text-3xl font-bold">Use ILAIOS</h1>
+        <p className="text-[var(--muted)]">Learn how to use ILAIOS for governed AI operations.</p>
+      </div>
+    </main>
+  );
+}

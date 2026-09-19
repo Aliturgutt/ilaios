@@ -1,15 +1,23 @@
 import type { Metadata } from "next";
-import SignInPage from "../../SignInPage";
 
 export const metadata: Metadata = {
-  title: "Giriş yap",
-  description: "Google, Microsoft veya GitHub ile ILAIOS'a güvenli şekilde devam et.",
+  title: "Giriş Yap - ILAIOS",
+  description: "ILAIOS Yönetilen Yapay Zeka İşletim Sistemi'ne giriş yapın",
   alternates: {
     canonical: "/tr/sign-in",
-    languages: { tr: "/tr/sign-in", en: "/sign-in", "x-default": "/sign-in" },
+    languages: {
+      en: "/sign-in",
+      tr: "/tr/sign-in",
+      'x-default': "/sign-in",
+    },
   },
 };
 
-export default function Page() {
-  return <SignInPage locale="tr" />;
+export default function SignInPage() {
+  return (
+    <div>
+      <h1>Giriş Yap</h1>
+      <p>Giriş sayfası placeholder.</p>
+    </div>
+  );
 }
