@@ -1,3 +1,4 @@
+"use client";
 // Importers/callers: Imported by FactoriesPage.tsx
 // Affected API: React component using next/link and ThemedDiagram
 // Data schemas: Props (none)
@@ -9,11 +10,6 @@ import CanonicalSystemDetail from "../../CanonicalSystemDetail";
 import ThemedDiagram from "../../ThemedDiagram";
 import { motion } from "motion/react";
 
-export const metadata: Metadata = {
-  title: "Web Factory",
-  description: "ILAIOS Web Factory: from goal, research and information architecture through visual design, implementation, browser/security/accessibility/performance/SEO/visual QA, bounded repair, deployment validation and finished-site evidence.",
-  alternates: { canonical: "/factories/web", languages: { en: "/factories/web", tr: "/tr/factories/web", "x-default": "/factories/web" } },
-};
 
 const stages = [
   ["01", "Goal & research", "Define audience, business objective, trusted inputs, constraints, acceptance criteria and research needs."],

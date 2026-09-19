@@ -1,12 +1,8 @@
+"use client";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { motion } from "motion/react";
 
-export const metadata: Metadata = {
-  title: "Security Factory",
-  description: "ILAIOS Security Factory is a bounded defensive workflow for authorized code, secret, supply-chain, infrastructure and local/test web security analysis with remediation, retest and independent verification.",
-  alternates: { canonical: "/factories/security", languages: { en: "/factories/security", tr: "/tr/factories/security", "x-default": "/factories/security" } },
-};
 
 const stages = [
   ["01", "Authorize scope", "Accept only an explicitly authorized repository or configured localhost/test target. Scope is not inferred or widened by the security role."],

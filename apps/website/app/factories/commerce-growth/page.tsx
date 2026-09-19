@@ -1,12 +1,8 @@
+"use client";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { motion } from "motion/react";
 
-export const metadata: Metadata = {
-  title: "Commerce & Growth Factory",
-  description: "ILAIOS Commerce & Growth Factory is a bounded review-only foundation for evidence-backed growth proposals with trusted sources, approved draft channels and zero paid-spend authority.",
-  alternates: { canonical: "/factories/commerce-growth", languages: { en: "/factories/commerce-growth", tr: "/tr/factories/commerce-growth", "x-default": "/factories/commerce-growth" } },
-};
 
 const stages = [
   ["01", "Register trusted evidence", "Store explicit source locators and SHA-256 digests; untrusted or unknown evidence cannot support a proposal."],

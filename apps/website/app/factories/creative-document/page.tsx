@@ -1,12 +1,8 @@
+"use client";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { motion } from "motion/react";
 
-export const metadata: Metadata = {
-  title: "Creative & Document Factory",
-  description: "ILAIOS Creative & Document Factory is a bounded implemented foundation for trusted-source document composition with deterministic provenance and approval-gated export.",
-  alternates: { canonical: "/factories/creative-document", languages: { en: "/factories/creative-document", tr: "/tr/factories/creative-document", "x-default": "/factories/creative-document" } },
-};
 
 const stages = [
   ["01", "Register trusted sources", "Record explicit source IDs, locators and SHA-256 content digests; source trust is retained as part of the bounded input state."],

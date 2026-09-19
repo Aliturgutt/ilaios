@@ -32,3 +32,5 @@ service-account*.json
 *.secrets
 secrets/
 .secret/
+
+.vercel

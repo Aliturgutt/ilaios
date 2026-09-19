@@ -1,3 +1,4 @@
+"use client";
 // Importers/callers: Imported by FactoriesPage.tsx
 // Affected API: React component using next/link and ThemedDiagram
 // Data schemas: Props (none)
@@ -8,11 +9,6 @@ import Link from "next/link";
 import ThemedDiagram from "../../ThemedDiagram";
 import { motion } from "motion/react";
 
-export const metadata: Metadata = {
-  title: "Video & Media Factory",
-  description: "How ILAIOS Video & Media Factory structures research, script, scene and shot planning, assets, governed execution, rendering, validation, publishing preparation, evidence, recovery, and cost control.",
-  alternates: { canonical: "/factories/video", languages: { en: "/factories/video", tr: "/tr/factories/video", "x-default": "/factories/video" } },
-};
 
 const stages = [
   ["01", "Topic & research", "Start from a defined content goal, gather relevant research, and preserve source context where the workflow depends on factual claims."],

@@ -1,13 +1,9 @@
+"use client";
 import type { Metadata } from "next";
 import Link from "next/link";
 import ThemedDiagram from "../../ThemedDiagram";
 import { motion } from "motion/react";
 
-export const metadata: Metadata = {
-  title: "App Factory",
-  description: "ILAIOS App Factory is a Windows-first bounded finished-product path with deterministic build, test, package and evidence controls; Android/iOS, production signing and Store publication remain separate gates.",
-  alternates: { canonical: "/factories/app", languages: { en: "/factories/app", tr: "/tr/factories/app", "x-default": "/factories/app" } },
-};
 
 const stages = [
   ["01", "Product goal & references", "Define the application outcome, users, platform target, constraints, references and acceptance criteria."],

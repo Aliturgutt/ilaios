@@ -1,3 +1,4 @@
+"use client";
 // Importers/callers: Imported by FactoriesPage.tsx (likely)
 // Affected API: React component using next/link and react hooks (useState, useRef) - actually no hooks used, just next/link and ThemedDiagram
 // Data schemas: Props (none)
@@ -8,11 +9,6 @@ import Link from "next/link";
 import ThemedDiagram from "../../ThemedDiagram";
 import { motion } from "motion/react";
 
-export const metadata: Metadata = {
-  title: "Software Factory",
-  description: "How ILAIOS Software Factory structures software delivery as governed engineering jobs with bounded implementation, tests, review, security gates, release evidence, and recovery.",
-  alternates: { canonical: "/factories/software", languages: { en: "/factories/software", tr: "/tr/factories/software", "x-default": "/factories/software" } },
-};
 
 const stages = [
   ["01", "Specify", "Define the requested outcome, repository or system boundary, constraints, acceptance criteria, risk, and required evidence."],

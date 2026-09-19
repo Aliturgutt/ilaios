@@ -1,8 +1,8 @@
+"use client";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { motion } from "motion/react";
 
-export const metadata: Metadata = { title: "Solutions", description: "Explore ILAIOS solution patterns for governed research, enterprise intelligence, business operations and digital production.", alternates: { canonical: "/solutions", languages: { en: "/solutions", tr: "/tr/solutions", "x-default": "/solutions" } } };
 
 const solutions = [
   ["Launch a digital product", "Move from research and planning into the website, software, application or media work the launch actually needs."],
