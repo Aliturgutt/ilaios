@@ -25,11 +25,17 @@ class RuntimeBackupManager:
             temporary_root = Path(temporary)
             for source in sorted(item for item in state_root.rglob("*") if item.is_file()):
                 relative = source.relative_to(state_root).as_posix()
-                if source.suffix == ".sqlite3":
+                if _is_sqlite_sidecar(source):
+                    continue
+                if _is_sqlite_database(source):
                     snapshot = temporary_root / relative
                     snapshot.parent.mkdir(parents=True, exist_ok=True)
-                    with sqlite3.connect(source) as current, sqlite3.connect(snapshot) as target:
-                        current.backup(target)
+                    try:
+                        with sqlite3.connect(source) as current, sqlite3.connect(snapshot) as target:
+                            current.backup(target)
+                        _verify_sqlite_integrity(snapshot)
+                    except sqlite3.Error as exc:
+                        raise BackupError(f"SQLite backup failed for {relative}") from exc
                     files[relative] = snapshot.read_bytes()
                 else:
                     files[relative] = source.read_bytes()
@@ -90,7 +96,29 @@ class RuntimeBackupManager:
             destination = target_root / relative
             destination.parent.mkdir(parents=True, exist_ok=True)
             destination.write_bytes(content)
+        try:
+            for relative in restored:
+                destination = target_root / relative
+                if _is_sqlite_database(destination):
+                    _verify_sqlite_integrity(destination)
+        except sqlite3.Error as exc:
+            raise BackupError("restored SQLite integrity check failed") from exc
         return manifest
+
+
+def _is_sqlite_database(path: Path) -> bool:
+    return path.suffix.lower() in {".db", ".sqlite3"}
+
+
+def _is_sqlite_sidecar(path: Path) -> bool:
+    return path.name.endswith(("-wal", "-shm"))
+
+
+def _verify_sqlite_integrity(path: Path) -> None:
+    with sqlite3.connect(path) as connection:
+        result = connection.execute("PRAGMA integrity_check").fetchone()
+    if result != ("ok",):
+        raise sqlite3.DatabaseError(f"SQLite integrity check failed for {path.name}")
 
 
 def _write_deterministic(bundle: zipfile.ZipFile, path: str, content: bytes) -> None:

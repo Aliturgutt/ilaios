@@ -1,0 +1,219 @@
+name: Web App Factory Continuation Gate
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'services/web_app_*.py'
+      - 'services/web_generated_sandbox_gate.py'
+      - 'services/web_reference_semantics.py'
+      - 'services/web_source_*.py'
+      - 'services/web_screenshot_fidelity.py'
+      - 'services/integrations/web_preview_sandbox_binding.py'
+      - 'services/software_factory_runtime.py'
+      - 'services/control_plane/migrations.py'
+      - 'tests/test_web_app_*.py'
+      - 'tests/test_web_generated_sandbox_gate.py'
+      - 'tests/test_web_reference_semantics.py'
+      - 'tests/test_web_source_*.py'
+      - 'tests/test_web_screenshot_fidelity.py'
+      - 'tests/test_web_preview_sandbox_binding.py'
+      - 'tests/test_software_factory_runtime.py'
+      - '.github/web-app-factory-closure.json'
+      - '.github/workflows/web-app-factory-continuation.yml'
+      - '.github/workflows/web-app-factory-exact-master-status.yml'
+  pull_request:
+    branches:
+      - master
+    paths:
+      - 'services/web_app_*.py'
+      - 'services/web_generated_sandbox_gate.py'
+      - 'services/web_reference_semantics.py'
+      - 'services/web_source_*.py'
+      - 'services/web_screenshot_fidelity.py'
+      - 'services/integrations/web_preview_sandbox_binding.py'
+      - 'services/software_factory_runtime.py'
+      - 'services/control_plane/migrations.py'
+      - 'tests/test_web_app_*.py'
+      - 'tests/test_web_generated_sandbox_gate.py'
+      - 'tests/test_web_reference_semantics.py'
+      - 'tests/test_web_source_*.py'
+      - 'tests/test_web_screenshot_fidelity.py'
+      - 'tests/test_web_preview_sandbox_binding.py'
+      - 'tests/test_software_factory_runtime.py'
+      - '.github/web-app-factory-closure.json'
+      - '.github/workflows/web-app-factory-continuation.yml'
+      - '.github/workflows/web-app-factory-exact-master-status.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-app-factory-continuation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checkpoint:
+    name: exact-head Web App Factory checkpoint
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          persist-credentials: false
+
+      - name: Verify exact checked-out head
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          echo "WEB_APP_FACTORY_EXACT_HEAD=$SOURCE_SHA"
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: .github/requirements/platform-ci.txt
+
+      - name: Install locked validation dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check -r .github/requirements/platform-ci.txt
+          python -m pip check
+
+      - name: Validate persistent closure ledger
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path('.github/web-app-factory-closure.json')
+          data = json.loads(path.read_text(encoding='utf-8'))
+          assert data['schema_version'] == 'ilaios.web-app-factory-closure.v1'
+          assert data['tracking_issue'] == 486
+          assert data['truth_rule'] == 'NO_EVIDENCE_NO_DONE'
+          phases = data['phases']
+          assert [phase['id'] for phase in phases] == list(range(1, 17))
+          allowed = {'NOT_STARTED', 'IN_PROGRESS', 'IMPLEMENTED', 'TESTED', 'VERIFIED', 'DEPLOYED', 'PRODUCTION'}
+          assert all(phase['status'] in allowed for phase in phases)
+          current = data['current_phase']
+          assert 1 <= current <= 16
+          assert phases[current - 1]['status'] != 'NOT_STARTED'
+          assert all(phase['status'] == 'NOT_STARTED' for phase in phases[current:])
+          assert phases[15]['name'] == 'optional-3d-motion-webgl-capability-pack-production-e2e'
+          print(f"WEB_APP_FACTORY_LEDGER=PASS current_phase={current} phases={len(phases)}")
+          PY
+
+      - name: Run focused Web App contract/runtime regression tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pytest -q \
+            tests/test_web_reference_semantics.py \
+            tests/test_web_app_spec.py \
+            tests/test_web_app_design_contract.py \
+            tests/test_web_app_domain_migrations.py \
+            tests/test_web_app_auth_contract.py \
+            tests/test_web_app_interaction_contract.py \
+            tests/test_web_app_crud_runtime.py \
+            tests/test_web_app_analytics_runtime.py \
+            tests/test_web_app_realtime_runtime.py \
+            tests/test_web_app_sandbox_evidence.py \
+            tests/test_web_app_preview_runtime_probe.py \
+            tests/test_web_preview_sandbox_binding.py \
+            tests/test_web_generated_sandbox_gate.py \
+            tests/test_web_screenshot_fidelity.py \
+            tests/test_software_factory_runtime.py
+
+      - name: Run focused Ruff
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m ruff check \
+            services/web_reference_semantics.py \
+            services/web_app_spec.py \
+            services/web_app_design_contract.py \
+            services/web_app_auth_contract.py \
+            services/web_app_interaction_contract.py \
+            services/web_app_crud_runtime.py \
+            services/web_app_analytics_runtime.py \
+            services/web_app_realtime_runtime.py \
+            services/web_app_build_sandbox_observer.py \
+            services/web_app_sandbox_evidence.py \
+            services/web_app_preview_runtime_probe.py \
+            services/integrations/web_preview_sandbox_binding.py \
+            services/web_generated_sandbox_gate.py \
+            services/web_screenshot_fidelity.py \
+            services/software_factory_runtime.py \
+            services/control_plane/migrations.py \
+            tests/test_web_reference_semantics.py \
+            tests/test_web_app_spec.py \
+            tests/test_web_app_design_contract.py \
+            tests/test_web_app_domain_migrations.py \
+            tests/test_web_app_auth_contract.py \
+            tests/test_web_app_interaction_contract.py \
+            tests/test_web_app_crud_runtime.py \
+            tests/test_web_app_analytics_runtime.py \
+            tests/test_web_app_realtime_runtime.py \
+            tests/test_web_app_sandbox_evidence.py \
+            tests/test_web_app_preview_runtime_probe.py \
+            tests/test_web_preview_sandbox_binding.py \
+            tests/test_web_generated_sandbox_gate.py \
+            tests/test_web_screenshot_fidelity.py \
+            tests/test_software_factory_runtime.py
+
+      - name: Run focused strict Mypy
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m mypy --strict \
+            services/web_app_design_contract.py \
+            services/web_app_auth_contract.py \
+            services/web_app_interaction_contract.py \
+            services/web_app_crud_runtime.py \
+            services/web_app_analytics_runtime.py \
+            services/web_app_realtime_runtime.py \
+            services/web_app_build_sandbox_observer.py \
+            services/web_app_sandbox_evidence.py \
+            services/web_app_preview_runtime_probe.py \
+            services/integrations/web_preview_sandbox_binding.py \
+            services/web_generated_sandbox_gate.py \
+            services/web_screenshot_fidelity.py \
+            services/software_factory_runtime.py \
+            services/control_plane/migrations.py \
+            tests/test_web_app_design_contract.py \
+            tests/test_web_app_domain_migrations.py \
+            tests/test_web_app_auth_contract.py \
+            tests/test_web_app_interaction_contract.py \
+            tests/test_web_app_crud_runtime.py \
+            tests/test_web_app_analytics_runtime.py \
+            tests/test_web_app_realtime_runtime.py \
+            tests/test_web_app_sandbox_evidence.py \
+            tests/test_web_app_preview_runtime_probe.py \
+            tests/test_web_preview_sandbox_binding.py \
+            tests/test_web_generated_sandbox_gate.py \
+            tests/test_web_screenshot_fidelity.py \
+            tests/test_software_factory_runtime.py
+
+      - name: Publish checkpoint summary
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '## ILAIOS Web App Factory Continuation Gate' >> "$GITHUB_STEP_SUMMARY"
+          echo "- Exact PR head: \`${SOURCE_SHA}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo '- Tracking issue: `#486`' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Canonical phases: `1..16`' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Rule: `NO_EVIDENCE_NO_DONE`' >> "$GITHUB_STEP_SUMMARY"
+          echo '- This gate proves source/test quality only; it does not claim deployment or production.' >> "$GITHUB_STEP_SUMMARY"

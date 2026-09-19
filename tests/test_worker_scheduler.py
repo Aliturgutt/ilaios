@@ -28,6 +28,26 @@ def test_scheduling_is_deterministic_and_enforces_quota() -> None:
         scheduler.schedule("task-3", "render", now=now)
 
 
+def test_scheduling_ignores_expired_leases_in_load_selection() -> None:
+    now = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    scheduler = WorkerScheduler(lease_duration=timedelta(seconds=30))
+    scheduler.register(WorkerProfile("worker-b", frozenset({"render"}), 2))
+    scheduler.register(WorkerProfile("worker-a", frozenset({"render"}), 2))
+
+    first = scheduler.schedule("task-1", "render", now=now)
+    second = scheduler.schedule("task-2", "render", now=now)
+    renewed_second = scheduler.heartbeat(
+        second,
+        now=now + timedelta(seconds=10),
+    )
+    after_first_expiry = now + timedelta(seconds=31)
+    third = scheduler.schedule("task-3", "render", now=after_first_expiry)
+
+    assert first.worker_id == "worker-a"
+    assert renewed_second.worker_id == "worker-b"
+    assert third.worker_id == "worker-a"
+
+
 def test_lease_loss_and_split_brain_cannot_authorize_side_effects() -> None:
     now = datetime(2026, 1, 1, tzinfo=timezone.utc)
     scheduler = _scheduler()

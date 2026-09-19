@@ -143,6 +143,7 @@ def test_actual_oci_runtime_health_migration_and_rollback(tmp_path: Path) -> Non
             assert payload["dependencies"] == {
                 "artifact_store": "ready",
                 "control_database": "ready",
+                "knowledge_store": "disabled",
             }
 
     database = state_root / "control.sqlite3"

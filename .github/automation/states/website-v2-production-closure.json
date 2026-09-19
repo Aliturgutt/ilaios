@@ -1,0 +1,19 @@
+{
+  "schema_version": "ilaios.execution-controller.v1",
+  "task_id": "website-v2-production-closure",
+  "task_source": {"type": "repo_ledger_plus_live_production_certification", "reference": "Website V2 production recertification / PR #759 successor"},
+  "status": "IN_PROGRESS",
+  "current_phase": "exact-current-production-recertification",
+  "master_sha": "4eee882dd1a27bbc25a35554c6927e74194b042b",
+  "base_sha": "4eee882dd1a27bbc25a35554c6927e74194b042b",
+  "head_sha": "f5a342ef1c03cad054ad0bd544a284b96dc9e02e",
+  "branch": "website/production-recert-4eee882d",
+  "pr": 882,
+  "ci": {"run_id": 32578309196, "conclusion": "failure", "exact_sha": "f5a342ef1c03cad054ad0bd544a284b96dc9e02e"},
+  "next_action": "Re-run fresh exact-head gates after this schema-only controller repair. If PASS, re-read live master and overlap, acquire the bounded single-writer merge window, expected-head merge, then require exact-merge-SHA Website Production Certification plus /api/release and live EN/TR browser/SEO/network/visual evidence.",
+  "blocker": {"type": null, "detail": null, "human_action": null},
+  "repair": {"retry_count": 4, "last_failure_fingerprint": "controller-state-blocker-object-shape", "last_root_cause": "Execution Controller State Validation requires blocker to contain exactly type, detail, human_action even when no blocker is active. The prior branch checkpoint incorrectly used null."},
+  "lock": {"owner": "ILAIOS Unified Closure", "scope": [".github/automation/states/website-v2-production-closure.json", "apps/website/.production-recertification"], "acquired_at": "2026-08-22T17:12:00+03:00", "expires_at": "2026-08-22T18:12:00+03:00"},
+  "evidence": ["PR #759 merged bounded production-recertification trigger as bcf93f90afa7781c55839e9602717271ca00a6d6", "PR #874 merged the exact-current Website production recertification successor as c1bf8fa6edbba58b81f4060cc2b24b9241cb2392", "current master at this replay is 4eee882dd1a27bbc25a35554c6927e74194b042b", "current master exact Required CI status is success via run 32577428593", "current master exact Software Factory status is success via run 32577428073", "current master Vercel commit status is success and no longer reports build-rate-limit", "current master advanced from dd3224f5 only through Desktop runtime-status presentation paths, with no overlap against the two Website recertification paths", "PR #882 exact-head Software Factory Final Evidence run 32578309198 passed on f5a342ef1c03cad054ad0bd544a284b96dc9e02e", "PR #882 controller run 32578309196 failed only because blocker was null instead of the required three-key object; this commit repairs that schema without weakening the validator", "exact live /api/release plus EN/TR browser/SEO/network/visual evidence is still mandatory after merge"],
+  "updated_at": "2026-08-22T17:22:00+03:00"
+}

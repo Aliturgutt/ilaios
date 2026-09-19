@@ -1,6 +1,6 @@
 # Contributing to ILAIOS
 
-ILAIOS uses evidence-driven, bounded changes. This repository is currently private and owner-operated, but every change should remain reviewable and reproducible.
+ILAIOS uses evidence-driven, bounded changes. This repository is publicly visible and owner-operated; public visibility does not grant an open-source reuse license, and every change should remain reviewable and reproducible.
 
 ## Before changing code
 

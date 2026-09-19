@@ -2,7 +2,10 @@
 
 import pytest
 
-from services.personal_operations_factory import PersonalOperationsError, PersonalOperationsFactory
+from services.personal_operations_factory import (
+    PersonalOperationsError,
+    PersonalOperationsFactory,
+)
 
 
 def _steps() -> tuple[tuple[str, str, str, str], ...]:

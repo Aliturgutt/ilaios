@@ -1,0 +1,11 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "candidate_skill_id": {"type": "string", "minLength": 1},
+    "candidate_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "scenario_set_id": {"type": "string", "minLength": 1},
+    "evaluator_id": {"type": "string", "minLength": 1}
+  },
+  "required": ["candidate_skill_id", "candidate_digest", "scenario_set_id", "evaluator_id"]
+}

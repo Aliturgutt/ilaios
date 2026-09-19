@@ -1,0 +1,9 @@
+{
+  "cases": [
+    {"id":"evaluate-golden","kind":"GOLDEN","assertions":["results bind to exact candidate/scenario/evaluator","assertion counts and pass rate are reported"]},
+    {"id":"evaluate-negative","kind":"NEGATIVE","assertions":["missing execution evidence blocks","generated tests alone never count as passed"]},
+    {"id":"evaluate-adversarial","kind":"ADVERSARIAL","assertions":["self-certification cannot replace independent review","provider/tool authority is not granted"]},
+    {"id":"evaluate-malformed","kind":"MALFORMED","assertions":["invalid digest or scenario identity blocks"]},
+    {"id":"evaluate-regression","kind":"REGRESSION","assertions":["candidate and baseline measurements remain separate and evidence-bound"]}
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "type": "object",
+  "properties": {
+    "candidate_digest": {"type":"string","pattern":"^[0-9a-f]{64}$"},
+    "validation_evidence_ids": {"type":"array","items":{"type":"string","minLength":1},"minItems":1},
+    "assurance_evidence_ids": {"type":"array","items":{"type":"string","minLength":1},"minItems":1},
+    "risk_class": {"type":"string","enum":["low","medium","high","critical"]},
+    "declared_dependencies": {"type":"array","items":{"type":"string"}}
+  },
+  "required": ["candidate_digest","validation_evidence_ids","assurance_evidence_ids","risk_class","declared_dependencies"]
+}

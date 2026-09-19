@@ -60,7 +60,10 @@ ENGINEERING_AGENT_SKILLS: Mapping[str, tuple[str, ...]] = {
         "sf-database-migration",
         "sf-api-contract",
     ),
-    "ilaios.agent.engineering.frontend.v1": ("sf-frontend-engineering",),
+    "ilaios.agent.engineering.frontend.v1": (
+        "sf-frontend-engineering",
+        "sf-windows-desktop",
+    ),
     "ilaios.agent.engineering.integration.v1": ("sf-integration-engineering",),
     "ilaios.agent.engineering.test.v1": (
         "sf-test-design",

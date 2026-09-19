@@ -94,6 +94,35 @@ def test_actual_stack_adapters_emit_complete_governed_lifecycle(
     assert '"passed":true' in evidence_json(evidence)
 
 
+def test_node_dependency_resolution_disables_package_install_hooks(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace = _workspace(tmp_path)
+    monkeypatch.setattr("services.software_factory_runtime.shutil.which", lambda _: "runtime")
+    boundary = _Boundary()
+    adapter = NodeRuntimeAdapter(boundary)
+
+    result = adapter.resolve_dependencies(
+        workspace,
+        ExecutionPolicy(frozenset({"apps"})),
+    )
+
+    assert result.passed
+    assert boundary.commands == [
+        RuntimeCommand(
+            "resolve_dependencies",
+            (
+                "pnpm",
+                "install",
+                "--offline",
+                "--frozen-lockfile",
+                "--ignore-scripts",
+            ),
+            "apps/website",
+        )
+    ]
+
+
 def test_missing_runtime_and_incomplete_evidence_fail_closed(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

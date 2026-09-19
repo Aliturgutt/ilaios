@@ -82,9 +82,7 @@ class ContentValidationEvidence:
             )
 
         if self.duration_seconds <= 0:
-            raise ContentValidationError(
-                "duration_seconds must be greater than zero"
-            )
+            raise ContentValidationError("duration_seconds must be greater than zero")
 
         if self.cta_text is not None:
             _require_non_blank("cta_text", self.cta_text)
@@ -121,9 +119,7 @@ class ContentValidationResult:
         _require_non_blank("job_id", self.job_id)
 
         if self.passed and self.issues:
-            raise ContentValidationError(
-                "passed validation must not contain issues"
-            )
+            raise ContentValidationError("passed validation must not contain issues")
 
         if not self.passed and not self.issues:
             raise ContentValidationError(
@@ -166,10 +162,7 @@ class ContentValidationCoordinator:
                     issues.append(
                         ContentValidationIssue(
                             code="narration_scene_missing",
-                            message=(
-                                "narration is missing for scene: "
-                                f"{scene_id}"
-                            ),
+                            message=("narration is missing for scene: " f"{scene_id}"),
                         )
                     )
 
@@ -179,8 +172,7 @@ class ContentValidationCoordinator:
                         ContentValidationIssue(
                             code="narration_scene_unknown",
                             message=(
-                                "narration references unknown scene: "
-                                f"{scene_id}"
+                                "narration references unknown scene: " f"{scene_id}"
                             ),
                         )
                     )
@@ -202,10 +194,7 @@ class ContentValidationCoordinator:
                     )
                 )
 
-        if (
-            evidence.duration_seconds
-            < self._policy.minimum_duration_seconds
-        ):
+        if evidence.duration_seconds < self._policy.minimum_duration_seconds:
             issues.append(
                 ContentValidationIssue(
                     code="duration_too_short",
@@ -216,10 +205,7 @@ class ContentValidationCoordinator:
                 )
             )
 
-        if (
-            evidence.duration_seconds
-            > self._policy.maximum_duration_seconds
-        ):
+        if evidence.duration_seconds > self._policy.maximum_duration_seconds:
             issues.append(
                 ContentValidationIssue(
                     code="duration_too_long",
@@ -235,10 +221,7 @@ class ContentValidationCoordinator:
                 issues.append(
                     ContentValidationIssue(
                         code="required_platform_missing",
-                        message=(
-                            "required target platform is missing: "
-                            f"{platform}"
-                        ),
+                        message=("required target platform is missing: " f"{platform}"),
                     )
                 )
 
@@ -279,9 +262,7 @@ class ContentValidationCoordinator:
 
         validation_id = (
             "content-validation-"
-            + sha256(
-                canonical_material.encode("utf-8")
-            ).hexdigest()[:24]
+            + sha256(canonical_material.encode("utf-8")).hexdigest()[:24]
         )
 
         return ContentValidationResult(
@@ -302,9 +283,7 @@ def _validate_unique_texts(
         _require_non_blank(name, value)
 
         if value in seen:
-            raise ContentValidationError(
-                f"{name} must contain unique values"
-            )
+            raise ContentValidationError(f"{name} must contain unique values")
 
         seen.add(value)
 
@@ -318,11 +297,7 @@ def _require_non_blank(
     value: str,
 ) -> None:
     if not value or not value.strip():
-        raise ContentValidationError(
-            f"{name} must not be blank"
-        )
+        raise ContentValidationError(f"{name} must not be blank")
 
     if value != value.strip():
-        raise ContentValidationError(
-            f"{name} must not contain surrounding whitespace"
-        )
+        raise ContentValidationError(f"{name} must not contain surrounding whitespace")

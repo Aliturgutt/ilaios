@@ -2,7 +2,7 @@
 
 **Document Type:** Canonical Engineering Standards  
 **Format:** GitHub Markdown + ASCII workflow diagrams  
-**Status:** Canonical Baseline v1.0 — Pending Repository Publication  
+**Status:** Canonical Baseline v1.0 — Published in Repository  
 **Architecture Authority:** `SYSTEM_ARCHITECTURE.md`  
 **Product Authority:** `PRODUCT_REQUIREMENTS.md`  
 **Implementation Authority:** `IMPLEMENTATION_SPEC.md`  

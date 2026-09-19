@@ -218,7 +218,7 @@ resource "aws_ecs_task_definition" "runtime" {
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
   cpu                      = 256
-  memory                   = 512
+  memory                   = 1024
   execution_role_arn       = aws_iam_role.execution[0].arn
   task_role_arn            = aws_iam_role.task[0].arn
   tags                     = local.tags
@@ -234,15 +234,10 @@ resource "aws_ecs_task_definition" "runtime" {
     }
   }
   container_definitions = jsonencode([{
-    name         = "runtime", image = "${aws_ecr_repository.runtime.repository_url}@${var.image_digest}", essential = true,
-    user         = "1000:1000", readonlyRootFilesystem = true,
-    portMappings = [{ containerPort = 8080, hostPort = 8080, protocol = "tcp" }],
-    environment = [
-      { name = "ILAIOS_HOST", value = "0.0.0.0" }, { name = "ILAIOS_PORT", value = "8080" },
-      { name = "ILAIOS_STATE_ROOT", value = "/var/lib/ilaios" }, { name = "ILAIOS_READY_FILE", value = "/var/lib/ilaios/ready.json" },
-      { name = "ILAIOS_RELEASE_STATE", value = var.release_state },
-      { name = "ILAIOS_HARD_CAP_MINOR", value = "100" }, { name = "PYTHONDONTWRITEBYTECODE", value = "1" }
-    ],
+    name             = "runtime", image = "${aws_ecr_repository.runtime.repository_url}@${var.image_digest}", essential = true,
+    user             = "1000:1000", readonlyRootFilesystem = true,
+    portMappings     = [{ containerPort = 8080, hostPort = 8080, protocol = "tcp" }],
+    environment      = local.runtime_environment,
     secrets          = [{ name = "ILAIOS_CONTROL_PLANE_TOKEN", valueFrom = var.control_plane_secret_arn }],
     mountPoints      = [{ sourceVolume = "state", containerPath = "/var/lib/ilaios", readOnly = false }],
     healthCheck      = { command = ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health/ready',timeout=2)\""], interval = 30, timeout = 5, retries = 3, startPeriod = 30 },

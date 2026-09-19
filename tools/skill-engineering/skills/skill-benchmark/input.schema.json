@@ -1,0 +1,11 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "candidate_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "scenario_set_id": {"type": "string", "minLength": 1},
+    "execution_targets": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "runs_per_target": {"type": "integer", "minimum": 1}
+  },
+  "required": ["candidate_digest", "scenario_set_id", "execution_targets", "runs_per_target"]
+}

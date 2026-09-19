@@ -1,0 +1,9 @@
+{
+  "cases": [
+    {"id":"benchmark-golden","kind":"GOLDEN","assertions":["same digest/scenario set is compared across targets","run counts and observed metrics are evidence-bound"]},
+    {"id":"benchmark-negative","kind":"NEGATIVE","assertions":["mixed candidate digests or incompatible scenarios block comparison"]},
+    {"id":"benchmark-adversarial","kind":"ADVERSARIAL","assertions":["hidden failed runs cannot be discarded","benchmark cannot select unauthorized provider or grant authority"]},
+    {"id":"benchmark-malformed","kind":"MALFORMED","assertions":["empty targets or invalid run count blocks"]},
+    {"id":"benchmark-regression","kind":"REGRESSION","assertions":["single-run success cannot be mislabeled as repeated benchmark evidence"]}
+  ]
+}

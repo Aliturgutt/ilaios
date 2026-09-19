@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:crypto/crypto.dart' as crypto;
 
 import 'evidence_record.dart';
 import 'operational_snapshot.dart';
@@ -14,6 +17,46 @@ enum GovernanceDecision {
   final String wireValue;
 }
 
+enum PromptRefinementMode {
+  improve('improve'),
+  clarify('clarify'),
+  structure('structure'),
+  preserveIntent('preserve-intent'),
+  compress('compress'),
+  evaluate('evaluate');
+
+  const PromptRefinementMode(this.wireValue);
+  final String wireValue;
+}
+
+class PromptRefinementPreview {
+  const PromptRefinementPreview({
+    required this.originalPrompt,
+    required this.refinedPrompt,
+    required this.mode,
+    required this.transformed,
+    required this.detectedIssues,
+    required this.preservedConstraints,
+    required this.unresolvedAmbiguities,
+    required this.warnings,
+    required this.constraintsDetected,
+    required this.riskCues,
+    required this.riskCuesPreserved,
+  });
+
+  final String originalPrompt;
+  final String refinedPrompt;
+  final PromptRefinementMode mode;
+  final bool transformed;
+  final List<String> detectedIssues;
+  final List<String> preservedConstraints;
+  final List<String> unresolvedAmbiguities;
+  final List<String> warnings;
+  final bool constraintsDetected;
+  final List<String> riskCues;
+  final bool? riskCuesPreserved;
+}
+
 class ControlPlaneClientException implements Exception {
   const ControlPlaneClientException(this.message);
   final String message;
@@ -25,6 +68,30 @@ class ControlPlaneResponse {
   const ControlPlaneResponse({required this.statusCode, required this.body});
   final int statusCode;
   final String body;
+}
+
+class PromptSubmission {
+  const PromptSubmission({
+    required this.goalId,
+    required this.jobId,
+    required this.state,
+  });
+
+  final String goalId;
+  final String jobId;
+  final String state;
+}
+
+class VerifiedArtifact {
+  const VerifiedArtifact({
+    required this.digest,
+    required this.size,
+    required this.bytes,
+  });
+
+  final String digest;
+  final int size;
+  final Uint8List bytes;
 }
 
 abstract interface class ControlPlaneTransport {
@@ -67,8 +134,10 @@ class IoControlPlaneTransport implements ControlPlaneTransport {
       final request = await client.openUrl(method, uri).timeout(timeout);
       headers.forEach(request.headers.set);
       if (body != null) {
+        final bodyBytes = utf8.encode(body);
         request.headers.contentType = ContentType.json;
-        request.write(body);
+        request.contentLength = bodyBytes.length;
+        request.add(bodyBytes);
       }
       final response = await request.close().timeout(timeout);
       final responseBody =
@@ -103,6 +172,154 @@ class ControlPlaneClient {
   final Uri _baseUri;
   final String _token;
   final ControlPlaneTransport _transport;
+
+  Future<PromptSubmission> submitPrompt(String objective) async {
+    final normalized = objective.trim();
+    if (normalized.isEmpty) {
+      throw const ControlPlaneClientException('Prompt must not be empty');
+    }
+    if (normalized.length > 20000) {
+      throw const ControlPlaneClientException('Prompt exceeds the Desktop input limit');
+    }
+
+    final goal = await _postAuthenticatedObject(
+      '/v1/goals',
+      <String, Object?>{'objective': normalized},
+      'goal submission',
+      expectedStatus: HttpStatus.created,
+    );
+    final goalId = goal['goal_id'];
+    if (goalId is! String || goalId.isEmpty) {
+      throw const ControlPlaneClientException(
+        'Control plane returned malformed goal submission',
+      );
+    }
+
+    final job = await _postAuthenticatedObject(
+      '/v1/jobs',
+      <String, Object?>{'goal_id': goalId},
+      'job submission',
+      expectedStatus: HttpStatus.created,
+    );
+    final jobId = job['job_id'];
+    final state = job['state'];
+    if (jobId is! String || jobId.isEmpty || state is! String || state.isEmpty) {
+      throw const ControlPlaneClientException(
+        'Control plane returned malformed job submission',
+      );
+    }
+    return PromptSubmission(goalId: goalId, jobId: jobId, state: state);
+  }
+
+  Future<PromptRefinementPreview> refinePrompt(
+    String prompt,
+    PromptRefinementMode mode,
+  ) async {
+    if (prompt.trim().isEmpty) {
+      throw const ControlPlaneClientException('Prompt must not be empty');
+    }
+    if (prompt.length > 20000) {
+      throw const ControlPlaneClientException('Prompt exceeds the Desktop input limit');
+    }
+    final payload = await _postAuthenticatedObject(
+      '/v1/prompts/refine',
+      <String, Object?>{'prompt': prompt, 'mode': mode.wireValue},
+      'prompt refinement',
+      expectedStatus: HttpStatus.ok,
+    );
+    final original = payload['original_prompt'];
+    final refined = payload['refined_prompt'];
+    final returnedMode = payload['mode'];
+    final transformed = payload['transformed'];
+    final evaluation = payload['evaluation'];
+    if (original is! String ||
+        refined is! String ||
+        returnedMode != mode.wireValue ||
+        transformed is! bool ||
+        evaluation is! Map<String, dynamic>) {
+      throw const ControlPlaneClientException(
+        'Control plane returned malformed prompt refinement',
+      );
+    }
+    final constraintsDetected = evaluation['constraints_detected'];
+    final riskCuesPreserved = evaluation['risk_cues_preserved'];
+    if (constraintsDetected is! bool ||
+        (riskCuesPreserved != null && riskCuesPreserved is! bool)) {
+      throw const ControlPlaneClientException(
+        'Control plane returned malformed prompt refinement evaluation',
+      );
+    }
+    return PromptRefinementPreview(
+      originalPrompt: original,
+      refinedPrompt: refined,
+      mode: mode,
+      transformed: transformed,
+      detectedIssues: _stringList(payload['detected_issues'], 'detected issues'),
+      preservedConstraints: _stringList(
+        payload['preserved_constraints'],
+        'preserved constraints',
+      ),
+      unresolvedAmbiguities: _stringList(
+        payload['unresolved_ambiguities'],
+        'unresolved ambiguities',
+      ),
+      warnings: _stringList(payload['warnings'], 'warnings'),
+      constraintsDetected: constraintsDetected,
+      riskCues: _stringList(evaluation['risk_cues'], 'risk cues'),
+      riskCuesPreserved: riskCuesPreserved as bool?,
+    );
+  }
+
+  Future<Map<String, Object?>> fetchJob(String jobId) async {
+    final normalized = jobId.trim();
+    if (normalized.isEmpty || normalized.contains('/')) {
+      throw const ControlPlaneClientException('Invalid job identity');
+    }
+    return Map<String, Object?>.from(
+      await _getAuthenticatedObject('/v1/jobs/$normalized', 'job'),
+    );
+  }
+
+  Future<VerifiedArtifact> fetchVerifiedArtifact(String digest) async {
+    final normalized = digest.trim();
+    if (normalized.length != 64 ||
+        normalized.codeUnits.any((value) =>
+            !((value >= 48 && value <= 57) || (value >= 97 && value <= 102)))) {
+      throw const ControlPlaneClientException('Invalid artifact digest');
+    }
+    final payload = await _getAuthenticatedObject(
+      '/v1/evidence/artifacts/$normalized',
+      'artifact',
+    );
+    final returnedDigest = payload['digest'];
+    final size = payload['size'];
+    final encoded = payload['content_base64'];
+    if (returnedDigest != normalized || size is! int || size < 0 || encoded is! String) {
+      throw const ControlPlaneClientException(
+        'Control plane returned malformed artifact data',
+      );
+    }
+    Uint8List bytes;
+    try {
+      bytes = base64Decode(encoded);
+    } on FormatException {
+      throw const ControlPlaneClientException(
+        'Control plane returned malformed artifact encoding',
+      );
+    }
+    if (bytes.length != size) {
+      throw const ControlPlaneClientException(
+        'Control plane returned inconsistent artifact size',
+      );
+    }
+    final computedDigest = crypto.sha256.convert(bytes).toString();
+    if (computedDigest != normalized) {
+      throw const ControlPlaneClientException(
+        'Control plane returned artifact content that does not match its verified digest',
+      );
+    }
+    return VerifiedArtifact(digest: normalized, size: size, bytes: bytes);
+  }
 
   Future<ControlPlaneProjection> fetchProjection() async {
     final readyResponse = await _transport.get(_baseUri.resolve('/health/ready'));
@@ -155,6 +372,8 @@ class ControlPlaneClient {
     }
     final runtimePayload =
         await _getAuthenticatedObject('/v1/runtime/routes', 'runtime routes');
+    final agentPayload =
+        await _getAuthenticatedObject('/v1/agents/state', 'agent state');
     final schedulerPayload =
         await _getAuthenticatedObject('/v1/scheduler/state', 'scheduler state');
     final grantsPayload =
@@ -183,7 +402,34 @@ class ControlPlaneClient {
       governanceState: Map<String, Object?>.from(governancePayload),
       evidenceRecords: _evidenceList(evidencePayload['records']),
       liveEvents: _boundedLiveEvents(liveEvents),
+      agentState: Map<String, Object?>.from(agentPayload),
     );
+  }
+
+  Future<void> provisionCanonicalAgent(String agentId) async {
+    final normalized = agentId.trim();
+    if (normalized.isEmpty ||
+        normalized != agentId ||
+        !normalized.startsWith('ilaios.agent.') ||
+        normalized.contains('/')) {
+      throw const ControlPlaneClientException('Invalid canonical agent identity');
+    }
+    final payload = await _postAuthenticatedObject(
+      '/v1/agents/commands',
+      <String, Object?>{
+        'operation': 'provision',
+        'agent_id': normalized,
+      },
+      'agent provisioning',
+      expectedStatus: HttpStatus.ok,
+    );
+    if (payload['agent_id'] != normalized ||
+        payload['registered'] != true ||
+        payload['created'] is! bool) {
+      throw const ControlPlaneClientException(
+        'Control plane returned malformed agent provisioning result',
+      );
+    }
   }
 
   Future<void> decideGovernanceRequest({
@@ -243,6 +489,49 @@ class ControlPlaneClient {
       throw ControlPlaneClientException('Control plane $label query failed');
     }
     return _decodeObject(response, label);
+  }
+
+  Future<Map<String, dynamic>> _postAuthenticatedObject(
+    String path,
+    Map<String, Object?> body,
+    String label, {
+    required int expectedStatus,
+  }) async {
+    final response = await _transport.post(
+      _baseUri.resolve(path),
+      body: jsonEncode(body),
+      headers: <String, String>{'Authorization': 'Bearer $_token'},
+    );
+    if (response.statusCode == HttpStatus.unauthorized ||
+        response.statusCode == HttpStatus.forbidden) {
+      throw const ControlPlaneClientException(
+        'Control plane authentication failed',
+      );
+    }
+    if (response.statusCode != expectedStatus) {
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map<String, dynamic>) {
+          final serverError = decoded['error'];
+          if (serverError is String && serverError.trim().isNotEmpty) {
+            throw ControlPlaneClientException(serverError);
+          }
+        }
+      } on FormatException {
+        // Fall through to the stable generic error below.
+      }
+      throw ControlPlaneClientException('Control plane $label failed');
+    }
+    return _decodeObject(response, label);
+  }
+
+  static List<String> _stringList(Object? raw, String label) {
+    if (raw is! List<Object?> || raw.any((item) => item is! String)) {
+      throw ControlPlaneClientException(
+        'Control plane returned malformed prompt refinement $label',
+      );
+    }
+    return List<String>.unmodifiable(raw.cast<String>());
   }
 
   static List<Map<String, Object?>> _boundedLiveEvents(

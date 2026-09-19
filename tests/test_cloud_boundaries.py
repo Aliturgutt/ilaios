@@ -34,3 +34,20 @@ def test_cross_tenant_region_and_abuse_fail_closed() -> None:
     boundary.block_for_abuse("b")
     with pytest.raises(CloudPolicyError, match="blocked"):
         boundary.authorize("b", resource_tenant="b", region="us-east")
+
+
+def test_tenant_policy_replacement_is_denied() -> None:
+    boundary = _boundary()
+    with pytest.raises(CloudPolicyError, match="replacement denied"):
+        boundary.register(
+            TenantPolicy("a", "us-east", DeploymentProfile.PRIVATE, 100, "attacker-billing")
+        )
+    assert boundary.authorize("a", resource_tenant="a", region="eu-west") is DeploymentProfile.SHARED
+
+
+def test_tenant_identity_and_region_are_required() -> None:
+    boundary = TenantBoundary()
+    with pytest.raises(CloudPolicyError, match="identity, region"):
+        boundary.register(TenantPolicy("", "eu-west", DeploymentProfile.SHARED, 1, "bill-a"))
+    with pytest.raises(CloudPolicyError, match="identity, region"):
+        boundary.register(TenantPolicy("a", "", DeploymentProfile.SHARED, 1, "bill-a"))

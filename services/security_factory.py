@@ -8,6 +8,7 @@ network activity.
 
 from __future__ import annotations
 
+import ast
 import re
 from dataclasses import dataclass
 from enum import IntEnum
@@ -94,8 +95,30 @@ class RetestResult:
         return not self.remaining and not self.introduced
 
 
+@dataclass(frozen=True, slots=True)
+class DependencyAdvisory:
+    """Trusted local advisory input for deterministic dependency matching."""
+
+    advisory_id: str
+    package: str
+    affected_versions: frozenset[str]
+    severity: Severity
+    remediation: str
+
+    def __post_init__(self) -> None:
+        if not self.advisory_id.strip() or not self.package.strip():
+            raise SecurityFactoryError("dependency advisory identity and package are required")
+        if not self.affected_versions or any(not item.strip() for item in self.affected_versions):
+            raise SecurityFactoryError("dependency advisory affected versions are required")
+        if not self.remediation.strip():
+            raise SecurityFactoryError("dependency advisory remediation is required")
+
+
 _TEXT_SUFFIXES = frozenset(
     {".py", ".toml", ".txt", ".yaml", ".yml", ".json", ".tf", ".ini", ".cfg"}
+)
+_EXPLICIT_TEXT_FILENAMES = frozenset(
+    {"requirements.txt", "requirements-dev.txt", "Dockerfile"}
 )
 _SKIP_PARTS = frozenset({".git", "node_modules", ".venv", "venv", "build", "dist"})
 _MAX_FILE_BYTES = 1_048_576
@@ -172,6 +195,16 @@ _INFRA_RULES: tuple[tuple[str, re.Pattern[str], Severity, str, str], ...] = (
     ),
 )
 
+_CONTAINER_RULES: tuple[tuple[str, re.Pattern[str], Severity, str, str], ...] = (
+    (
+        "CONTAINER-ROOT-USER",
+        re.compile(r"^\s*USER\s+(?:root|0)(?::(?:root|0))?\s*(?:#.*)?$", re.IGNORECASE),
+        Severity.HIGH,
+        "container runtime explicitly selects the root user",
+        "run the final container stage as a dedicated non-root user",
+    ),
+)
+
 _REQUIRED_HTTP_HEADERS = MappingProxyType(
     {
         "content-security-policy": "define a restrictive Content-Security-Policy",
@@ -192,10 +225,7 @@ class SecurityFactory:
                 continue
             if path.stat().st_size > _MAX_FILE_BYTES:
                 continue
-            if path.suffix.casefold() not in _TEXT_SUFFIXES and path.name not in {
-                "requirements.txt",
-                "requirements-dev.txt",
-            }:
+            if path.suffix.casefold() not in _TEXT_SUFFIXES and path.name not in _EXPLICIT_TEXT_FILENAMES:
                 continue
             try:
                 text = path.read_text(encoding="utf-8")
@@ -265,6 +295,46 @@ class SecurityFactory:
         return SecurityReport(scope.scope_id, tuple(findings))
 
     @staticmethod
+    def analyze_dependency_advisories(
+        scope_id: str,
+        dependencies: Mapping[str, str],
+        advisories: tuple[DependencyAdvisory, ...],
+    ) -> SecurityReport:
+        """Match an exact dependency inventory against trusted local advisory data."""
+        if not scope_id.strip():
+            raise SecurityFactoryError("explicit security scope ID is required")
+        if not dependencies:
+            raise SecurityFactoryError("dependency inventory is required")
+        if not advisories:
+            raise SecurityFactoryError("trusted local dependency advisory data is required")
+
+        normalized: dict[str, str] = {}
+        for package, version in dependencies.items():
+            package_name = package.strip().casefold()
+            exact_version = version.strip()
+            if not package_name or not exact_version:
+                raise SecurityFactoryError("dependency inventory entries must be exact and non-empty")
+            normalized[package_name] = exact_version
+
+        findings: list[SecurityFinding] = []
+        for advisory in advisories:
+            installed = normalized.get(advisory.package.strip().casefold())
+            if installed is None or installed not in advisory.affected_versions:
+                continue
+            findings.append(
+                SecurityFinding(
+                    f"SUPPLY-{advisory.advisory_id.strip().upper()}",
+                    "supply-chain",
+                    advisory.severity,
+                    advisory.package.strip(),
+                    0,
+                    f"installed dependency {advisory.package}=={installed} matches {advisory.advisory_id}",
+                    advisory.remediation,
+                )
+            )
+        return SecurityReport(scope_id, tuple(findings))
+
+    @staticmethod
     def retest(before: SecurityReport, after: SecurityReport) -> RetestResult:
         if before.scope_id != after.scope_id:
             raise SecurityFactoryError("retest reports must use the same scope")
@@ -289,7 +359,9 @@ class SecurityFactory:
     def _scan_text(
         self, location: str, text: str, suffix: str
     ) -> list[SecurityFinding]:
-        findings: list[SecurityFinding] = []
+        findings: list[SecurityFinding] = (
+            _python_taint_findings(location, text) if suffix == ".py" else []
+        )
         lines = text.splitlines()
         for line_number, line in enumerate(lines, start=1):
             for finding_id, pattern, severity, message, remediation in _SAST_RULES:
@@ -332,6 +404,20 @@ class SecurityFactory:
                                 remediation,
                             )
                         )
+            if location.rsplit("/", 1)[-1] == "Dockerfile":
+                for finding_id, pattern, severity, message, remediation in _CONTAINER_RULES:
+                    if pattern.search(line):
+                        findings.append(
+                            SecurityFinding(
+                                finding_id,
+                                "container",
+                                severity,
+                                location,
+                                line_number,
+                                message,
+                                remediation,
+                            )
+                        )
 
         if location.endswith(("requirements.txt", "requirements-dev.txt")):
             findings.extend(self._scan_requirement_lines(location, lines))
@@ -340,55 +426,87 @@ class SecurityFactory:
         return findings
 
     @staticmethod
-    def _scan_requirement_lines(
-        location: str, lines: list[str]
-    ) -> list[SecurityFinding]:
-        findings: list[SecurityFinding] = []
-        for line_number, raw in enumerate(lines, start=1):
-            value = raw.strip()
-            if not value or value.startswith(("#", "-r", "--")):
-                continue
-            if "==" not in value and " @ " not in value:
-                findings.append(
-                    SecurityFinding(
-                        "SUPPLY-UNPINNED-DEPENDENCY",
-                        "supply-chain",
-                        Severity.MEDIUM,
-                        location,
-                        line_number,
-                        f"dependency is not exactly pinned: {value}",
-                        "pin an exact reviewed version or immutable artifact reference",
-                    )
-                )
-        return findings
+    def _scan_requirement_lines(location: str, lines: list[str]) -> list[SecurityFinding]:
+        return _requirement_findings(location, lines)
 
     @staticmethod
-    def _scan_pyproject_dependencies(
-        location: str, lines: list[str]
-    ) -> list[SecurityFinding]:
-        findings: list[SecurityFinding] = []
-        in_dependencies = False
-        for line_number, raw in enumerate(lines, start=1):
-            value = raw.strip()
-            if value.startswith("dependencies") and "[" in value:
-                in_dependencies = True
-                continue
-            if in_dependencies and value.startswith("]"):
-                in_dependencies = False
-                continue
-            if not in_dependencies or not value.startswith(("\"", "'")):
-                continue
+    def _scan_pyproject_dependencies(location: str, lines: list[str]) -> list[SecurityFinding]:
+        return _pyproject_dependency_findings(location, lines)
+
+
+_TAINT_SOURCE_CALLS = frozenset({"input", "request.args.get", "request.form.get", "request.json.get"})
+_TAINT_SINK_CALLS = frozenset({"open", "subprocess.run", "subprocess.call", "subprocess.Popen", "requests.get", "requests.post", "urllib.request.urlopen"})
+_TAINT_SINK_METHODS = frozenset({"execute", "executemany"})
+
+
+def _python_taint_findings(location: str, text: str) -> list[SecurityFinding]:
+    """Detect direct local untrusted-input flows to sensitive Python sinks."""
+    try:
+        tree = ast.parse(text)
+    except SyntaxError:
+        return []
+
+    tainted: set[str] = set()
+    findings: list[SecurityFinding] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign) and _is_taint_source(node.value, tainted):
+            tainted.update(target.id for target in node.targets if isinstance(target, ast.Name))
+        if isinstance(node, ast.Call) and _is_taint_sink(node.func):
+            if any(_is_taint_source(argument, tainted) for argument in node.args):
+                sink = _call_name(node.func) or "sensitive sink"
+                findings.append(SecurityFinding(
+                    "SAST-TAINT-UNTRUSTED-TO-SINK", "sast", Severity.HIGH,
+                    location, node.lineno,
+                    f"untrusted input reaches sensitive sink: {sink}",
+                    "validate and constrain untrusted input before the sensitive operation",
+                ))
+    return findings
+
+
+def _is_taint_source(node: ast.AST, tainted: set[str]) -> bool:
+    return (
+        isinstance(node, ast.Name) and node.id in tainted
+    ) or (
+        isinstance(node, ast.Call) and _call_name(node.func) in _TAINT_SOURCE_CALLS
+    )
+
+
+def _is_taint_sink(node: ast.AST) -> bool:
+    call_name = _call_name(node)
+    if call_name in _TAINT_SINK_CALLS:
+        return True
+    return isinstance(node, ast.Attribute) and node.attr in _TAINT_SINK_METHODS
+
+
+def _call_name(node: ast.AST) -> str | None:
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Attribute):
+        parent = _call_name(node.value)
+        return f"{parent}.{node.attr}" if parent else node.attr
+    return None
+
+
+def _requirement_findings(location: str, lines: list[str]) -> list[SecurityFinding]:
+    findings: list[SecurityFinding] = []
+    for line_number, raw in enumerate(lines, start=1):
+        value = raw.strip()
+        if value and not value.startswith(("#", "-r", "--")) and "==" not in value and " @ " not in value:
+            findings.append(SecurityFinding("SUPPLY-UNPINNED-DEPENDENCY", "supply-chain", Severity.MEDIUM, location, line_number, f"dependency is not exactly pinned: {value}", "pin an exact reviewed version or immutable artifact reference"))
+    return findings
+
+
+def _pyproject_dependency_findings(location: str, lines: list[str]) -> list[SecurityFinding]:
+    findings: list[SecurityFinding] = []
+    in_dependencies = False
+    for line_number, raw in enumerate(lines, start=1):
+        value = raw.strip()
+        if value.startswith("dependencies") and "[" in value:
+            in_dependencies = True
+        elif in_dependencies and value.startswith("]"):
+            in_dependencies = False
+        elif in_dependencies and value.startswith(("\"", "'")):
             dependency = value.strip(",").strip("\"'")
             if dependency and "==" not in dependency and " @ " not in dependency:
-                findings.append(
-                    SecurityFinding(
-                        "SUPPLY-UNPINNED-DEPENDENCY",
-                        "supply-chain",
-                        Severity.MEDIUM,
-                        location,
-                        line_number,
-                        f"dependency is not exactly pinned: {dependency}",
-                        "pin an exact reviewed version or immutable artifact reference",
-                    )
-                )
-        return findings
+                findings.append(SecurityFinding("SUPPLY-UNPINNED-DEPENDENCY", "supply-chain", Severity.MEDIUM, location, line_number, f"dependency is not exactly pinned: {dependency}", "pin an exact reviewed version or immutable artifact reference"))
+    return findings

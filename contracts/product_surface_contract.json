@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "authority_model": {
+    "owner": "canonical-control-plane",
+    "surface_authority": false,
+    "protected_boundaries": [
+      "policy",
+      "approval",
+      "tool-gateway",
+      "validation",
+      "audit-evidence",
+      "tenant-security"
+    ]
+  },
+  "maturity_source": "services/agent_readiness.py",
+  "registry_source": "services/agent_registry.py",
+  "surfaces": {
+    "website": {
+      "role": "explanatory-public-projection",
+      "may_assert_runtime_state": false,
+      "locales": ["en", "tr"],
+      "semantic_locale_parity_required": true
+    },
+    "desktop": {
+      "role": "governed-client-projection",
+      "may_assert_runtime_state": false,
+      "authoritative_runtime_source": "control-plane",
+      "stale_state_policy": "fail-closed"
+    }
+  },
+  "features": [
+    {
+      "feature_id": "surface.homepage",
+      "canonical_name": "Homepage",
+      "canonical_source": "apps/website/app/HomePage.tsx",
+      "category": "public-surface",
+      "maturity": {"mode": "derived", "source": "services/agent_readiness.py"},
+      "availability": {"mode": "derived", "source": "canonical-runtime-evidence"},
+      "public_visibility": "public",
+      "website_projection": "required",
+      "desktop_projection": "not-applicable",
+      "runtime_required": false,
+      "evidence_required": true,
+      "authority_owner": "canonical-control-plane",
+      "locale_requirements": ["en", "tr"],
+      "security_classification": "public-explanatory"
+    },
+    {
+      "feature_id": "surface.capabilities",
+      "canonical_name": "Capabilities",
+      "canonical_source": "apps/website/app/CapabilitiesPage.tsx",
+      "category": "capability-projection",
+      "maturity": {"mode": "derived", "source": "services/agent_readiness.py"},
+      "availability": {"mode": "derived", "source": "canonical-runtime-evidence"},
+      "public_visibility": "public",
+      "website_projection": "required",
+      "desktop_projection": "runtime-derived",
+      "runtime_required": true,
+      "evidence_required": true,
+      "authority_owner": "canonical-control-plane",
+      "locale_requirements": ["en", "tr"],
+      "security_classification": "public-status-sensitive"
+    },
+    {
+      "feature_id": "surface.architecture",
+      "canonical_name": "Architecture",
+      "canonical_source": "docs/canonical/SYSTEM_ARCHITECTURE.md",
+      "category": "architecture-projection",
+      "maturity": {"mode": "derived", "source": "services/agent_readiness.py"},
+      "availability": {"mode": "derived", "source": "canonical-runtime-evidence"},
+      "public_visibility": "public",
+      "website_projection": "required",
+      "desktop_projection": "explanatory-only",
+      "runtime_required": false,
+      "evidence_required": true,
+      "authority_owner": "canonical-control-plane",
+      "locale_requirements": ["en", "tr"],
+      "security_classification": "public-explanatory"
+    }
+  ]
+}

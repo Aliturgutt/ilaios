@@ -1,0 +1,13 @@
+{
+  "type": "object",
+  "properties": {
+    "status": {"type":"string","enum":["ELIGIBLE_FOR_GOVERNED_PROMOTION","BLOCKED"]},
+    "candidate_digest": {"type":"string","pattern":"^[0-9a-f]{64}$"},
+    "candidate_version": {"type":"string","minLength":1},
+    "evidence_matrix": {"type":"object"},
+    "requested_runtime_binding": {"type":["string","null"]},
+    "outstanding_governance_requirements": {"type":"array","items":{"type":"string"}},
+    "unresolved_blockers": {"type":"array","items":{"type":"string"}}
+  },
+  "required": ["status","candidate_digest","candidate_version","evidence_matrix","requested_runtime_binding","outstanding_governance_requirements","unresolved_blockers"]
+}

@@ -4,7 +4,6 @@ from services.agent_registry import CANONICAL_AGENT_REGISTRY
 from services.capability_registry import CAPABILITIES
 from services.enterprise_hardening import PROMOTED_FACTORY_IDS
 
-
 _LEGACY = ("hermes", "ilakos", "ilaten")
 
 

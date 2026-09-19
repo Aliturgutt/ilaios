@@ -1,76 +1,70 @@
 # ILAIOS Capability Matrix
 
-Snapshot: 12 August 2026
+Historical evidence snapshot: 17 August 2026
+Observed implementation baseline for this snapshot: `1489183e6f5e19a50ba1d35f1c21955a63420f8d`
+Truth-sync audit anchor (3 September 2026): `master` HEAD `b93f20b36ac7c8d611e54023d38ffe78b22b14f4`
 
-Lifecycle vocabulary:
+> **Truth boundary:** The maturity rows below record the 17 August evidence snapshot. They MUST NOT be read as the current maturity state of 3 September 2026 unless the relevant claim is independently revalidated against current code, tests, exact-SHA CI, runtime, deployment, provider/E2E evidence, and durable evidence as applicable.
 
-`PLANNED -> SPECIFIED -> IMPLEMENTED -> VERIFIED -> PRODUCTION`
+Canonical capability maturity:
 
-Release state is tracked separately from capability maturity.
+`DESIGNED -> SPECIFIED -> IMPLEMENTED -> TESTED -> VERIFIED -> DEPLOYED / PRODUCTION`
 
-This matrix is deliberately conservative. File presence alone cannot promote a capability to VERIFIED or PRODUCTION. Historical Hermes, ILAKOS and ILATEN designs are provenance; active capability identity is defined only by ILAIOS.
+Planning and external-gate annotations such as `PLANNED`, `EXTERNAL PROOF PENDING`, and `NOT_VERIFIED` are conservative status notes, not new maturity stages. File presence alone never promotes a capability.
 
 | Capability | Evidence observed | Conservative state | Next proof needed |
 |---|---|---:|---|
-| Canonical v1 execution/release chain | Durable evidence through `RELEASE.R03` | PRODUCTION | Ongoing operational monitoring only |
-| Canonical capability identity registry | `services/capability_registry.py`, consolidation tests, merged Platform CI | VERIFIED | Revalidate on registry semantics change |
-| Core validation/audit/evidence foundations | `src/core`, historical quality-gate evidence | VERIFIED | Revalidate when core semantics change |
-| Control Plane runtime | `services/control_plane`, production release package/evidence | PRODUCTION baseline | Capability-specific production SLO evidence |
-| Runtime execution / scheduler / grants | `services/runtime/*`, governed local agent/skill/provider execution, platform recovery evidence | VERIFIED | Capability-specific production exercise |
-| Governance / approvals | `services/governance`, governance services and tests | VERIFIED | Production usage/effect evidence per governed action |
-| Evidence / provenance | `services/evidence`, release/recovery evidence chain | VERIFIED | Production retention/integrity operating evidence |
-| Identity / tenant boundary | `services/identity.py`, platform implementation evidence | VERIFIED | Dedicated production tenant-isolation evidence |
-| Privacy / DLP-oriented services | `services/privacy.py`, `tests/test_tenant_privacy.py`, cross-capability revalidation and Platform CI #17 | VERIFIED reference boundary | Production-safe runtime exercise and applicable external compliance evidence |
-| Cryptography services | `services/cryptography.py`, `tests/test_managed_cryptography.py`, cross-capability revalidation and Platform CI #17 | VERIFIED provider-neutral boundary | Real managed KMS/HSM provider evidence and production cryptoperiod operations |
-| Observability | `services/observability.py`, release health evidence | VERIFIED | Defined production SLO/alert evidence |
-| Operations / recovery drills | `services/operations.py`, `services/operational_drills.py`, recovery evidence | VERIFIED | Recurring production-safe drill schedule |
-| Deployment / cloud path | `services/deployment`, `infra`, R01-R03 workflows/evidence | PRODUCTION | Ongoing release/runbook maintenance |
-| Agent governance / permission firewall | `services/agent_governance.py`, `tests/test_agent_governance.py` | VERIFIED primitive | Production invocation/effect evidence per agent class |
-| Canonical named agent organization | `services/agent_registry.py`, `tests/test_agent_registry.py`, bounded named-agent executor E2E and Platform CI | VERIFIED bounded executor organization | Production invocation/effect evidence per specialist role |
-| Security specialist organization | ILAIOS machine IDs for coordinator, CodeSec, Web/API, supply-chain, infrastructure and independent verifier | VERIFIED registry | Production-safe specialist exercises where applicable |
-| Provider routing / cost governance | `services/runtime/routing.py`, `services/ai_governance.py` | VERIFIED / IMPLEMENTED foundation | Real provider-specific production evidence as applicable |
-| Video / Media Factory | `VIDEO.V01-V30`, `PRE.S01`, `src/video_automation` | VERIFIED | External-provider/publishing production proof where required |
-| Code Intelligence | `src/code_intelligence`, targeted tests, `tests/test_intelligence_project_integration.py`, PR #24 + master Platform CI | VERIFIED foundation | Expand symbol/dependency intelligence and production-like repository exercises as needed |
-| Knowledge Graph | `src/knowledge_graph`, targeted tests, `tests/test_intelligence_project_integration.py`, PR #24 + master Platform CI | VERIFIED foundation | Durable graph persistence/query evidence before stronger runtime claims |
-| Project Manager | `src/project_manager`, targeted tests, `tests/test_intelligence_project_integration.py`, PR #24 + master Platform CI | VERIFIED foundation | Durable project/workspace lifecycle evidence before stronger runtime claims |
-| Web Factory integration | `services/integrations/web_factory.py`, deterministic artifact/tamper tests, cross-capability revalidation and Platform CI #17 | VERIFIED bounded factory | Production-like deployment/rollback/browser verification outside Website implementation workstream |
-| Software Factory | `services/software_factory.py`, isolated proposal/test/review E2E, production mutation forbidden, Platform CI #17 | VERIFIED bounded proposal factory | Broader language/build adapters and controlled external PR/review evidence |
-| Security Factory | `services/security_factory.py`, bounded SAST/secret/supply-chain/infra/local-DAST tests, merged PR #23 and master CI | VERIFIED bounded defensive factory | Production-safe exercises and independent external pentest where applicable |
-| App Factory platform capability | `services/app_factory.py`, capability-registry binding, review-only client request boundary and Platform CI | VERIFIED bounded platform factory | Separate client implementation/build/signing evidence remains in Desktop/Mobile workstreams |
-| Research / Data Factory | `services/research_data_factory.py`, capability-registry binding, provenance/claim-gate tests, master Platform CI | VERIFIED bounded factory | Broader governed ingestion adapters, durable persistence and production-safe data-source exercises before stronger runtime claims |
-| Creative / Document Factory | `services/creative_document_factory.py`, trusted-source/provenance/approval tests and capability-registry binding | VERIFIED bounded factory | Broader document-format adapters and production-safe external publishing evidence before stronger claims |
-| Commerce / Growth Factory | `services/commerce_growth_factory.py`, trusted-evidence/approval/paid-spend-denial tests and capability-registry binding | VERIFIED bounded review-only factory | External channel adapters remain separately governed; no paid-spend authority is implied |
-| Personal Operations / Automation | `services/personal_operations_factory.py`, deterministic draft-plan/approval/external-mutation-denial tests and capability-registry binding | VERIFIED bounded review-only factory | External account execution remains separately governed and is not implied by this state |
-| Promoted factory enterprise hardening | `services/enterprise_hardening.py`, cross-cutting recovery/isolation/provenance/observability/security/cost gates and tests | VERIFIED bounded gate | Production-specific SLO, backup/restore and independent release evidence where applicable |
-| Website | Active separate workstream | NOT ASSESSED HERE | Continue in Website workstream |
-| Windows Desktop | Merged consolidated Desktop workstream exists | NOT ASSESSED HERE | Continue in Desktop/Store workstream |
-| Mobile Android/iOS | No implementation path found in repository audit | PLANNED | Post-v1 architecture/package definition |
-| Billing / subscription / entitlements | No obvious implementation found in repository audit | PLANNED | Product/commercial requirements and backend design |
-| RAG / embeddings / vector retrieval | No obvious implementation found in repository audit | PLANNED | Data/security architecture and bounded specification |
-| Formal GitHub release/version model | `docs/governance/RELEASE_VERSION_POLICY.md`, `GOVERNANCE.md`, policy regression tests | SPECIFIED / PROCESS DEFINED | Select first formal version in a dedicated release package; create immutable tag + GitHub Release only after governed approval and exact-head CI |
-| Default-branch protection | `master` reported unprotected during governance audit; protection API is not accessible to the connected integration | PLANNED OWNER POLICY | Enable appropriate GitHub protection rules in repository settings |
-| Repository security policy | `SECURITY.md` present on master | SPECIFIED / PROCESS ACTIVE | Enforce through protected review/CI process |
-| Repository governance policy | `GOVERNANCE.md` present on master | SPECIFIED / PROCESS ACTIVE | Enforce through protected review/CI process |
-| External certification/compliance claims | No external certification assumed | PLANNED / EXTERNAL | Independent applicable certification process |
+| Canonical v1 execution/release chain | Durable evidence through `RELEASE.R03` for the governed platform release scope | PRODUCTION scope-specific | Ongoing operational evidence; do not generalize to every product surface |
+| Canonical Core / capability identity | Core, canonical registry, consolidation tests, Required CI | VERIFIED | Revalidate on semantics changes |
+| Canonical Execution Coordinator | Durable lifecycle, fail-closed routing, cancellation/recovery, evidence, bounded DAG execution, current factory composition | VERIFIED coordinator | Capability adapters keep independent breadth/production gates |
+| Governance / approvals / evidence | Governance and evidence services plus tests/release evidence | VERIFIED foundation | Production effect/retention evidence per action class |
+| Identity / tenant boundary | Identity implementation and platform tests | VERIFIED foundation | Dedicated production tenant-isolation exercise |
+| Privacy / DLP | Privacy services and cross-capability tests | VERIFIED reference boundary | Production-safe runtime and applicable external compliance proof |
+| Cryptography | Provider-neutral managed-cryptography service/tests | VERIFIED provider-neutral boundary | Real KMS/HSM, rotation, cryptoperiod evidence |
+| Observability / recovery | Observability, operations, drills, release health/recovery evidence | VERIFIED foundation | Production SLO/alerts and recurring retained drills |
+| Provider routing / cost governance | Runtime routing and AI governance services | VERIFIED / IMPLEMENTED foundation | Real provider fallback/quota/cost/deprecation evidence |
+| Video / Media Factory — local bounded pipeline | Existing `VIDEO.V01-V30`, Windows Gate 20s finished-product E2E/evidence | VERIFIED bounded local pipeline | Preserve technical/evidence regressions |
+| Video / Media Factory — Desktop requested-content path | Issue #259 fixed by merged #267 at `1489183e6f5e19a50ba1d35f1c21955a63420f8d`; exact combined head `214720c5bd7ebff35e25ebaf71d4b3a15668d65d` passed Required CI, Desktop CI, Windows Gate, MSIX and Software evidence; provider-backed generation, retrieval/assembly, technical QA, independent semantic/perceptual QA, finished-product-only delivery, negation handling and proposal identity repair are fail-closed | VERIFIED repository/runtime composition | Live exact zero-cost provider availability and provider-backed production MP4 evidence under production secrets boundary |
+| Video free-provider availability | Catalog preflight requires exact model plus all `pricing_skus == 0` before generation POST; terminal cost must also equal zero. Observed `bytedance/seedance-2.0-fast:free` live attempt reported `USD 0.1704948` | NOT_VERIFIED external availability | Find/prove an exact zero-priced provider/model before submission and at terminal accounting; otherwise remain unavailable/fail-closed |
+| Web Factory integration | #248 bounded Next.js/Chromium finished-product closure; #255 accepted-state assurance hardening | VERIFIED bounded adapter | Public exact-SHA deployment/domain/health/rollback proof |
+| Governed Vercel delivery boundary | #258 preview-first provider adapter, auth/budget before effects, exact provenance, same-host health, exact alias promotion and rollback validation | VERIFIED provider boundary | Correct live project/team access, quota, canonical-domain and public rollback evidence |
+| Website public deployment | Repository path is verified; exact current public canonical-domain deployment is not proven | EXTERNAL PROOF PENDING | Exact green master deployment identity, canonical-domain linkage, browser/health and rollback proof |
+| Software Factory | Registered bounded Windows product runtime, finalization/recovery, source provenance, repeated Windows evidence | VERIFIED bounded adapter | Broader workload/external repository/provider/commercial evidence |
+| App Factory Windows | #250 exact-head CI and real generated Flutter Windows build/package/smoke evidence | VERIFIED bounded Windows adapter | Broader Windows apps; Android/iOS and Store/signing separately gated |
+| Windows Desktop repository | Interactive shell lineage through #253 and later reference-shell/branding/DPI commits `32df7fc...`, `678b2bbc...`, `c643871e...`; current combined Video/desktop gates green before #267 merge | TESTED / PRE-MICROSOFT REPOSITORY READY | Microsoft App Registration/login acceptance, Partner Center identity, signing, certification, Store publication |
+| Knowledge / RAG — shared intelligence/context capability, not a factory | Merged bounded RAG implementation plus RAG.14 repository machinery | VERIFIED bounded reference implementation | Approved live production embeddings/index persistence, tenant/auth/DLP/leakage, SLO/recovery and exact deploy/rollback evidence |
+| Knowledge Graph | Repository implementation and targeted integration tests | VERIFIED foundation | Durable production-like graph persistence/query evidence |
+| Project Manager | Repository implementation and targeted integration tests | VERIFIED foundation | Durable workspace/project lifecycle evidence |
+| Security Factory | Defensive bounded SAST/secret/supply-chain/infra/local-DAST tests plus exact-head ZAP/Nuclei/Semgrep/Trivy evidence and retest | VERIFIED bounded defensive factory | Continue recurring production-safe digital exercises, evidence retention, remediation and retest |
+| Research / Data Factory | Registry binding, provenance/claim gates and tests | VERIFIED bounded factory | Broader governed ingestion/persistence/data-source exercises |
+| Creative / Document Factory | Trusted-source/provenance/approval tests and registry binding | VERIFIED bounded factory | Broader format adapters and governed external publishing evidence |
+| Commerce / Growth Factory | Trusted-evidence/approval/paid-spend-denial tests | VERIFIED bounded review-only factory | Governed external channels; no paid-spend authority implied |
+| Personal Operations | Draft-plan/approval/external-mutation-denial tests | VERIFIED bounded review-only factory | Governed external account execution |
+| Mobile Android/iOS | No production implementation/build/sign/store path proven | PLANNED | Platform implementation plus build/sign/test/store gates |
+| Billing / subscriptions / entitlements | No production implementation proven | PLANNED | Commercial requirements and governed payment/entitlement lifecycle |
+| Formal GitHub release/version | Release policy exists; exact commercial release/tag not established | SPECIFIED / PROCESS DEFINED | Exact release-ready SHA, SBOM/notices/artifacts and licensing/redistribution clearance |
+| Repository licensing | Proprietary-by-default/no-open-source-grant decision; no root OSI license | SPECIFIED / RELEASE CLEARANCE PENDING | Release-specific third-party/provider/model/output rights and redistribution terms |
+| External certification/compliance | No external certification assumed | PLANNED / EXTERNAL | Applicable independent certification/compliance process |
 
-## Lineage consolidation rule
+## Video P0 verification boundary
 
-The machine-readable registry in `services/capability_registry.py` maps useful Hermes, ILAKOS and ILATEN lineage into one `ilaios.capability.*` namespace. Legacy names in its `legacy_sources` field are provenance metadata only and never active orchestration identities.
+The #259 closure means the repository no longer accepts the deterministic Desktop placeholder as fulfillment of requested generated video content. It does **not** mean an external free video model is currently available in production.
 
-Detailed ILATEN requirement status remains governed by `docs/migration/ILATEN_TO_ILAIOS_MIGRATION_MATRIX.csv`; this high-level matrix does not bulk-promote those granular requirements.
+The free-provider policy is deliberately two-stage and fail-closed:
 
-## Agent readiness rule
+1. before a generation POST, authoritative catalog evidence must identify the exact model and every pricing SKU must parse to exactly zero;
+2. terminal provider accounting must independently prove zero cost.
 
-The generic governed runtime and named-agent bounded executor path are implemented and tested separately from provider-specific production effects. Registry identity and bounded E2E evidence do not imply unrestricted external authority; specialist production effects remain governed by their permissions, evidence and approval gates.
+A `:free` suffix is metadata, not cost proof. The observed non-zero live charge is retained as a negative production-readiness finding. No paid/unpriced fallback is authorized.
 
-## Security Factory boundary
+## Finished-product verification boundary
 
-Security Factory v1 is defensive and fail-closed. It may analyze an explicitly authorized repository and validate supplied HTTP observations only for configured localhost/test targets. It does not exploit systems or authorize arbitrary external network scanning. Independent production penetration testing and external certification remain separate evidence requirements.
+Video, Web, Software and Windows-first App evidence is bounded to the tested workloads and artifact/evidence chains. It does not prove arbitrary generation breadth, unrestricted provider authority, public deployment, production signing, app-store publication, or commercial release readiness.
 
-## Revalidation result
+## External-action boundary
 
-Fresh repository evidence has revalidated the existing intelligence/platform foundations and promoted the bounded Research/Data, Creative/Document, Commerce/Growth, Personal Operations and App Factory platform boundaries without creating parallel runtimes. Enterprise hardening adds a shared fail-closed evidence gate rather than bypassing each factory's own controls.
+Credentials, OAuth/provider registration, billing/spend, production DNS/deployment mutations, signing material, Partner Center/Store decisions, paid channel effects, and legal/licensing acceptance remain separately governed. Repository code or CI cannot fabricate those proofs.
 
-## Selected post-v1 direction
+## Architecture invariant
 
-The adopted **EXISTING_FACTORY_PROMOTION** workstream has reached its bounded implementation, hardening and lineage-red-team completion gate. Mobile, Website/Desktop implementation and Commercial SaaS/billing remain separate or dormant workstreams and are not implicitly activated by this completion.
+The 17 August snapshot evidenced one Core, one Execution Coordinator, one capability registry, and shared governance/evidence authorities. Current-state use of this invariant still requires current evidence; no second Core, router, scheduler, policy engine, Coordinator, or evidence-free maturity promotion is authorized.

@@ -1,16 +1,16 @@
 # ILAIOS — TESTING AND EVALUATION
 
-**Document Type:** Canonical Testing & Evaluation Specification  
-**Format:** GitHub Markdown + ASCII test/evaluation diagrams  
-**Status:** Canonical Baseline v1.0 — Pending Repository Publication  
-**Architecture Authority:** `SYSTEM_ARCHITECTURE.md`  
-**Product Authority:** `PRODUCT_REQUIREMENTS.md`  
-**Implementation Authority:** `IMPLEMENTATION_SPEC.md`  
-**Dependency Authority:** `DEPENDENCY_GRAPH.md`  
-**Security Authority:** `SECURITY_ARCHITECTURE.md`  
-**Data Authority:** `DATA_ARCHITECTURE.md`  
-**API Authority:** `API_CONTRACTS.md`  
-**Threat Model Companion:** `THREAT_MODEL.md`  
+**Document Type:** Canonical Testing & Evaluation Specification
+**Format:** GitHub Markdown + ASCII test/evaluation diagrams
+**Status:** Canonical Baseline v1.0 — Published in Repository
+**Architecture Authority:** `SYSTEM_ARCHITECTURE.md`
+**Product Authority:** `PRODUCT_REQUIREMENTS.md`
+**Implementation Authority:** `IMPLEMENTATION_SPEC.md`
+**Dependency Authority:** `DEPENDENCY_GRAPH.md`
+**Security Authority:** `SECURITY_ARCHITECTURE.md`
+**Data Authority:** `DATA_ARCHITECTURE.md`
+**API Authority:** `API_CONTRACTS.md`
+**Threat Model Companion:** `THREAT_MODEL.md`
 **Core Verification Principle:** **NO VERIFIED CLAIM WITHOUT REPRODUCIBLE EVIDENCE**
 
 > This document defines **how ILAIOS proves that architecture, contracts, capabilities, factories, autonomous execution, security controls, artifacts, recovery paths, and final products behave as required**. It defines test layers, evaluation roles, acceptance criteria, evidence obligations, negative/adversarial testing, non-deterministic AI evaluation, quality gates, release gates, and Definition of Done. It does not claim that any test currently passes unless current repository/runtime evidence proves it.
@@ -5008,3 +5008,21 @@ runtime evidence
 ```
 
 **ILAIOS must be able to prove not only that it can succeed, but also that it fails safely when authority, isolation, evidence, or acceptance requirements are violated.**
+
+
+---
+
+# 303. Security Lifecycle Evidence Semantics
+
+Security lifecycle evidence uses only:
+
+```text
+PASS
+FAIL
+UNVERIFIED
+NOT_APPLICABLE (with explicit scope justification)
+```
+
+A workflow or test file existing, CI merely being requested, a deployment existing, documentation specifying a control, or an older PASS on another SHA never substitutes for PASS.
+
+For S1 through S3, evidence identifies repository, branch, exact source SHA, gate ID, scope, workflow/test identity, result, timestamp, and applicable artifact/digest. S4 additionally identifies deployment identity and safe runtime result. S5 identifies its observation time and never becomes retroactive release-time evidence. Missing execution, artifact, deployment identity, or runtime result is UNVERIFIED.

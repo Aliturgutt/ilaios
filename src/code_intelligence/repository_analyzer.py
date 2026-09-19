@@ -27,7 +27,16 @@ from src.code_intelligence.models import (
 from src.code_intelligence.source_file_analyzer import SourceFileAnalyzer
 
 _IGNORED_DIRECTORIES = frozenset(
-    {".git", ".mypy_cache", ".pytest_cache", ".ruff_cache", "__pycache__", "build", "dist", "venv"}
+    {
+        ".git",
+        ".mypy_cache",
+        ".pytest_cache",
+        ".ruff_cache",
+        "__pycache__",
+        "build",
+        "dist",
+        "venv",
+    }
 )
 _MANIFEST_NAMES = frozenset({"pyproject.toml", "package.json", "pubspec.yaml"})
 _CONFIG_SUFFIXES = (".yaml", ".yml", ".toml", ".ini", ".cfg", ".json")
@@ -80,7 +89,11 @@ class RepositoryAnalyzer:
             relative = path.relative_to(self._root).as_posix()
             language = _language(path)
             kind = _file_kind(path, relative)
-            module = _module_name(path.relative_to(self._root)) if language is Language.PYTHON else None
+            module = (
+                _module_name(path.relative_to(self._root))
+                if language is Language.PYTHON
+                else None
+            )
             package = relative.split("/", 1)[0] if "/" in relative else None
             generated = _generated(path)
             files.append(
@@ -117,10 +130,14 @@ class RepositoryAnalyzer:
                 routes.extend(facts.routes)
                 schemas.extend(facts.schemas)
                 for imported in facts.imports:
-                    target = _resolve_source_import(relative, imported, all_relative_paths, language)
+                    target = _resolve_source_import(
+                        relative, imported, all_relative_paths, language
+                    )
                     if target is not None:
                         dependencies.append(
-                            DependencyEdge(relative, target, "imports", Certainty.INFERRED)
+                            DependencyEdge(
+                                relative, target, "imports", Certainty.INFERRED
+                            )
                         )
                 unknowns.append(f"semantic certainty limited for {relative}")
 
@@ -130,7 +147,12 @@ class RepositoryAnalyzer:
             _revision(self._root),
             tuple(sorted(files, key=lambda item: item.path)),
             tuple(sorted(symbols, key=lambda item: item.symbol_id)),
-            tuple(sorted(set(dependencies), key=lambda item: (item.source, item.target, item.relationship))),
+            tuple(
+                sorted(
+                    set(dependencies),
+                    key=lambda item: (item.source, item.target, item.relationship),
+                )
+            ),
             tests,
             tuple(sorted(set(routes))),
             tuple(sorted(set(schemas))),
@@ -144,7 +166,11 @@ class RepositoryAnalyzer:
     ) -> ImpactAnalysis:
         known_files = {item.path for item in snapshot.files}
         normalized = tuple(sorted(set(changed_files)))
-        unknowns = [f"changed file is absent from snapshot: {path}" for path in normalized if path not in known_files]
+        unknowns = [
+            f"changed file is absent from snapshot: {path}"
+            for path in normalized
+            if path not in known_files
+        ]
         affected = {path for path in normalized if path in known_files}
         reverse: dict[str, set[str]] = {}
         for edge in snapshot.dependencies:
@@ -156,7 +182,9 @@ class RepositoryAnalyzer:
                     affected.add(dependent)
                     queue.append(dependent)
         changed_symbols = tuple(
-            item.symbol_id for item in snapshot.symbols if item.location.path in normalized
+            item.symbol_id
+            for item in snapshot.symbols
+            if item.location.path in normalized
         )
         affected_tests = {
             mapping.test_file
@@ -173,7 +201,8 @@ class RepositoryAnalyzer:
         affected_apis = tuple(
             item.name
             for item in snapshot.symbols
-            if item.symbol_type is SymbolType.API_ROUTE and item.location.path in affected
+            if item.symbol_type is SymbolType.API_ROUTE
+            and item.location.path in affected
         )
         profile = ["unit"]
         if affected_tests:
@@ -182,9 +211,18 @@ class RepositoryAnalyzer:
             profile.extend(("api-contract", "integration"))
         if any(path in snapshot.manifests for path in normalized):
             profile.extend(("dependency-audit", "full-suite"))
-        confidence = Certainty.UNKNOWN if unknowns else (
-            Certainty.INFERRED if any(item.certainty is Certainty.INFERRED for item in snapshot.test_mappings if item.test_file in affected_tests)
-            else Certainty.KNOWN
+        confidence = (
+            Certainty.UNKNOWN
+            if unknowns
+            else (
+                Certainty.INFERRED
+                if any(
+                    item.certainty is Certainty.INFERRED
+                    for item in snapshot.test_mappings
+                    if item.test_file in affected_tests
+                )
+                else Certainty.KNOWN
+            )
         )
         return ImpactAnalysis(
             normalized,
@@ -208,8 +246,14 @@ class RepositoryAnalyzer:
                     for path in self._root.rglob("*")
                     if path.is_file()
                     and not path.is_symlink()
-                    and not (_IGNORED_DIRECTORIES & set(path.relative_to(self._root).parts))
-                    and (path.suffix.lower() in supported or path.name in _MANIFEST_NAMES or path.suffix.lower() in _CONFIG_SUFFIXES)
+                    and not (
+                        _IGNORED_DIRECTORIES & set(path.relative_to(self._root).parts)
+                    )
+                    and (
+                        path.suffix.lower() in supported
+                        or path.name in _MANIFEST_NAMES
+                        or path.suffix.lower() in _CONFIG_SUFFIXES
+                    )
                 ),
                 key=lambda item: item.relative_to(self._root).as_posix(),
             )
@@ -229,10 +273,10 @@ class _PythonVisitor(ast.NodeVisitor):
         self.routes: set[str] = set()
         self.schemas: set[str] = set()
 
-    def visit_Import(self, node: ast.Import) -> None:
+    def visit_Import(self, node: ast.Import) -> None:  # noqa: N802
         self.imports.update(alias.name for alias in node.names)
 
-    def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
+    def visit_ImportFrom(self, node: ast.ImportFrom) -> None:  # noqa: N802
         if node.level:
             package = self.module.split(".")[:-1]
             retained = package[: max(0, len(package) - node.level + 1)]
@@ -240,31 +284,48 @@ class _PythonVisitor(ast.NodeVisitor):
                 retained.extend(node.module.split("."))
                 self.imports.add(".".join(retained))
             else:
-                self.imports.update(".".join((*retained, alias.name)) for alias in node.names)
+                self.imports.update(
+                    ".".join((*retained, alias.name)) for alias in node.names
+                )
         elif node.module:
             self.imports.add(node.module)
 
-    def visit_ClassDef(self, node: ast.ClassDef) -> None:
+    def visit_ClassDef(self, node: ast.ClassDef) -> None:  # noqa: N802
         bases = tuple(_expression_name(item) for item in node.bases)
         symbol = self._symbol(node.name, SymbolType.CLASS, node, bases=bases)
         self.symbols.append(symbol)
-        if any(base.rsplit(".", 1)[-1] in {"Base", "Model", "DeclarativeBase"} for base in bases):
+        if any(
+            base.rsplit(".", 1)[-1] in {"Base", "Model", "DeclarativeBase"}
+            for base in bases
+        ):
             schema_name = f"{self.module}.{node.name}"
             self.schemas.add(schema_name)
-            self.symbols.append(self._symbol(node.name, SymbolType.SCHEMA, node, certainty=Certainty.INFERRED))
+            self.symbols.append(
+                self._symbol(
+                    node.name, SymbolType.SCHEMA, node, certainty=Certainty.INFERRED
+                )
+            )
         self.parents.append((node.name, symbol.symbol_id))
         self.generic_visit(node)
         self.parents.pop()
 
-    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:  # noqa: N802
         self._visit_function(node)
 
-    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:  # noqa: N802
         self._visit_function(node)
 
     def _visit_function(self, node: ast.FunctionDef | ast.AsyncFunctionDef) -> None:
         kind = SymbolType.METHOD if self.parents else SymbolType.FUNCTION
-        references = tuple(sorted({_expression_name(item.func) for item in ast.walk(node) if isinstance(item, ast.Call)}))
+        references = tuple(
+            sorted(
+                {
+                    _expression_name(item.func)
+                    for item in ast.walk(node)
+                    if isinstance(item, ast.Call)
+                }
+            )
+        )
         self.symbols.append(self._symbol(node.name, kind, node, references=references))
         for decorator in node.decorator_list:
             if not isinstance(decorator, ast.Call):
@@ -274,10 +335,19 @@ class _PythonVisitor(ast.NodeVisitor):
             if method not in _HTTP_METHODS or not decorator.args:
                 continue
             route_arg = decorator.args[0]
-            route = route_arg.value if isinstance(route_arg, ast.Constant) and isinstance(route_arg.value, str) else "<dynamic>"
+            route = (
+                route_arg.value
+                if isinstance(route_arg, ast.Constant)
+                and isinstance(route_arg.value, str)
+                else "<dynamic>"
+            )
             qualified = f"{method.upper()} {route}"
             self.routes.add(qualified)
-            self.symbols.append(self._symbol(qualified, SymbolType.API_ROUTE, node, certainty=Certainty.INFERRED))
+            self.symbols.append(
+                self._symbol(
+                    qualified, SymbolType.API_ROUTE, node, certainty=Certainty.INFERRED
+                )
+            )
         self.generic_visit(node)
 
     def _symbol(
@@ -293,10 +363,19 @@ class _PythonVisitor(ast.NodeVisitor):
         prefix = ".".join([self.module, *(item[0] for item in self.parents)])
         qualified = f"{prefix}.{name}" if prefix else name
         return SymbolRecord(
-            f"{kind.value}:{self.path}:{qualified}", name, qualified, kind,
-            SourceLocation(self.path, getattr(node, "lineno", 1), getattr(node, "col_offset", 0)),
-            Language.PYTHON, not name.startswith("_"),
-            None if not self.parents else self.parents[-1][1], bases, references, certainty,
+            f"{kind.value}:{self.path}:{qualified}",
+            name,
+            qualified,
+            kind,
+            SourceLocation(
+                self.path, getattr(node, "lineno", 1), getattr(node, "col_offset", 0)
+            ),
+            Language.PYTHON,
+            not name.startswith("_"),
+            None if not self.parents else self.parents[-1][1],
+            bases,
+            references,
+            certainty,
         )
 
 
@@ -305,15 +384,26 @@ def _analyze_python(path: Path, relative: str, module: str) -> _PythonFacts:
     try:
         tree = ast.parse(content, filename=relative)
     except SyntaxError as error:
-        raise RepositoryAnalysisError(f"cannot parse Python source {relative}: {error.msg}") from error
+        raise RepositoryAnalysisError(
+            f"cannot parse Python source {relative}: {error.msg}"
+        ) from error
     visitor = _PythonVisitor(relative, module)
     visitor.visit(tree)
     module_symbol = SymbolRecord(
-        f"module:{relative}:{module}", module, module, SymbolType.MODULE,
-        SourceLocation(relative, 1), Language.PYTHON, not module.rsplit(".", 1)[-1].startswith("_"),
+        f"module:{relative}:{module}",
+        module,
+        module,
+        SymbolType.MODULE,
+        SourceLocation(relative, 1),
+        Language.PYTHON,
+        not module.rsplit(".", 1)[-1].startswith("_"),
     )
-    return _PythonFacts((module_symbol, *visitor.symbols), tuple(sorted(visitor.imports)),
-                        tuple(sorted(visitor.routes)), tuple(sorted(visitor.schemas)))
+    return _PythonFacts(
+        (module_symbol, *visitor.symbols),
+        tuple(sorted(visitor.imports)),
+        tuple(sorted(visitor.routes)),
+        tuple(sorted(visitor.schemas)),
+    )
 
 
 def _module_name(path: Path) -> str:
@@ -334,8 +424,14 @@ def _resolve_module(module: str, module_paths: dict[str, str]) -> str | None:
 
 def _language(path: Path) -> Language | None:
     extension = path.suffix.lower()
-    mapping = {".py": Language.PYTHON, ".ts": Language.TYPESCRIPT, ".tsx": Language.TYPESCRIPT,
-               ".js": Language.JAVASCRIPT, ".jsx": Language.JAVASCRIPT, ".dart": Language.DART}
+    mapping = {
+        ".py": Language.PYTHON,
+        ".ts": Language.TYPESCRIPT,
+        ".tsx": Language.TYPESCRIPT,
+        ".js": Language.JAVASCRIPT,
+        ".jsx": Language.JAVASCRIPT,
+        ".dart": Language.DART,
+    }
     return mapping.get(extension)
 
 
@@ -345,7 +441,11 @@ def _file_kind(path: Path, relative: str) -> FileKind:
     if path.suffix.lower() in _CONFIG_SUFFIXES:
         return FileKind.CONFIGURATION
     parts = path.parts
-    if "tests" in parts or path.name.startswith("test_") or relative.endswith("_test.py"):
+    if (
+        "tests" in parts
+        or path.name.startswith("test_")
+        or relative.endswith("_test.py")
+    ):
         return FileKind.TEST
     return FileKind.SOURCE
 
@@ -355,7 +455,11 @@ def _generated(path: Path) -> bool:
         head = path.read_bytes()[:2048].decode("utf-8", errors="ignore").casefold()
     except OSError:
         return False
-    return "generated file" in head or "do not edit" in head or path.name.endswith(("_generated.py", ".g.dart"))
+    return (
+        "generated file" in head
+        or "do not edit" in head
+        or path.name.endswith(("_generated.py", ".g.dart"))
+    )
 
 
 def _expression_name(node: ast.AST) -> str:
@@ -368,7 +472,9 @@ def _expression_name(node: ast.AST) -> str:
 
 
 def _map_tests(
-    files: list[SourceFileRecord], imports: dict[str, tuple[str, ...]], module_paths: dict[str, str]
+    files: list[SourceFileRecord],
+    imports: dict[str, tuple[str, ...]],
+    module_paths: dict[str, str],
 ) -> tuple[TestMapping, ...]:
     mappings: list[TestMapping] = []
     for file in files:
@@ -384,21 +490,38 @@ def _map_tests(
         rationale = "resolved Python import"
         if not sources and file.path.endswith(".py"):
             stem = Path(file.path).stem.removeprefix("test_").removesuffix("_test")
-            candidates = {item.path for item in files if Path(item.path).stem == stem and item.kind is FileKind.SOURCE}
+            candidates = {
+                item.path
+                for item in files
+                if Path(item.path).stem == stem and item.kind is FileKind.SOURCE
+            }
             sources.update(candidates)
             certainty = Certainty.INFERRED if candidates else Certainty.UNKNOWN
-            rationale = "test filename convention" if candidates else "no source relationship resolved"
-        mappings.append(TestMapping(file.path, tuple(sorted(sources)), certainty, rationale))
+            rationale = (
+                "test filename convention"
+                if candidates
+                else "no source relationship resolved"
+            )
+        mappings.append(
+            TestMapping(file.path, tuple(sorted(sources)), certainty, rationale)
+        )
     return tuple(sorted(mappings, key=lambda item: item.test_file))
 
 
 def _revision(root: Path) -> str:
-    result = subprocess.run(("git", "rev-parse", "HEAD"), cwd=root, check=False,
-                            capture_output=True, text=True)
+    result = subprocess.run(
+        ("git", "rev-parse", "HEAD"),
+        cwd=root,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
     return result.stdout.strip() if result.returncode == 0 else "UNKNOWN"
 
 
-def _analyze_structural_text(path: Path, relative: str, language: Language) -> _PythonFacts:
+def _analyze_structural_text(
+    path: Path, relative: str, language: Language
+) -> _PythonFacts:
     """Extract bounded syntax-shaped facts and label every assertion inferred."""
     content = path.read_text(encoding="utf-8-sig")
     imports: set[str] = set()
@@ -419,16 +542,35 @@ def _analyze_structural_text(path: Path, relative: str, language: Language) -> _
         )
         for match in declaration.finditer(content):
             exported, kind, name, base = match.groups()
-            symbol_type = SymbolType.CLASS if kind == "class" else (
-                SymbolType.FUNCTION if kind == "function" else SymbolType.VARIABLE
+            symbol_type = (
+                SymbolType.CLASS
+                if kind == "class"
+                else (
+                    SymbolType.FUNCTION if kind == "function" else SymbolType.VARIABLE
+                )
             )
             symbols.append(
-                _inferred_symbol(relative, language, name, symbol_type, content, match.start(),
-                                 bases=() if base is None else (base,), public=bool(exported))
+                _inferred_symbol(
+                    relative,
+                    language,
+                    name,
+                    symbol_type,
+                    content,
+                    match.start(),
+                    bases=() if base is None else (base,),
+                    public=bool(exported),
+                )
             )
             if exported:
                 symbols.append(
-                    _inferred_symbol(relative, language, name, SymbolType.EXPORT, content, match.start())
+                    _inferred_symbol(
+                        relative,
+                        language,
+                        name,
+                        SymbolType.EXPORT,
+                        content,
+                        match.start(),
+                    )
                 )
             if (
                 exported
@@ -439,7 +581,14 @@ def _analyze_structural_text(path: Path, relative: str, language: Language) -> _
                 route = f"{name.upper()} {_next_route(relative)}"
                 routes.add(route)
                 symbols.append(
-                    _inferred_symbol(relative, language, route, SymbolType.API_ROUTE, content, match.start())
+                    _inferred_symbol(
+                        relative,
+                        language,
+                        route,
+                        SymbolType.API_ROUTE,
+                        content,
+                        match.start(),
+                    )
                 )
     elif language is Language.DART:
         imports.update(
@@ -458,10 +607,23 @@ def _analyze_structural_text(path: Path, relative: str, language: Language) -> _
                 continue
             kind = SymbolType.CLASS if class_name else SymbolType.FUNCTION
             symbols.append(
-                _inferred_symbol(relative, language, name, kind, content, match.start(),
-                                 bases=() if base is None else (base,), public=not name.startswith("_"))
+                _inferred_symbol(
+                    relative,
+                    language,
+                    name,
+                    kind,
+                    content,
+                    match.start(),
+                    bases=() if base is None else (base,),
+                    public=not name.startswith("_"),
+                )
             )
-    return _PythonFacts(tuple(symbols), tuple(sorted(imports)), tuple(sorted(routes)), tuple(sorted(schemas)))
+    return _PythonFacts(
+        tuple(symbols),
+        tuple(sorted(imports)),
+        tuple(sorted(routes)),
+        tuple(sorted(schemas)),
+    )
 
 
 def _inferred_symbol(
@@ -479,9 +641,15 @@ def _inferred_symbol(
     column = offset - content.rfind("\n", 0, offset) - 1
     qualified = f"{relative}:{name}"
     return SymbolRecord(
-        f"{kind.value}:{qualified}", name, qualified, kind,
-        SourceLocation(relative, line, column), language, public,
-        bases=bases, certainty=Certainty.INFERRED,
+        f"{kind.value}:{qualified}",
+        name,
+        qualified,
+        kind,
+        SourceLocation(relative, line, column),
+        language,
+        public,
+        bases=bases,
+        certainty=Certainty.INFERRED,
     )
 
 
@@ -505,7 +673,11 @@ def _resolve_source_import(
 
 def _next_route(relative: str) -> str:
     route = relative.split("/app/", 1)[1].rsplit("/route.", 1)[0]
-    return "/" + "/".join(part for part in route.split("/") if not part.startswith("(") and not part.endswith(")"))
+    return "/" + "/".join(
+        part
+        for part in route.split("/")
+        if not part.startswith("(") and not part.endswith(")")
+    )
 
 
 def _manifest_dependencies(path: Path, relative: str) -> tuple[DependencyEdge, ...]:
@@ -521,16 +693,30 @@ def _manifest_dependencies(path: Path, relative: str) -> tuple[DependencyEdge, .
                         name = re.split(r"[<>=!~;\[]", item, maxsplit=1)[0].strip()
                         if name:
                             dependencies.append(
-                                DependencyEdge(relative, f"package:{name}", "declares_dependency", Certainty.KNOWN)
+                                DependencyEdge(
+                                    relative,
+                                    f"package:{name}",
+                                    "declares_dependency",
+                                    Certainty.KNOWN,
+                                )
                             )
     elif path.name == "package.json":
         document = json.loads(path.read_text(encoding="utf-8-sig"))
         if isinstance(document, dict):
-            for package_section in ("dependencies", "devDependencies", "peerDependencies"):
+            for package_section in (
+                "dependencies",
+                "devDependencies",
+                "peerDependencies",
+            ):
                 declared = document.get(package_section, {})
                 if isinstance(declared, dict):
                     dependencies.extend(
-                        DependencyEdge(relative, f"package:{name}", "declares_dependency", Certainty.KNOWN)
+                        DependencyEdge(
+                            relative,
+                            f"package:{name}",
+                            "declares_dependency",
+                            Certainty.KNOWN,
+                        )
                         for name in declared
                     )
     elif path.name == "pubspec.yaml":
@@ -544,6 +730,11 @@ def _manifest_dependencies(path: Path, relative: str) -> tuple[DependencyEdge, .
             match = re.match(r"^  ([A-Za-z_]\w*):", line) if manifest_section else None
             if match and match.group(1) not in {"flutter"}:
                 dependencies.append(
-                    DependencyEdge(relative, f"package:{match.group(1)}", "declares_dependency", Certainty.INFERRED)
+                    DependencyEdge(
+                        relative,
+                        f"package:{match.group(1)}",
+                        "declares_dependency",
+                        Certainty.INFERRED,
+                    )
                 )
     return tuple(dependencies)

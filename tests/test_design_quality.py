@@ -74,6 +74,11 @@ def test_design_strategy_is_deterministic() -> None:
     second = engine.plan(sample_context())
     assert first == second
     assert first.primary_composition == "technical-flow"
+    assert first.motion_intensity == "low"
+    assert first.interaction_density == "low"
+    assert first.scroll_behavior == "standard"
+    assert first.showcase_behavior == "static-evidence"
+    assert first.motion_accessibility == "reduced-motion-static-equivalent"
     assert first.mobile_transformation == "reorder-reduce-and-recompose"
     assert engine.fingerprint(first, ("hero", "architecture")).section_sequence == ("hero", "architecture")
 
@@ -97,3 +102,39 @@ def test_context_changes_composition() -> None:
 def test_invalid_design_context_is_rejected() -> None:
     with pytest.raises(ValueError, match="locale"):
         NativeDesignStrategyEngine().plan(sample_context(locale="de"))
+
+
+def test_visual_context_gets_dynamic_but_bounded_motion_strategy() -> None:
+    strategy = NativeDesignStrategyEngine().plan(
+        DesignContext(
+            "architecture studio",
+            "clients",
+            "show work",
+            "inquiry",
+            ("editorial",),
+            "medium",
+            "medium",
+            "medium",
+            "rich",
+            "medium",
+            "en",
+        )
+    )
+    assert strategy.motion_intensity == "expressive"
+    assert strategy.interaction_density == "high"
+    assert strategy.scroll_behavior == "narrative-linked"
+    assert strategy.showcase_behavior == "asset-led-interactive"
+
+
+def test_motion_qa_failures_are_blocking() -> None:
+    result = NativeDesignQualityEvaluator().evaluate(
+        complete_rows(
+            scroll_jank_failures=1,
+            motion_budget_failures=1,
+            showcase_fallback_failures=1,
+        )
+    )
+    assert result.status == "FAIL"
+    categories = {finding.category for finding in result.blocking_findings}
+    assert "design.motion-performance" in categories
+    assert "design.motion-accessibility" in categories

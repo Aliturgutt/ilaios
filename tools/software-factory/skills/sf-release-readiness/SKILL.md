@@ -7,3 +7,7 @@ Purpose: evaluate readiness from validation, independent review, security, depen
 This skill never publishes. It returns PromotionProposal/readiness evidence only; unresolved blockers prevent PASS. Independent review is required.
 
 The common `../CONTRACT.md` applies.
+
+## ILAIOS native methodology overlay
+
+Apply `ilaios.skill.governance.review.v1` / `ILAIOS-METHODOLOGY-GOVERNANCE-V1` to release evidence. Confirm identity/tenant/capability boundaries, policy/approval disposition, side effects, supply-chain provenance, exact-head tests/review, rollback/recovery and unresolved blockers. Documentation is not implementation; implementation is not testing; CI is not production verification. Promote only to the highest maturity directly supported by observed evidence. This advisory overlay never publishes or authorizes a release.

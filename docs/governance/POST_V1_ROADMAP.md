@@ -1,153 +1,96 @@
-# ILAIOS Post-v1 Roadmap Proposal
+# ILAIOS Post-v1 Roadmap
 
-Status: **DRAFT / NON-CANONICAL**
+Status: **SUPERSEDED PLANNING SNAPSHOT / NON-CANONICAL**
+Truth-sync date: 17 August 2026
+Observed implementation baseline before this truth sync: `1489183e6f5e19a50ba1d35f1c21955a63420f8d`
 
-This document proposes the next dependency order after the completed v1 release chain. It does not amend the canonical architecture, implementation specification, milestone manifest, OpenClaw controller or current release state.
+This file is a dependency guide only. It is not architecture authority and cannot promote capability maturity. Current reality is determined by current `master`, tests/Required CI, runtime/deployment/external evidence, then the mutable status projections.
 
-## Governing principle
+## Current authority
 
-The existing canonical graph ends at `RELEASE.R03`. Post-v1 work must not invent an implicit `PLATFORM.P21` or `RELEASE.R04`.
+Use evidence in this order:
 
-Before implementation, every active post-v1 package must define:
+1. current `master` code and exact commit lineage;
+2. tests and Required CI;
+3. runtime, provider, deployment and external evidence;
+4. `PROJECT_STATUS.md` and `docs/governance/CAPABILITY_MATRIX.md` as mutable projections;
+5. canonical architecture/specification documents for target truth.
 
-- exact objective and exit criteria;
-- dependencies;
-- allowed and forbidden paths;
-- validations and tests;
-- evidence requirements;
-- approvals;
-- budget policy where relevant;
-- rollback/recovery;
-- stop conditions;
-- commit/promotion policy.
+No roadmap prose may override a lower observed lifecycle state.
 
-## Proposed dependency flow
+## Completed near-term repository closures
 
-### Stage 0 — Governance baseline
+- Web Factory bounded source/runtime closure is merged through #248; public Vercel production proof remains separate.
+- Web accepted-state assurance hardening is merged through #255 and fails closed on incomplete/tampered accepted evidence.
+- Governed Vercel delivery adapter #258 is merged with preview-first, authorization/budget-before-effects, exact provenance, health, promotion and rollback controls; it does not prove current public canonical-domain production.
+- Windows-first App Factory P0 #97 is closed through #250 with real generated Flutter Windows build/package evidence; mobile/signing/Store remain separate.
+- Desktop repository work progressed beyond #253 through the approved reference Home composition, canonical runtime brand packaging and Windows DPI/reference-shell regression coverage.
+- Video Factory false-acceptance P0 #259 is closed by merged #267 at `1489183e6f5e19a50ba1d35f1c21955a63420f8d`. Stale #260 was not merged.
+- #267 exact combined head `214720c5bd7ebff35e25ebaf71d4b3a15668d65d` passed Required CI, Desktop CI, Windows Gate, MSIX Packaging and Software Factory Final Evidence before merge.
+- The Desktop path now fails closed rather than treating a deterministic placeholder MP4 as fulfillment of requested generated content.
 
-Dependencies: proven v1 production baseline.
+## Critical Video provider boundary
 
-Deliverables:
-- repository truth synchronization;
-- security/governance policies;
-- stale PR cleanup;
-- CI/workflow inventory;
-- capability maturity matrix;
-- branch-protection and release-versioning owner decisions recorded.
+The P0 code defect is closed, but live zero-cost provider availability is **NOT_VERIFIED**.
 
-Exit: repository planning state no longer contradicts current evidence.
+The free-only policy must remain fail-closed:
 
-### Stage 1 — Capability revalidation
+1. validate the explicit request and free-only model policy;
+2. before any generation POST, query authoritative provider catalog data for the exact model;
+3. require non-empty pricing data and every pricing SKU to parse to exactly zero;
+4. reject missing, malformed, negative, unknown or non-zero pricing before generation spend;
+5. require terminal provider accounting to resolve to exactly zero as a second independent gate;
+6. require generated media retrieval/assembly, technical QA and independent semantic/perceptual acceptance before `*.finished_product` delivery.
 
-Dependencies: Stage 0.
+A live attempt for `bytedance/seedance-2.0-fast:free` reported `USD 0.1704948`; therefore that route is not accepted as a proven zero-cost provider. No paid/unpriced fallback should be introduced to make the workflow appear available.
 
-Revalidate existing implementation before rewriting it:
+## Current dependency order
 
-1. Code Intelligence;
-2. Knowledge Graph;
-3. Project Manager;
-4. Web/Software Factory foundations;
-5. privacy/cryptography service boundaries.
+1. Preserve the single canonical Core, Execution Coordinator, capability registry, governance and evidence authorities.
+2. Preserve the merged Video P0 fail-closed contract and finished-product-only delivery semantics.
+3. Prove a live zero-cost Video provider/model only when authoritative pre-spend catalog data and terminal accounting both prove exact zero cost. Otherwise keep the provider route unavailable.
+4. When Vercel project/team access and quota permit, produce exact-green-master public Web proof: deployment identity, canonical-domain linkage, browser/health certification and rollback evidence. Do not change billing/plans/DNS just to manufacture proof.
+5. Complete Desktop external Microsoft App Registration/client ID and real login acceptance, then Partner Center package/publisher identity, production signing, certification and Store publication through the governed release boundary.
+6. Execute RAG.14 live canary/evidence only with explicit bounded external credentials/spend authority and exact production embedding/index, tenant/auth/DLP/leakage, SLO/recovery and deploy/rollback evidence.
+7. Strengthen production tenant isolation, managed cryptography/KMS, provider routing/fallback/cost evidence, SLO/alert operations and recurring recovery drills.
+8. Broaden Research/Data, Creative/Document and Security workloads only with capability-specific executable evidence; keep Commerce/Growth and Personal Operations externally fail-closed without governed account/channel authority.
+9. Implement Android/iOS only after platform architecture, build, signing, test and store gates exist; Windows App evidence is not mobile proof.
+10. Implement commercial plan/entitlement/usage/billing capability before monetized public SaaS launch.
+11. Create the first formal SemVer tag/GitHub Release only from an exact release-ready SHA after release-specific licensing/redistribution clearance, SBOM/notices/artifact preparation and required CI.
 
-Each capability is promoted only by fresh targeted + integration/regression evidence. Existing code that passes the new gates is preserved.
+## Architecture invariants
 
-Exit: capability matrix is evidence-backed enough to choose the first net-new product package.
+Post-v1 work must not create:
 
-### Stage 2 — Post-v1 product selection gate
+- `Core 2`;
+- a second global router;
+- a second orchestration authority;
+- a second policy engine;
+- a second capability registry;
+- a factory-local parallel RAG authority;
+- an evidence-free `PLATFORM.P21` or `RELEASE.R04` merely to continue numbering.
 
-Dependencies: Stage 1.
+Existing components evolve in place through bounded, tested and evidence-backed changes.
 
-Owner/product decision required. Candidate workstreams are ranked by architectural fit and repository gap, not by novelty.
+## External-action boundary
 
-Current strongest candidates:
+The following remain separate governed/external actions when applicable:
 
-1. Mobile enablement — explicitly post-v1 in the architecture and no Android/iOS implementation path was found in the audit.
-2. Commercial account/billing/entitlement layer — no obvious implementation path was found in repository search.
-3. RAG/embedding/vector retrieval — architecture target, but no obvious current implementation was found in audit search.
-4. Existing factory capability promotion — implementation exists and should be revalidated before expansion.
+- credentials, OAuth/provider registration and 2FA/CAPTCHA;
+- cloud/provider spend authorization;
+- production DNS/deployment mutation not already authorized by a release workflow;
+- Vercel billing/plan or account-ownership changes;
+- signing certificates and signing secrets;
+- Partner Center / Store identity and final submissions;
+- paid channel spend;
+- legal terms and release-specific redistribution/licensing decisions.
 
-Only one primary workstream should become active unless independence is explicitly proven.
+Repository code, tests or CI must not fabricate completion of those external proofs.
 
-### Stage 3A — Mobile enablement candidate
+## Definition of done
 
-Dependencies: Stage 2 selection = Mobile; stable control-plane contracts; identity/tenant boundary verified.
+A capability closes only through the canonical maturity chain:
 
-Proposed order:
+`DESIGNED -> SPECIFIED -> IMPLEMENTED -> TESTED -> VERIFIED -> DEPLOYED / PRODUCTION`
 
-1. shared Flutter/Dart client architecture audit;
-2. Android project enablement without moving backend authority to client;
-3. authentication/control-plane connectivity;
-4. read-only operational projection;
-5. governed interactions using existing backend contracts;
-6. Android test/build/signing readiness;
-7. Play Store external-account readiness;
-8. iOS project enablement;
-9. TestFlight/App Store readiness.
-
-Signing, developer-account verification, payments, store declarations and final submissions remain explicit external actions.
-
-### Stage 3B — Commercial SaaS candidate
-
-Dependencies: Stage 2 selection = Commercial; identity/tenant behavior verified.
-
-Proposed order:
-
-1. product-plan/entitlement model;
-2. usage/quota metering;
-3. rate-limit policy integration;
-4. subscription/billing provider adapter;
-5. webhook/event reconciliation;
-6. invoice/payment-state projection;
-7. failure/refund/cancellation rules;
-8. security/privacy/FinOps verification;
-9. limited rollout before production.
-
-Provider-specific logic must remain replaceable behind ILAIOS-owned contracts.
-
-### Stage 3C — RAG / Knowledge candidate
-
-Dependencies: Stage 2 selection = RAG; privacy/data-classification requirements approved.
-
-Proposed order:
-
-1. data/source contract;
-2. tenant isolation model;
-3. ingestion and provenance;
-4. chunk/index lifecycle;
-5. embedding/provider adapter;
-6. retrieval/reranking;
-7. authorization-aware query path;
-8. evaluation and privacy leakage tests;
-9. bounded production rollout.
-
-### Stage 4 — Enterprise hardening
-
-Dependencies: first selected post-v1 capability VERIFIED.
-
-Cross-cutting gates:
-- backup/restore evidence where stateful data is introduced;
-- recovery drills;
-- tenant isolation regression;
-- security negative tests;
-- SBOM/build provenance where applicable;
-- observability/SLOs;
-- cost limits;
-- runbooks;
-- independent release verification.
-
-### Stage 5 — Further capability promotion
-
-Only after Stage 4, select the next candidate from the capability matrix. Do not open several speculative implementation tracks merely because they appear in the architecture.
-
-## Recommended immediate order
-
-1. merge governance baseline;
-2. owner enables appropriate `master` protection and decides repository metadata/license policy;
-3. run Stage 1 revalidation packages;
-4. select Mobile vs Commercial as the first net-new post-v1 track;
-5. formalize the selected track into a dedicated canonical amendment/package set;
-6. then execute automatically within bounded rules.
-
-## Definition of done for this roadmap
-
-This proposal is complete when it gives a safe dependency order. It is **not executable authority** until the selected post-v1 graph is explicitly adopted through the governed canonical process.
+`PRODUCTION` requires real runtime/external evidence wherever the capability has external effects. Current state remains governed by observed evidence, not this roadmap.

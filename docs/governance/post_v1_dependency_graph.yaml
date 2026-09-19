@@ -1,4 +1,4 @@
-schema_version: "1.1"
+schema_version: "1.2"
 status: "ADOPTED_CANONICAL"
 name: "ILAIOS Post-v1 Dependency Graph"
 authority: "governed_post_v1_execution"
@@ -108,7 +108,9 @@ nodes:
   RAG_KNOWLEDGE:
     purpose: "Build bounded tenant-isolated retrieval-augmented knowledge on existing Research/Data, Knowledge Graph, Privacy/DLP, evidence and governed-runtime foundations."
     dependencies: ["FINAL_LINEAGE_REDTEAM", "RESEARCH_DATA_FACTORY", "ENTERPRISE_HARDENING"]
-    state: "SELECTED"
+    state: "VERIFIED"
+    verified_scope: "BOUNDED_REFERENCE_IMPLEMENTATION"
+    production_state: "NO_GO_PENDING_RAG14_RUNTIME_EVIDENCE"
     required_gates:
       - "tenant_isolation"
       - "authorization_aware_retrieval"
@@ -116,6 +118,23 @@ nodes:
       - "privacy_dlp"
       - "deterministic_evidence"
       - "full_platform_ci"
+    evidence:
+      - "PR #111"
+      - "merge cb0fde61ba0fd74add11c227bf827cb62c01ff48"
+      - "Required CI Gate #185 PASS on head 38476e8a23313baf6206b37183693fbad5d29dab"
+      - "services/knowledge_rag.py"
+      - "tests/test_knowledge_rag.py"
+      - "tests/test_knowledge_rag_redteam.py"
+      - "tests/test_knowledge_rag_registry.py"
+      - "docs/governance/RAG_KNOWLEDGE_IMPLEMENTATION.md"
+    production_blockers:
+      - "approved production embedding provider/model evidence"
+      - "durable production index/vector persistence evidence"
+      - "production tenant-isolation and authorization-policy exercise"
+      - "production DLP/injection/leakage red-team evidence"
+      - "production backup/restore and deletion/revocation reconciliation evidence"
+      - "production SLO/observability/alert evidence"
+      - "exact release/deployment and rollback evidence"
 
 inactive_alternatives:
   MOBILE:

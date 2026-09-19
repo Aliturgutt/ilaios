@@ -20,7 +20,11 @@ from services.integrations.software_app_handoff import (
     AppFactoryHandoffRequest,
     SoftwareToAppFactoryHandoff,
 )
-from services.software_factory import EvidenceBundle, PromotionProposal, ValidationResult
+from services.software_factory import (
+    EvidenceBundle,
+    PromotionProposal,
+    ValidationResult,
+)
 from services.software_factory_agents import EngineeringAgentExecution
 from services.software_factory_skills import SkillExecutionResult
 

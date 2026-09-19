@@ -102,6 +102,26 @@ install(CODE "
 install(DIRECTORY "${PROJECT_BUILD_DIR}/${FLUTTER_ASSET_DIR_NAME}"
   DESTINATION "${INSTALL_BUNDLE_DATA_DIR}" COMPONENT Runtime)
 
+# Flutter preserves the repo-relative keys for ILAIOS canonical brand assets
+# in AssetManifest.bin. Explicitly install the locked brand authority set so
+# portable builds and MSIX staging can render the correct theme-aware assets
+# without redrawing, recoloring, cropping, or reconstructing brand artwork.
+set(ILAIOS_BRAND_ASSET_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../brand/assets")
+set(ILAIOS_RUNTIME_BRAND_ASSETS
+  "${ILAIOS_BRAND_ASSET_DIR}/02-ilaios-primary-horizontal-dark.jpg"
+  "${ILAIOS_BRAND_ASSET_DIR}/04-ilaios-symbol-light.jpg"
+  "${ILAIOS_BRAND_ASSET_DIR}/05-ilaios-app-icon.jpg"
+  "${ILAIOS_BRAND_ASSET_DIR}/13-ilaios-primary-horizontal-light.jpg"
+)
+foreach(ILAIOS_BRAND_ASSET IN LISTS ILAIOS_RUNTIME_BRAND_ASSETS)
+  if(NOT EXISTS "${ILAIOS_BRAND_ASSET}")
+    message(FATAL_ERROR "Required ILAIOS runtime brand asset is missing: ${ILAIOS_BRAND_ASSET}")
+  endif()
+endforeach()
+install(FILES ${ILAIOS_RUNTIME_BRAND_ASSETS}
+  DESTINATION "${CMAKE_INSTALL_PREFIX}/brand/assets"
+  COMPONENT Runtime)
+
 # Install the AOT library on non-Debug builds only.
 install(FILES "${AOT_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"
   CONFIGURATIONS Profile;Release

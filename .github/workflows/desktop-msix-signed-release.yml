@@ -22,7 +22,7 @@ permissions:
 jobs:
   signed-msix:
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     environment: desktop-release-signing
     env:
       ILAIOS_PACKAGE_IDENTITY: ${{ inputs.identity_name }}
@@ -30,8 +30,11 @@ jobs:
       ILAIOS_PACKAGE_VERSION: ${{ inputs.version }}
 
     steps:
-      - name: Checkout ILAIOS
-        uses: actions/checkout@v4
+      - name: Checkout exact source commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
 
       - name: Require signing secrets
         shell: pwsh
@@ -47,7 +50,7 @@ jobs:
           Write-Host 'ILAIOS_DESKTOP_SIGNING_INPUTS=READY'
 
       - name: Install pinned Flutter SDK
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           flutter-version: '3.44.9'
           channel: stable
@@ -71,6 +74,11 @@ jobs:
       - name: Build Windows release
         working-directory: apps/desktop
         run: flutter build windows --release
+
+      - name: Build bundled control plane
+        working-directory: apps/desktop
+        shell: pwsh
+        run: ./tool/build_control_plane_sidecar.ps1
 
       - name: Build publisher-bound MSIX
         working-directory: apps/desktop
@@ -107,7 +115,7 @@ jobs:
           }
 
       - name: Upload signed release candidate
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ilaios-desktop-${{ inputs.version }}-x64-signed
           path: apps/desktop/build/msix/ILAIOS-Desktop-${{ inputs.version }}-x64.msix

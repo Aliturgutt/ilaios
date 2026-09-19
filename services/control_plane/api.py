@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import hmac
 import json
 import sqlite3
@@ -20,6 +21,8 @@ from services.control_plane.proposals import (
     RiskClass,
     propose_execution,
 )
+from services.prompt_intent_compiler import compile_prompt
+from services.prompt_refinement import refine_prompt
 from src.video_automation.job_state_machine import JobStateMachine
 from src.video_automation.models import JobState
 
@@ -86,11 +89,20 @@ class ControlPlane:
         self._authenticate(token)
         if not objective or objective != objective.strip():
             raise ControlPlaneError("objective must be non-blank and trimmed")
+        try:
+            refinement = refine_prompt(objective)
+            compilation = compile_prompt(refinement.refined_prompt)
+        except ValueError as error:
+            raise ControlPlaneError(str(error)) from error
+        if compilation.needs_clarification:
+            question = compilation.clarification_questions[0]
+            raise ControlPlaneError(f"clarification required: {question}")
+        canonical_objective = compilation.canonical_objective
         with self._connect() as connection:
             sequence = connection.execute("SELECT COUNT(*) + 1 FROM goals").fetchone()[0]
             record = GoalRecord(
                 goal_id=f"goal-{sequence:08d}",
-                objective=objective,
+                objective=canonical_objective,
                 created_at=datetime.now(timezone.utc),
             )
             connection.execute(
@@ -101,7 +113,7 @@ class ControlPlane:
                 connection,
                 "goal.created",
                 record.goal_id,
-                {"objective": objective},
+                {"objective": canonical_objective},
                 record.created_at,
             )
         return record
@@ -208,7 +220,13 @@ class ControlPlane:
         budget: BudgetEnvelope,
         tasks: tuple[ProposedTask, ...],
     ) -> dict[str, object]:
-        """Create an inspectable bounded proposal with no execution authority."""
+        """Create an inspectable bounded proposal with no execution authority.
+
+        The canonical proposal hash is a content identity. A second goal may
+        legitimately request the exact same content, so durable storage scopes
+        an otherwise-colliding content identity to that goal instead of treating
+        a repeated user request as an integrity failure.
+        """
         self._authenticate(token)
         goal = self.get_goal(token, goal_id)
         proposal = propose_execution(
@@ -229,18 +247,34 @@ class ControlPlane:
                 "SELECT goal_id, proposal_json FROM proposals WHERE proposal_id = ?",
                 (proposal.proposal_id,),
             ).fetchone()
+            storage_id = proposal.proposal_id
             if existing is not None:
-                if existing["goal_id"] != goal_id or existing["proposal_json"] != serialized:
+                if existing["goal_id"] == goal_id and existing["proposal_json"] == serialized:
+                    return inspected
+                storage_id = "proposal-" + hashlib.sha256(
+                    f"{proposal.proposal_id}|{goal_id}".encode("utf-8")
+                ).hexdigest()[:24]
+                inspected = dict(inspected)
+                inspected["proposal_id"] = storage_id
+                serialized = json.dumps(
+                    inspected, sort_keys=True, separators=(",", ":")
+                )
+                scoped = connection.execute(
+                    "SELECT goal_id, proposal_json FROM proposals WHERE proposal_id = ?",
+                    (storage_id,),
+                ).fetchone()
+                if scoped is not None:
+                    if scoped["goal_id"] == goal_id and scoped["proposal_json"] == serialized:
+                        return inspected
                     raise ControlPlaneError("proposal identity collision")
-                return inspected
             connection.execute(
                 "INSERT INTO proposals VALUES (?, ?, ?, ?)",
-                (proposal.proposal_id, goal_id, serialized, created_at.isoformat()),
+                (storage_id, goal_id, serialized, created_at.isoformat()),
             )
             self._append_event(
                 connection,
                 "proposal.created",
-                proposal.proposal_id,
+                storage_id,
                 {"goal_id": goal_id},
                 created_at,
             )

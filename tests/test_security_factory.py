@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from services.security_factory import (
+    DependencyAdvisory,
     SecurityFactory,
     SecurityFactoryError,
     SecurityReport,
@@ -72,6 +73,74 @@ def test_pyproject_dependency_scan_detects_unpinned_dependency(tmp_path: Path) -
     ]
     assert len(supply) == 1
     assert "requests" in supply[0].message
+
+
+def test_dependency_advisory_match_is_blocking_and_evidence_bound() -> None:
+    advisory = DependencyAdvisory(
+        advisory_id="CVE-2099-0001",
+        package="demo-package",
+        affected_versions=frozenset({"1.2.3"}),
+        severity=Severity.CRITICAL,
+        remediation="upgrade to the reviewed fixed release",
+    )
+    report = SecurityFactory.analyze_dependency_advisories(
+        "dependency-advisory-scope",
+        {"demo-package": "1.2.3"},
+        (advisory,),
+    )
+
+    assert report.passed is False
+    assert len(report.blocking_findings) == 1
+    finding = report.blocking_findings[0]
+    assert finding.finding_id == "SUPPLY-CVE-2099-0001"
+    assert finding.location == "demo-package"
+    assert "demo-package==1.2.3" in finding.message
+    assert finding.remediation == "upgrade to the reviewed fixed release"
+
+
+def test_dependency_advisory_non_affected_version_is_clean() -> None:
+    advisory = DependencyAdvisory(
+        advisory_id="CVE-2099-0001",
+        package="demo-package",
+        affected_versions=frozenset({"1.2.3"}),
+        severity=Severity.CRITICAL,
+        remediation="upgrade to the reviewed fixed release",
+    )
+    report = SecurityFactory.analyze_dependency_advisories(
+        "dependency-advisory-scope",
+        {"demo-package": "1.2.4"},
+        (advisory,),
+    )
+    assert report == SecurityReport("dependency-advisory-scope", ())
+
+
+def test_dependency_advisory_analysis_fails_closed_without_trusted_feed() -> None:
+    with pytest.raises(SecurityFactoryError, match="trusted local dependency advisory data"):
+        SecurityFactory.analyze_dependency_advisories(
+            "dependency-advisory-scope",
+            {"demo-package": "1.2.3"},
+            (),
+        )
+
+
+def test_repository_scan_detects_untrusted_input_to_sensitive_sink(tmp_path: Path) -> None:
+    (tmp_path / "tainted.py").write_text(
+        "import subprocess\ncommand = input()\nsubprocess.run(command)\n",
+        encoding="utf-8",
+    )
+    report = SecurityFactory().scan_repository(_scope(tmp_path))
+    findings = [item for item in report.findings if item.finding_id == "SAST-TAINT-UNTRUSTED-TO-SINK"]
+    assert len(findings) == 1
+    assert findings[0].line == 3
+
+
+def test_repository_scan_does_not_flag_constrained_sink_input(tmp_path: Path) -> None:
+    (tmp_path / "safe.py").write_text(
+        "import subprocess\ncommand = 'status'\nsubprocess.run(command)\n",
+        encoding="utf-8",
+    )
+    report = SecurityFactory().scan_repository(_scope(tmp_path))
+    assert "SAST-TAINT-UNTRUSTED-TO-SINK" not in {item.finding_id for item in report.findings}
 
 
 def test_dast_observation_is_local_only_and_non_destructive(tmp_path: Path) -> None:

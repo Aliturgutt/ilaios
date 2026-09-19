@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "owner": "ILAIOS",
   "runtimeDependencies": [],
   "skillId": "design.final-polish",
@@ -9,7 +9,8 @@
     "typography": [
       "Use intentional brand-aligned font choices.",
       "Keep heading scale proportional to content and viewport.",
-      "Keep body line length readable and hierarchy explicit."
+      "Keep body line length readable and hierarchy explicit.",
+      "Keep typography and spacing stable when user text size increases."
     ],
     "spacing": [
       "Use a consistent spacing rhythm across sections and components.",
@@ -29,10 +30,15 @@
     "motion": [
       "Motion must communicate state, causality, continuity, or hierarchy.",
       "Prefer restrained transform/opacity transitions over layout-shifting animation.",
+      "User-driven motion must remain interruptible and retarget from the currently presented state.",
+      "Gesture release must not introduce an avoidable momentum discontinuity.",
+      "Reversible transitions must preserve spatial source and path consistency.",
       "Honor prefers-reduced-motion."
     ],
     "interaction": [
       "Interactive elements need visible hover, focus, and pressed feedback where applicable.",
+      "Input feedback should begin with the interaction and remain continuous while direct manipulation is active.",
+      "Gesture-driven content must track pointer or touch movement without artificial discontinuity.",
       "Visual affordance must match actual clickability.",
       "Touch targets must remain usable on mobile."
     ],
@@ -44,7 +50,9 @@
     "accessibility": [
       "Keyboard focus must remain visible.",
       "Text and controls must retain readable contrast.",
-      "Menu state and focus return must be operable without a pointer."
+      "Menu state and focus return must be operable without a pointer.",
+      "Translucent surfaces need a legible reduced-transparency fallback when applicable.",
+      "Interfaces need a higher-contrast fallback where the platform requests increased contrast."
     ],
     "antiGenericAI": [
       "Flag excessive oversized hero typography.",
@@ -65,4 +73,3 @@
   "webFactoryGate": "GovernedWebFactory.accept_design_quality",
   "copiedThirdPartyCode": false
 }
-

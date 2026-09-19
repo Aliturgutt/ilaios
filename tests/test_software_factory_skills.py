@@ -8,7 +8,14 @@ from pathlib import Path
 import pytest
 
 from services.software_factory import SoftwareFactoryError
-from services.software_factory_skills import CANONICAL_DENY_SET, REQUIRED_SKILL_IDS, SkillExecutionRequest, SkillExecutor, SkillRegistry, default_skills_root
+from services.software_factory_skills import (
+    CANONICAL_DENY_SET,
+    REQUIRED_SKILL_IDS,
+    SkillExecutionRequest,
+    SkillExecutor,
+    SkillRegistry,
+    default_skills_root,
+)
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 SKILLS_ROOT = default_skills_root(REPOSITORY_ROOT)
@@ -31,8 +38,8 @@ class _Runtime:
 def test_registry_loads_exact_first_party_sf7_family() -> None:
     registry = SkillRegistry(SKILLS_ROOT)
     assert registry.skill_ids == tuple(sorted(REQUIRED_SKILL_IDS))
-    assert len(registry.skill_ids) == 24
-    assert len({(registry.resolve(s).manifest.skill_id, registry.resolve(s).manifest.version) for s in registry.skill_ids}) == 24
+    assert len(registry.skill_ids) == 25
+    assert len({(registry.resolve(s).manifest.skill_id, registry.resolve(s).manifest.version) for s in registry.skill_ids}) == 25
     for skill_id in registry.skill_ids:
         package = registry.resolve(skill_id)
         assert package.manifest.owner == "ILAIOS Software Factory"

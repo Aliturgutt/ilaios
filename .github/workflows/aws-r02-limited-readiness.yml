@@ -28,7 +28,10 @@ jobs:
       R01_ECR_REPOSITORY: ilaios-r01-canary
       R01_SIGNING_PROFILE: ILAIOS_R01_ECR
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
 
       - name: Validate explicit R02 human promotion approval
         run: |
@@ -61,7 +64,7 @@ jobs:
           grep -Fxq 'target_health: healthy' "$EVIDENCE"
           echo 'R01_DEPENDENCY_EVIDENCE_PASS'
 
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a
         with:
           role-to-assume: arn:aws:iam::101180464425:role/ILAIOS-GitHub-Deploy-Role
           aws-region: eu-central-1
@@ -126,9 +129,6 @@ jobs:
       - name: Fail closed unless LIMITED exposure is machine-defined
         run: |
           set -euo pipefail
-          # R02 is allowed to promote only a bounded, explicit LIMITED exposure.
-          # Do not infer a traffic percentage, task count, tenant set, CIDR set,
-          # or public exposure from the human-readable word LIMITED.
           MATCHES="$(grep -RInE '(enable_limited|limited_(traffic|percent|percentage|tenant|tenants|cidr|cidrs|exposure|desired_count)|release_state[^A-Za-z0-9_]+LIMITED)' infra 2>/dev/null || true)"
           if [ -z "$MATCHES" ]; then
             {

@@ -1,0 +1,19 @@
+rules:
+  - id: ilaios-python-eval
+    languages: [python]
+    severity: ERROR
+    message: Dynamic eval is prohibited in governed ILAIOS code.
+    pattern: eval(...)
+  - id: ilaios-python-exec
+    languages: [python]
+    severity: ERROR
+    message: Dynamic exec is prohibited in governed ILAIOS code.
+    pattern: exec(...)
+  - id: ilaios-shell-true
+    languages: [python]
+    severity: ERROR
+    message: subprocess shell=True requires removal or explicit bounded redesign.
+    pattern-either:
+      - pattern: subprocess.run(..., shell=True, ...)
+      - pattern: subprocess.call(..., shell=True, ...)
+      - pattern: subprocess.Popen(..., shell=True, ...)

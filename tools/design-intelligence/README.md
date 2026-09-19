@@ -25,4 +25,3 @@ Maturity labels must not be promoted without repository tests/evidence. A later 
 3. Prove keyboard/focus and reduced-motion behavior.
 4. Prove no critical/major findings remain.
 5. Package the same rules for Web Factory without importing external reference repositories.
-

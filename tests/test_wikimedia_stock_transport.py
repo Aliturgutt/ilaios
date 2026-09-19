@@ -1,0 +1,197 @@
+from __future__ import annotations
+
+from typing import Any
+
+import pytest
+
+from src.video_automation.stock_source_adapters import (
+    StockProvider,
+    StockSourceError,
+    StockSourceFailureCategory,
+)
+from src.video_automation.wikimedia_stock_transport import WikimediaStockHttpTransport
+
+
+def _payload() -> dict[str, Any]:
+    return {
+        "query": {
+            "pages": [
+                {
+                    "title": "File:Example.jpg",
+                    "imageinfo": [
+                        {
+                            "url": "https://upload.wikimedia.org/example.jpg",
+                            "descriptionurl": "https://commons.wikimedia.org/wiki/File:Example.jpg",
+                            "mime": "image/jpeg",
+                            "width": 1920,
+                            "height": 1080,
+                            "extmetadata": {
+                                "Artist": {"value": "<b>Example Creator</b>"},
+                                "LicenseShortName": {"value": "CC BY-SA 4.0"},
+                                "LicenseUrl": {
+                                    "value": "https://creativecommons.org/licenses/by-sa/4.0/"
+                                },
+                            },
+                        }
+                    ],
+                }
+            ]
+        }
+    }
+
+
+def test_wikimedia_transport_binds_real_provider_contract() -> None:
+    seen: list[str] = []
+
+    def fetch_json(url: str) -> dict[str, Any]:
+        seen.append(url)
+        return _payload()
+
+    result = WikimediaStockHttpTransport(fetch_json).search(
+        provider=StockProvider.WIKIMEDIA,
+        tenant_id="tenant-1",
+        job_id="job-1",
+        query="satellite earth",
+        max_results=3,
+    )
+
+    assert len(result.candidates) == 1
+    candidate = result.candidates[0]
+    assert candidate.media_type == "image"
+    assert candidate.provenance.provider is StockProvider.WIKIMEDIA
+    assert candidate.provenance.creator == "Example Creator"
+    assert candidate.provenance.license_name == "CC BY-SA 4.0"
+    assert candidate.provenance.attribution_required is True
+    assert seen and seen[0].startswith("https://commons.wikimedia.org/w/api.php?")
+
+
+def test_wikimedia_transport_fails_closed_without_license() -> None:
+    payload = _payload()
+    metadata = payload["query"]["pages"][0]["imageinfo"][0]["extmetadata"]
+    metadata.pop("LicenseShortName")
+
+    result = WikimediaStockHttpTransport(lambda _: payload).search(
+        provider=StockProvider.WIKIMEDIA,
+        tenant_id="tenant-1",
+        job_id="job-1",
+        query="earth",
+        max_results=1,
+    )
+    assert result.candidates == ()
+
+
+def test_wikimedia_transport_accepts_documented_empty_generator_response() -> None:
+    result = WikimediaStockHttpTransport(
+        lambda _: {"batchcomplete": ""}
+    ).search(
+        provider=StockProvider.WIKIMEDIA,
+        tenant_id="tenant-1",
+        job_id="job-1",
+        query="zzzxqvnonexistentgovernedstockcandidate",
+        max_results=1,
+    )
+
+    assert result.candidates == ()
+    assert result.request.provider is StockProvider.WIKIMEDIA
+
+
+def test_wikimedia_transport_accepts_boolean_empty_generator_response() -> None:
+    result = WikimediaStockHttpTransport(
+        lambda _: {"batchcomplete": True}
+    ).search(
+        provider=StockProvider.WIKIMEDIA,
+        tenant_id="tenant-1",
+        job_id="job-1",
+        query="objective-derived-windows-query",
+        max_results=1,
+    )
+
+    assert result.candidates == ()
+    assert result.request.provider is StockProvider.WIKIMEDIA
+
+
+@pytest.mark.parametrize(  # type: ignore[misc, unused-ignore]
+    "payload",
+    ({}, {"batchcomplete": False}, {"batchcomplete": True, "error": {}}),
+)
+def test_wikimedia_transport_fails_closed_for_unmarked_missing_query(
+    payload: dict[str, object],
+) -> None:
+    with pytest.raises(StockSourceError) as raised:
+        WikimediaStockHttpTransport(lambda _: payload).search(
+            provider=StockProvider.WIKIMEDIA,
+            tenant_id="tenant-1",
+            job_id="job-1",
+            query="objective-derived-windows-query",
+            max_results=1,
+        )
+
+    assert raised.value.diagnostic_category is StockSourceFailureCategory.RESPONSE_CONTRACT
+
+
+def test_wikimedia_transport_rejects_cross_provider_request() -> None:
+    with pytest.raises(StockSourceError, match="only accepts wikimedia"):
+        WikimediaStockHttpTransport(lambda _: _payload()).search(
+            provider=StockProvider.NASA,
+            tenant_id="tenant-1",
+            job_id="job-1",
+            query="earth",
+            max_results=1,
+        )
+
+
+def test_wikimedia_transport_classifies_response_contract_failure() -> None:
+    with pytest.raises(StockSourceError) as raised:
+        WikimediaStockHttpTransport(lambda _: {"query": []}).search(
+            provider=StockProvider.WIKIMEDIA,
+            tenant_id="tenant-1",
+            job_id="job-1",
+            query="earth",
+            max_results=1,
+        )
+
+    assert raised.value.diagnostic_category is StockSourceFailureCategory.RESPONSE_CONTRACT
+
+def test_wikimedia_transport_skips_malformed_license_url_and_keeps_valid_candidate() -> None:
+    payload = _payload()
+
+    malformed = payload["query"]["pages"][0]
+    malformed["imageinfo"][0]["extmetadata"]["LicenseUrl"]["value"] = (
+        "http://creativecommons.org/licenses/by-sa/4.0/"
+    )
+
+    valid = {
+        "title": "File:Valid.jpg",
+        "imageinfo": [
+            {
+                "url": "https://upload.wikimedia.org/valid.jpg",
+                "descriptionurl": "https://commons.wikimedia.org/wiki/File:Valid.jpg",
+                "mime": "image/jpeg",
+                "width": 1920,
+                "height": 1080,
+                "extmetadata": {
+                    "Artist": {"value": "Valid Creator"},
+                    "LicenseShortName": {"value": "CC BY 4.0"},
+                    "LicenseUrl": {
+                        "value": "https://creativecommons.org/licenses/by/4.0/"
+                    },
+                },
+            }
+        ],
+    }
+    payload["query"]["pages"].append(valid)
+
+    result = WikimediaStockHttpTransport(lambda _: payload).search(
+        provider=StockProvider.WIKIMEDIA,
+        tenant_id="tenant-1",
+        job_id="job-1",
+        query="data center",
+        max_results=3,
+    )
+
+    assert len(result.candidates) == 1
+    candidate = result.candidates[0]
+    assert candidate.provenance.asset_id == "File:Valid.jpg"
+    assert candidate.provenance.license_url == (
+        "https://creativecommons.org/licenses/by/4.0/"
+    )

@@ -1,0 +1,34 @@
+{
+  "schema_version": "ilaios.mobile-store-factory-closure.v1",
+  "tracking_issue": 502,
+  "checkpoint_protocol": "branch-pr-exact-head-ci-merge-next-master",
+  "truth_rule": "NO_EVIDENCE_NO_DONE",
+  "base_master_sha": "d2d9eb329437fe0fccf48a7730c0f9a3f0795bc8",
+  "current_phase": 3,
+  "automation_mode": "bounded-zero-spend-non-publication",
+  "store_submission_requires_explicit_approval": true,
+  "external_spend_authorized": false,
+  "direct_app_factory_publication_authorized": false,
+  "phases": [
+    {"id": 1, "name": "common-store-certification-foundation", "status": "VERIFIED"},
+    {"id": 2, "name": "android-implementation-executor", "status": "VERIFIED"},
+    {"id": 3, "name": "android-build-google-play-certification", "status": "IN_PROGRESS"},
+    {"id": 4, "name": "ilaios-mobile-android-golden-reference", "status": "NOT_STARTED"},
+    {"id": 5, "name": "ios-implementation-executor", "status": "NOT_STARTED"},
+    {"id": 6, "name": "ios-build-app-store-certification", "status": "NOT_STARTED"},
+    {"id": 7, "name": "ilaios-mobile-ios-golden-reference", "status": "NOT_STARTED"},
+    {"id": 8, "name": "unified-store-submission-gateway", "status": "NOT_STARTED"},
+    {"id": 9, "name": "rejection-recovery-appeal", "status": "NOT_STARTED"},
+    {"id": 10, "name": "cross-store-golden-certification-suite", "status": "NOT_STARTED"}
+  ],
+  "blocking_invariants": [
+    "NO_CORE_REWRITE",
+    "NO_PARALLEL_POLICY_APPROVAL_TOOL_EVIDENCE_AUTHORITY",
+    "UNKNOWN_POLICY_IS_BLOCK",
+    "CERTIFIED_BINARY_IDENTITY_MUST_MATCH_SUBMITTED_BINARY",
+    "NO_SECRET_EXPOSURE_TO_LLM_OR_APP_FACTORY",
+    "NO_AUTONOMOUS_STORE_SUBMISSION_OR_PUBLICATION",
+    "NO_AUTONOMOUS_PAID_SPEND",
+    "NO_SYNTHETIC_DEVICE_STORE_OR_PUBLICATION_EVIDENCE"
+  ]
+}

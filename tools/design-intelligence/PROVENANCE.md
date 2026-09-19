@@ -1,7 +1,7 @@
-# ILAIOS Design Intelligence â€” Reference Provenance
+# ILAIOS Design Intelligence — Reference Provenance
 
 Status: CONTROLLED RESEARCH RECORD
-Research date: 2026-08-13
+Research date: 2026-08-13; refreshed 2026-08-18
 
 External references are non-authoritative research inputs. ILAIOS does not vendor, install, import, execute, or depend on them at runtime.
 
@@ -16,12 +16,13 @@ External references are non-authoritative research inputs. ILAIOS does not vendo
 
 ## Emil Kowalski Skills for Design Engineers
 - Repository/URL: `emilkowalski/skills`, https://github.com/emilkowalski/skills
-- Revision: `78761e1b57f97dce65b983d640c70a68f39e8163` (`main`).
-- License: MIT; repository `LICENSE` inspected at the pinned revision.
-- Paths inspected: README, LICENSE, skill directory inventory.
-- Concepts learned: animation purpose, duration/easing consistency, micro-interactions, interaction states, and surfaces that should not animate.
-- License-sensitive material: prompts, examples, and implementation. None copied.
-- Decision: ideas only; copied code NO; runtime dependency NO; implementation attribution required NO.
+- Revision inspected for this refresh: `e879241fab3cdb22e8d95587cdbf40b57a88d7da` (`main`).
+- Prior recorded revision: `78761e1b57f97dce65b983d640c70a68f39e8163` (`main`).
+- License: MIT; repository `LICENSE` inspected at the refreshed pinned revision.
+- Paths inspected: README, LICENSE, skill directory inventory, and `skills/apple-design/SKILL.md`.
+- Concepts learned: immediate and continuous interaction feedback, direct-manipulation continuity, interruptible user-driven motion, continuity between gesture release and settled motion, spatially consistent reversible transitions, reduced-motion/transparency/contrast fallbacks, and scale-aware typography.
+- License-sensitive material: prompts, examples, prose, algorithms, source code, and implementation details. None copied.
+- Decision: behavioral requirements only; independently worded ILAIOS rules and evaluator checks; copied code/text NO; runtime dependency NO; external runtime authority NO.
 
 ## Impeccable
 - Repository/URL: `pbakaus/impeccable`, https://github.com/pbakaus/impeccable
@@ -35,9 +36,9 @@ External references are non-authoritative research inputs. ILAIOS does not vendo
 ## Independent implementation evidence
 - Neutral requirements: `rules.json` and `SKILL.md`.
 - Original standard-library implementation: `services/design_quality.py`.
-- Behavioral and contract tests: `tests/test_design_quality.py`.
+- Behavioral and contract tests: `tests/test_design_quality.py` and `tests/test_design_intelligence_extension.py`.
 - Resulting skill ID: `design.final-polish`, composing native category findings.
 - External runtime dependencies: 0. Copied third-party implementation files or fragments: 0.
+- The 2026-08-18 refresh extends the existing ILAIOS-owned evaluator in place; it does not create an Apple-design runtime, second design authority, or parallel Web Factory gate.
 
 Before any future reuse of external code or substantial expression, re-review the exact revision and license and preserve all obligations. External prompts, scripts, installers, tools, extensions, or agents must not receive ILAIOS credentials or production authority merely because they are design references.
-

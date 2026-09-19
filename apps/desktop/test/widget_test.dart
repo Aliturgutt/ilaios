@@ -1,38 +1,114 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ilaios_desktop/app/ilaios_locale.dart';
 import 'package:ilaios_desktop/control_plane/client.dart';
 import 'package:ilaios_desktop/control_plane/evidence_record.dart';
 import 'package:ilaios_desktop/control_plane/operational_snapshot.dart';
+import 'package:ilaios_desktop/features/li/li_view.dart';
+import 'package:ilaios_desktop/features/navigation/desktop_section.dart';
 import 'package:ilaios_desktop/main.dart';
+import 'package:ilaios_desktop/identity/identity_client.dart';
 
 const _evidence = EvidenceRecord(
   sequence: 1,
   executionId: 'exec-1',
   artifactDigest: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-  action: 'render',
+  action: 'video.local.rendered',
   previousHash: '',
   recordHash: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
 );
 
+const _finishedProductEvidence = EvidenceRecord(
+  sequence: 2,
+  executionId: 'exec-2',
+  artifactDigest: 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+  action: 'video.desktop.finished_product',
+  previousHash: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+  recordHash: 'dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd',
+);
+
 void main() {
-  testWidgets('disconnected shell never fabricates authoritative state', (
+  testWidgets('disconnected canonical Home disables governed submission', (
     WidgetTester tester,
   ) async {
+    await tester.binding.setSurfaceSize(const Size(1280, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(const IlaiosDesktopApp());
-    expect(find.text('Authoritative control plane unavailable'), findsOneWidget);
-    expect(find.text('—'), findsNWidgets(6));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('home-command-prompt')), findsOneWidget);
     expect(
-      tester
-          .widget<FilledButton>(find.byKey(const Key('refresh-command')))
-          .onPressed,
+      tester.widget<FilledButton>(find.byKey(const Key('home-new-work'))).onPressed,
       isNull,
     );
+    expect(find.byKey(const Key('reference-secondary-navigation')), findsNothing);
   });
 
-  testWidgets('connected shell projects query state and refresh', (
+  testWidgets('connected canonical Home submits without claiming completion', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1280, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    String? submitted;
+    await tester.pumpWidget(IlaiosDesktopApp(
+      projection: const ControlPlaneProjection(
+        connected: true,
+        status: 'Connected to authoritative control plane',
+        goalCount: 2,
+        jobCount: 5,
+        lastEvent: 'job.updated',
+        schemaVersion: '1',
+      ),
+      operationalStatus: 'Operational APIs connected',
+      onPromptSubmit: (objective) async {
+        submitted = objective;
+        return const PromptSubmission(
+          goalId: 'goal-00000003',
+          jobId: 'job-00000006',
+          state: 'PENDING',
+        );
+      },
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('home-command-prompt')),
+      'Build a premium website',
+    );
+    await tester.pump();
+    final submit = find.byKey(const Key('home-new-work'));
+    await tester.ensureVisible(submit);
+    await tester.tap(submit);
+    await tester.pumpAndSettle();
+
+    expect(submitted, 'Build a premium website');
+    expect(find.textContaining('Work accepted'), findsOneWidget);
+    expect(find.textContaining('goal-00000003'), findsNothing);
+    expect(find.textContaining('job-00000006'), findsNothing);
+  });
+
+  testWidgets('home renders truthful canonical surface without synthetic telemetry', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1600, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(const IlaiosDesktopApp());
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('command-center-home')), findsOneWidget);
+    expect(find.byKey(const Key('home-command-prompt')), findsOneWidget);
+    expect(find.byKey(const Key('command-center-metrics')), findsNothing);
+    expect(find.byKey(const Key('command-center-session')), findsNothing);
+    expect(find.textContaining(r'$3.21'), findsNothing);
+    expect(find.textContaining('18.362'), findsNothing);
+    expect(find.text('96%'), findsNothing);
+  });
+
+  testWidgets('Workflows projects authoritative job state and refresh', (
     WidgetTester tester,
   ) async {
     var refreshRequests = 0;
+    await tester.binding.setSurfaceSize(const Size(1280, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(IlaiosDesktopApp(
       projection: const ControlPlaneProjection(
         connected: true,
@@ -44,26 +120,61 @@ void main() {
       ),
       onRefreshRequested: () => refreshRequests += 1,
     ));
-    expect(find.text('2'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('nav-workflows')));
+    await tester.pumpAndSettle();
+    final workflowsPage = find.byKey(const Key('reference-workflows-page'));
+    expect(workflowsPage, findsOneWidget);
+    expect(
+      find.descendant(of: workflowsPage, matching: find.text('Workflows')),
+      findsOneWidget,
+    );
     expect(find.text('5'), findsOneWidget);
-    final refresh = find.byKey(const Key('refresh-command'));
+    expect(find.text('2'), findsNothing);
+    final refresh = find.byKey(const Key('workflows-refresh'));
     await tester.ensureVisible(refresh);
     await tester.tap(refresh);
     expect(refreshRequests, 1);
   });
 
-  testWidgets('wide navigation exposes only verified backend surfaces', (
+  testWidgets('wide navigation exposes exactly the canonical seven-page information architecture', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1280, 800));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(const IlaiosDesktopApp());
-    expect(find.byKey(const ValueKey('nav-controlCenter')), findsOneWidget);
-    expect(find.byKey(const ValueKey('nav-liveExecution')), findsOneWidget);
-    expect(find.byKey(const ValueKey('nav-evidence')), findsOneWidget);
-    expect(find.byKey(const ValueKey('nav-governance')), findsOneWidget);
-    expect(find.text('Agents'), findsNothing);
-    expect(find.text('Approvals'), findsNothing);
+    await tester.pumpAndSettle();
+    for (final destination in <DesktopSection>[
+      DesktopSection.home,
+      DesktopSection.workflows,
+      DesktopSection.agents,
+      DesktopSection.artifacts,
+      DesktopSection.approvals,
+      DesktopSection.evidence,
+      DesktopSection.settings,
+    ]) {
+      expect(find.byKey(ValueKey('nav-${destination.name}')), findsOneWidget);
+    }
+    for (final destination in <DesktopSection>[
+      DesktopSection.goals,
+      DesktopSection.liveWorkspace,
+      DesktopSection.costs,
+    ]) {
+      expect(find.byKey(ValueKey('nav-${destination.name}')), findsNothing);
+    }
+    expect(find.byKey(const Key('reference-secondary-navigation')), findsNothing);
+    expect(find.byKey(const ValueKey('nav-li')), findsNothing);
+  });
+
+  testWidgets('removed Live Workspace is not restored as a top-level Desktop surface', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1280, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(const IlaiosDesktopApp());
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('nav-liveWorkspace')), findsNothing);
+    expect(find.byKey(const Key('reference-secondary-navigation')), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('verified evidence renders provenance metadata only', (
@@ -108,14 +219,59 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('nav-evidence')));
     await tester.pumpAndSettle();
-    expect(find.text('Evidence & Audit'), findsOneWidget);
-    expect(find.text('render'), findsOneWidget);
-    expect(find.text('Execution: exec-1'), findsOneWidget);
-    expect(find.textContaining('aaaaaaaaaaaaaaaaaa'), findsOneWidget);
+    final evidencePage = find.byKey(const Key('reference-evidence-page'));
+    expect(evidencePage, findsOneWidget);
+    expect(
+      find.descendant(of: evidencePage, matching: find.text('Evidence')),
+      findsOneWidget,
+    );
+    expect(find.text('video.local.rendered'), findsWidgets);
+    expect(find.byKey(const ValueKey('evidence-row-1')), findsOneWidget);
+    expect(find.textContaining('exec-1'), findsWidgets);
+    expect(find.textContaining('aaaaaaaaaaaaaaaaaa'), findsWidgets);
     expect(find.textContaining('content_base64'), findsNothing);
   });
 
-  testWidgets('governance decisions require independent approver', (
+  testWidgets('deliveries save only verified finished products', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1280, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    EvidenceRecord? saved;
+    await tester.pumpWidget(IlaiosDesktopApp(
+      projection: const ControlPlaneProjection(
+        connected: true,
+        status: 'Connected to authoritative control plane',
+        goalCount: 1,
+        jobCount: 1,
+        lastEvent: 'job.updated',
+        schemaVersion: '1',
+      ),
+      operationalSnapshot: const OperationalSnapshot(
+        runtimeRoutes: <Map<String, Object?>>[],
+        schedulerState: <String, Object?>{},
+        grantsState: <String, Object?>{},
+        governanceState: <String, Object?>{},
+        evidenceRecords: <EvidenceRecord>[_evidence, _finishedProductEvidence],
+        liveEvents: <Map<String, Object?>>[],
+      ),
+      operationalStatus: 'Operational APIs connected',
+      onSaveArtifact: (record) async {
+        saved = record;
+        return r'C:\Users\test\Downloads\ILAIOS\artifact.mp4';
+      },
+    ));
+    await tester.tap(find.byKey(const ValueKey('nav-artifacts')));
+    await tester.pumpAndSettle();
+    expect(find.text('video.local.rendered'), findsNothing);
+    expect(find.text('video.desktop.finished_product'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('save-artifact-2')));
+    await tester.pumpAndSettle();
+    expect(saved, _finishedProductEvidence);
+    expect(find.byKey(const Key('delivery-message')), findsOneWidget);
+  });
+
+  testWidgets('approval decisions require independent approver', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1280, 800));
@@ -165,13 +321,200 @@ void main() {
         decidedValue = decision;
       },
     ));
-    await tester.tap(find.byKey(const ValueKey('nav-governance')));
+    await tester.tap(find.byKey(const ValueKey('nav-approvals')));
     await tester.pumpAndSettle();
     expect(find.textContaining('vault://must-never-render'), findsNothing);
+    final request = find.descendant(
+      of: find.byKey(const Key('approvals-table')),
+      matching: find.text('Request request-'),
+    );
+    expect(request, findsOneWidget);
+    await tester.tap(request);
+    await tester.pumpAndSettle();
     final approve = find.byKey(const ValueKey('approve-request-7'));
+    expect(approve, findsOneWidget);
     await tester.ensureVisible(approve);
     await tester.tap(approve);
+    await tester.pumpAndSettle();
     expect(decidedRequest, 'request-7');
     expect(decidedValue, GovernanceDecision.approved);
+    expect(find.text('Technical ID: request-7'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('approvals-back-to-queue')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('approvals-table')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('medium admitted work is never rendered as pending approval', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1280, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(IlaiosDesktopApp(
+      projection: const ControlPlaneProjection(
+        connected: true,
+        status: 'Connected to authoritative control plane',
+        goalCount: 1,
+        jobCount: 1,
+        lastEvent: 'job.updated',
+        schemaVersion: '1',
+      ),
+      operationalSnapshot: const OperationalSnapshot(
+        runtimeRoutes: <Map<String, Object?>>[],
+        schedulerState: <String, Object?>{},
+        grantsState: <String, Object?>{
+          'grants': <Object?>[],
+          'revoked': <Object?>[],
+          'stopped': <Object?>[],
+        },
+        governanceState: <String, Object?>{
+          'work': <Object?>[
+            <String, Object?>{
+              'request_id': 'exec-medium',
+              'requester_id': 'principal-a',
+              'status': 'pending',
+            },
+          ],
+          'admissions': <Object?>[
+            <String, Object?>{
+              'request_id': 'exec-medium',
+              'risk': 'medium',
+              'admission_decision': 'ALLOW',
+              'human_approval_required': false,
+            },
+          ],
+          'secret_references': <Object?>[],
+          'ledger': <String, Object?>{},
+        },
+        evidenceRecords: <EvidenceRecord>[],
+        liveEvents: <Map<String, Object?>>[],
+      ),
+      operationalStatus: 'Operational APIs connected',
+      approverId: 'approver-b',
+      onGovernanceDecision: (requestId, decision) async {},
+    ));
+    await tester.tap(find.byKey(const ValueKey('nav-approvals')));
+    await tester.pumpAndSettle();
+    expect(find.text('There are no matching approval requests right now.'), findsOneWidget);
+    expect(find.byKey(const ValueKey('approve-exec-medium')), findsNothing);
+    expect(find.byKey(const ValueKey('deny-exec-medium')), findsNothing);
+  });
+
+  testWidgets('Li is hidden for a signed-in nonfounder session', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1280, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      const IlaiosDesktopApp(
+        userSession: DesktopUserSession(
+          sessionId: 'customer-session',
+          providerId: 'google',
+          principalId: 'usr_customer',
+          tenantId: 'tnt_customer',
+          displayIdentity: 'customer@example.com',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('nav-settings')), findsOneWidget);
+    expect(find.byKey(const ValueKey('nav-li')), findsNothing);
+  });
+
+  testWidgets('founder-only Li revalidates state and memory without becoming an eighth page', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1280, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    const session = DesktopUserSession(
+      sessionId: 'founder-session',
+      providerId: 'google',
+      principalId: 'usr_founder',
+      tenantId: 'tnt_founder',
+      displayIdentity: 'founder@example.com',
+      liFounder: true,
+    );
+    var stateRequests = 0;
+    var memoryReads = 0;
+    var memoryWrites = 0;
+    final memories = <DesktopLiMemory>[
+      DesktopLiMemory(
+        memoryId: 'li_mem_existing',
+        kind: 'semantic',
+        content: 'Existing founder memory',
+        source: 'desktop',
+        confidence: 1,
+        sensitivity: 'private',
+        createdAt: DateTime.utc(2026, 9, 2, 12),
+      ),
+    ];
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: IlaiosLocaleScope(
+          locale: IlaiosLocale.english,
+          onChanged: (_) {},
+          child: Scaffold(
+            body: LiView(
+              userSession: session,
+              onFetchState: () async {
+                stateRequests += 1;
+                return const DesktopLiState(
+                  name: 'Li',
+                  founderOperator: true,
+                  userId: 'usr_founder',
+                  tenantId: 'tnt_founder',
+                  source: 'canonical_desktop_session',
+                );
+              },
+              onFetchMemories: () async {
+                memoryReads += 1;
+                return List<DesktopLiMemory>.unmodifiable(memories);
+              },
+              onRemember: (kind, content) async {
+                memoryWrites += 1;
+                final memory = DesktopLiMemory(
+                  memoryId: 'li_mem_new',
+                  kind: kind,
+                  content: content,
+                  source: 'desktop',
+                  confidence: 1,
+                  sensitivity: 'private',
+                  createdAt: DateTime.utc(2026, 9, 2, 12, 1),
+                );
+                memories.insert(0, memory);
+                return memory;
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(stateRequests, 1);
+    expect(find.byKey(const Key('li-founder-view')), findsOneWidget);
+    expect(find.text('Founder Operator'), findsOneWidget);
+    expect(
+      find.text('Server-authoritative founder access verified.'),
+      findsOneWidget,
+    );
+    expect(memoryReads, 1);
+    expect(find.text('Existing founder memory'), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const Key('li-memory-content')),
+      'New founder memory',
+    );
+    await tester.tap(find.byKey(const Key('li-memory-save')));
+    await tester.pumpAndSettle();
+
+    expect(memoryWrites, 1);
+    expect(memoryReads, 2);
+    expect(find.text('New founder memory'), findsOneWidget);
+    expect(find.text('Saved.'), findsOneWidget);
   });
 }

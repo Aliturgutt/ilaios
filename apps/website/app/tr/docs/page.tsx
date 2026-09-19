@@ -1,5 +1,55 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-export const metadata: Metadata={title:"Dokümanlar",description:"ILAIOS mimari, güvenlik, yürütme, ajan ve kanıt modelinin kamusal dokümantasyon özetini okuyun.",alternates:{canonical:"/tr/docs",languages:{en:"/docs",tr:"/tr/docs","x-default":"/docs"}}};
-const docs=[["Başlangıç","Sistem modeliyle başlayın: istemciler iş talep eder ve durumu gösterir; izin verilen işlemi ve otoritatif durumu backend/control plane belirler."],["Mimari","İstemciler, control plane, politika, yürütme araçları, doğrulama ve kanıt arasındaki ayrımı açıklar."],["Güvenlik modeli","İzin sınırları, onay kapıları, en az ayrıcalıklı yürütme ve denetlenebilir durum geçişlerini açıklar."],["Yürütme modeli","Mümkün olduğunda deterministik yürütmeyi tercih eder; akıllı yetenekleri açık görev ve araç sözleşmeleri içinde kullanır."],["Ajan modeli","Ajanlar tanımlı rol, izin, girdi, çıktı, bağımlılık ve eskalasyon yollarına sahip sınırlandırılmış yeteneklerdir."],["Kanıt modeli","Önemli işlemler, anlatısal hafızaya güvenmeden doğrulama, inceleme ve kurtarmayı mümkün kılan kalıcı kayıtlar üretmelidir."]] as const;
-export default function Page(){return <><section className="shell page-hero"><div className="eyebrow">Dokümanlar</div><h1>ILAIOS sistem modeli için kamusal dokümantasyon.</h1><p className="lead">Bu genel bakış bugün güvenle açıklanabilen kararlı mimari ilkeleri kapsar. API referansları ve sürüme özel entegrasyon talimatları yalnızca ilgili arayüzler hazır ve doğrulanmış olduğunda yayınlanacaktır.</p></section><section className="section"><div className="shell"><div className="grid two-up">{docs.map(([t,x])=><article className="card" key={t}><h3>{t}</h3><p>{x}</p></article>)}</div><div className="actions"><Link className="button secondary" href="/tr/architecture">Mimari</Link><Link className="button secondary" href="/tr/security">Güvenlik</Link><Link className="button secondary" href="/tr/trust">Güven Merkezi</Link></div></div></section></>}
+
+export const metadata: Metadata = {
+  title: "Dokümanlar",
+  description: "ILAIOS mimari, güvenlik, Core, yürütme, kanıt, API ve kurtarma dokümantasyonu için kamusal teknik merkez.",
+  alternates: { canonical: "/tr/docs", languages: { en: "/docs", tr: "/tr/docs", "x-default": "/docs" } },
+};
+
+const docs = [
+  ["Mimari", "Sistem sınırları, kontrol otoritesi ve istemci, yürütme ile kanıt arasındaki ilişki.", "/tr/architecture"],
+  ["Güvenlik", "İzin sınırları, onay kapıları, minimum yetki yürütmesi ve fail-closed kontroller.", "/tr/security"],
+  ["Core", "Tek kontrol otoritesi, sınırlandırılmış yürütme, doğrulama, kanıt ve kurtarma modeli.", "/tr/core"],
+  ["Yürütme", "İstemciyi, modeli veya ajanı otoriteye dönüştürmeden kabul edilmiş işin kontrollü biçimde nasıl yürütüldüğü.", "/tr/platform/execution"],
+  ["Kanıt", "Doğrulama, kaynak kökeni ve incelenebilir kayıtların önemli sonuçlara nasıl bağlı kaldığı.", "/tr/platform/evidence"],
+  ["API", "Kamusal API referansları yalnız ilgili sözleşmeler kararlı ve doğrulanmış olduğunda burada yayınlanacaktır.", null],
+  ["Kurtarma", "Kamusal kurtarma runbook'ları yalnız ilgili ürün yüzeyi için sürüme özel prosedürler doğrulandığında yayınlanacaktır.", null],
+] as const;
+
+const heroTitleStyle = {
+  fontSize: "clamp(2.15rem, 3.5vw, 3.45rem)",
+  lineHeight: 1.06,
+  letterSpacing: "-0.04em",
+  maxWidth: "19ch",
+} as const;
+
+const placeholderCardStyle = {
+  minHeight: "116px",
+  padding: "20px",
+  border: "1px solid var(--line)",
+  borderRadius: "var(--v2-radius)",
+  background: "transparent",
+  boxSizing: "border-box",
+} as const;
+
+export default function Page() {
+  return <>
+    <section className="shell page-hero compact-page-hero">
+      <div className="eyebrow">Dokümanlar</div>
+      <h1 style={heroTitleStyle}>Ürün sitesini teknik kılavuza çevirmeden derin teknik katmana ulaşın.</h1>
+      <p className="lead">Bu merkezden kamusal teknik içeriğe doğrudan geçin. Ürün sayfaları sonucu anlatır; dokümantasyon bu sonucun arkasındaki kontrol, yürütme ve kanıt modelini açıklar.</p>
+    </section>
+    <section className="section">
+      <div className="shell">
+        <div className="detail-directory">
+          {docs.map(([title, text, href]) => href ? (
+            <Link href={href} key={title}><span>{title}</span><strong>{text}</strong><i>→</i></Link>
+          ) : (
+            <article style={placeholderCardStyle} key={title}><div className="eyebrow">{title}</div><p>{text}</p></article>
+          ))}
+        </div>
+      </div>
+    </section>
+  </>;
+}

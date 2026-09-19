@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from enum import Enum
 from hashlib import sha256
 from types import MappingProxyType
 
@@ -17,6 +18,20 @@ from .shot_request_planning import ShotGenerationRequest
 
 class RequestManifestError(ValueError):
     """Raised when shot requests cannot form a valid episode manifest."""
+
+
+class CaptionMode(str, Enum):
+    """User-facing subtitle policy carried through the production manifest.
+
+    OFF means no caption/subtitle stage may be forced. ON means captions are an
+    explicit deliverable. AUTO permits the canonical orchestrator to enable
+    captions only when product intent, dialogue/accessibility requirements, or a
+    downstream delivery profile explicitly calls for them.
+    """
+
+    OFF = "off"
+    AUTO = "auto"
+    ON = "on"
 
 
 @dataclass(frozen=True, slots=True)
@@ -41,6 +56,7 @@ class EpisodeRequestManifest:
     total_duration_seconds: float
     request_count: int
     metadata: Mapping[str, str]
+    caption_mode: CaptionMode = CaptionMode.OFF
 
     def __post_init__(self) -> None:
         _require_non_blank("manifest_id", self.manifest_id)
@@ -53,12 +69,26 @@ class EpisodeRequestManifest:
             raise RequestManifestError(
                 "total_duration_seconds must be greater than zero"
             )
+        if not isinstance(self.caption_mode, CaptionMode):
+            raise RequestManifestError("caption_mode must be a CaptionMode")
         _validate_entries(self.entries)
         normalized = dict(self.metadata)
         for key, value in normalized.items():
             _require_non_blank("metadata key", key)
             _require_non_blank(f"metadata value for {key}", value)
         object.__setattr__(self, "metadata", MappingProxyType(normalized))
+
+    @property
+    def captions_explicitly_required(self) -> bool:
+        """True only when the user/product contract explicitly requests captions."""
+
+        return self.caption_mode is CaptionMode.ON
+
+    @property
+    def captions_explicitly_disabled(self) -> bool:
+        """True when downstream orchestration must skip caption production."""
+
+        return self.caption_mode is CaptionMode.OFF
 
 
 class EpisodeRequestManifestBuilder:
@@ -68,19 +98,27 @@ class EpisodeRequestManifestBuilder:
         self,
         episode_id: str,
         requests: Sequence[ShotGenerationRequest],
+        *,
+        caption_mode: CaptionMode = CaptionMode.OFF,
     ) -> EpisodeRequestManifest:
-        """Preserve explicit request order and create a deterministic manifest."""
+        """Preserve request order and the explicit subtitle preference."""
 
         _require_non_blank("episode_id", episode_id)
         if not requests:
             raise RequestManifestError("requests must not be empty")
+        if not isinstance(caption_mode, CaptionMode):
+            raise RequestManifestError("caption_mode must be a CaptionMode")
 
         entries = tuple(
             ShotRequestEntry(sequence_number=index, request=request)
             for index, request in enumerate(requests, start=1)
         )
         _validate_entries(entries)
-        canonical = _canonical_manifest_material(episode_id, entries)
+        canonical = _canonical_manifest_material(
+            episode_id,
+            entries,
+            caption_mode=caption_mode,
+        )
         digest = sha256(canonical.encode("utf-8")).hexdigest()
         total_duration = sum(entry.request.duration_seconds for entry in entries)
         metadata = {
@@ -91,6 +129,7 @@ class EpisodeRequestManifestBuilder:
                     "utf-8"
                 )
             ).hexdigest(),
+            "caption_mode": caption_mode.value,
         }
         return EpisodeRequestManifest(
             manifest_id=f"episode-manifest-{digest[:16]}",
@@ -99,6 +138,7 @@ class EpisodeRequestManifestBuilder:
             total_duration_seconds=total_duration,
             request_count=len(entries),
             metadata=metadata,
+            caption_mode=caption_mode,
         )
 
 
@@ -126,8 +166,10 @@ def _validate_entries(entries: tuple[ShotRequestEntry, ...]) -> None:
 def _canonical_manifest_material(
     episode_id: str,
     entries: tuple[ShotRequestEntry, ...],
+    *,
+    caption_mode: CaptionMode,
 ) -> str:
-    lines = [f"episode_id={episode_id}"]
+    lines = [f"episode_id={episode_id}", f"caption_mode={caption_mode.value}"]
     lines.extend(
         "|".join(
             (

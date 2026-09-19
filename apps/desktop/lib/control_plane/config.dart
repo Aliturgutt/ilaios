@@ -1,14 +1,22 @@
 import 'dart:convert';
 import 'dart:io';
 
+bool isExplicitLoopbackHttpEndpoint(Uri uri) {
+  final loopbackHost =
+      uri.host == '127.0.0.1' || uri.host == '::1' || uri.host == 'localhost';
+  return uri.scheme == 'http' && loopbackHost && uri.hasPort;
+}
+
 class ControlPlaneConfig {
   const ControlPlaneConfig({
     required this.baseUri,
     required this.token,
+    this.identityUri,
     this.approverId,
   });
 
   final Uri baseUri;
+  final Uri? identityUri;
   final String token;
   final String? approverId;
 
@@ -22,11 +30,15 @@ class ControlPlaneConfig {
     }
     final rawApproverId = env['ILAIOS_APPROVER_ID']?.trim() ?? '';
     final approverId = rawApproverId.isEmpty ? null : rawApproverId;
+    final rawIdentityUrl = env['ILAIOS_IDENTITY_URL']?.trim() ?? '';
+    final explicitIdentity =
+        rawIdentityUrl.isEmpty ? null : Uri.parse(rawIdentityUrl);
 
     final explicitUrl = env['ILAIOS_CONTROL_PLANE_URL']?.trim() ?? '';
     if (explicitUrl.isNotEmpty) {
       return ControlPlaneConfig(
         baseUri: Uri.parse(explicitUrl),
+        identityUri: explicitIdentity,
         token: token,
         approverId: approverId,
       );
@@ -47,8 +59,15 @@ class ControlPlaneConfig {
       if (host is! String || port is! int) {
         return null;
       }
+      Uri? identityUri = explicitIdentity;
+      final identityHost = decoded['identity_host'];
+      final identityPort = decoded['identity_port'];
+      if (identityUri == null && identityHost is String && identityPort is int) {
+        identityUri = Uri(scheme: 'http', host: identityHost, port: identityPort);
+      }
       return ControlPlaneConfig(
         baseUri: Uri(scheme: 'http', host: host, port: port),
+        identityUri: identityUri,
         token: token,
         approverId: approverId,
       );

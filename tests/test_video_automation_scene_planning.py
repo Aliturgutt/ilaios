@@ -203,12 +203,13 @@ def test_text_is_preserved_across_split() -> None:
     assert " ".join(shot.text for shot in plan.shots) == source
 
 
-def test_unpartitionable_duration_fails_closed() -> None:
-    with pytest.raises(ShotPlanningError, match="cannot be partitioned"):
-        ShotPlanner().plan(
-            [EpisodeBeat("beat", "one two three four", 7.0)],
-            episode_id="invalid",
-        )
+def test_default_gap_uses_absolute_safety_envelope() -> None:
+    plan = ShotPlanner().plan(
+        [EpisodeBeat("beat", "one two three four", 7.0)],
+        episode_id="safety-envelope",
+    )
+    assert plan.total_duration_seconds == pytest.approx(7.0)
+    assert [shot.duration_seconds for shot in plan.shots] == [7.0]
 
 
 def test_duplicate_beat_ids_fail_closed() -> None:

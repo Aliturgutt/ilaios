@@ -49,21 +49,33 @@ class WorkerScheduler:
         existing = self._leases.get(task_id)
         if existing is not None and existing.expires_at > now:
             raise SchedulingError("task already has an active lease")
-        eligible = sorted(
+
+        active_counts = self._active_counts(now)
+        selected = min(
             (
                 worker
                 for worker in self._workers.values()
                 if capability in worker.capabilities
-                and self._active_count(worker.worker_id, now)
+                and active_counts.get(worker.worker_id, 0)
                 < worker.max_concurrent_tasks
             ),
-            key=lambda worker: (self._active_count(worker.worker_id, now), worker.worker_id),
+            key=lambda worker: (
+                active_counts.get(worker.worker_id, 0),
+                worker.worker_id,
+            ),
+            default=None,
         )
-        if not eligible:
+        if selected is None:
             raise SchedulingError("no worker is within capability and quota")
+
         fence = self._next_fence.get(task_id, 0) + 1
         self._next_fence[task_id] = fence
-        lease = Lease(task_id, eligible[0].worker_id, fence, now + self._lease_duration)
+        lease = Lease(
+            task_id,
+            selected.worker_id,
+            fence,
+            now + self._lease_duration,
+        )
         self._leases[task_id] = lease
         return lease
 
@@ -96,6 +108,14 @@ class WorkerScheduler:
         if current is None or current.expires_at > now:
             raise SchedulingError("task lease is not expired")
         return self.schedule(task_id, capability, now=now)
+
+    def _active_counts(self, now: datetime) -> dict[str, int]:
+        counts: dict[str, int] = {}
+        for lease in self._leases.values():
+            if lease.expires_at <= now:
+                continue
+            counts[lease.worker_id] = counts.get(lease.worker_id, 0) + 1
+        return counts
 
     def _active_count(self, worker_id: str, now: datetime) -> int:
         return sum(

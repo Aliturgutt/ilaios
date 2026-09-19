@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import shutil
 import subprocess
 import time
 from collections.abc import Mapping
@@ -66,6 +67,7 @@ class DeterministicLocalVideoRuntime:
                 raise VideoRuntimeError(f"invalid {name}")
         amount = self._governance.authorize_billable(request_id)
         started = time.monotonic()
+        run_root: Path | None = None
         try:
             self._grants.authorize_and_record(
                 grant_id,
@@ -117,6 +119,14 @@ class DeterministicLocalVideoRuntime:
                 request_id, actual_minor=0, status="failed"
             )
             raise
+        finally:
+            if run_root is not None and run_root.exists():
+                try:
+                    shutil.rmtree(run_root)
+                except OSError as error:
+                    raise VideoRuntimeError(
+                        "temporary video workspace cleanup failed"
+                    ) from error
 
     def get_delivery(self, delivery_id: str) -> dict[str, object]:
         digest_prefix = delivery_id.removeprefix("delivery-")

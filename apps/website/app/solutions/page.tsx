@@ -1,26 +1,144 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { motion } from "motion/react";
 
-export const metadata: Metadata = { title: "Solutions", description: "Explore ILAIOS solution patterns for governed intelligent automation across AI operations, engineering, security, business processes, and research.", alternates: { canonical: "/solutions", languages: { en: "/solutions", tr: "/tr/solutions", "x-default": "/solutions" } } };
+export const metadata: Metadata = { title: "Solutions", description: "Explore ILAIOS solution patterns for governed research, enterprise intelligence, business operations and digital production.", alternates: { canonical: "/solutions", languages: { en: "/solutions", tr: "/tr/solutions", "x-default": "/solutions" } } };
 
 const solutions = [
-  ["AI operations", "Coordinate model-assisted work behind explicit policy, approvals, validation, and evidence rather than treating model output as authority.", ["Bound model/tool permissions", "Require approval for sensitive side effects", "Preserve validation and evidence"]],
-  ["Software engineering", "Structure engineering tasks as bounded jobs with tool permissions, deterministic checks, review gates, and traceable execution outcomes.", ["Separate planning from execution authority", "Run deterministic quality gates", "Retain reviewable execution context"]],
-  ["Security operations", "Support controlled security workflows where sensitive actions remain permission-bound, reviewable, and auditable.", ["Scope tools and targets explicitly", "Escalate high-impact actions", "Record meaningful security events"]],
-  ["Business process automation", "Combine deterministic workflow steps with intelligent capabilities while keeping business rules and authorization outside the model.", ["Encode business constraints outside prompts", "Use deterministic steps where possible", "Verify completion before delivery"]],
-  ["Research & knowledge work", "Organize evidence-backed research and synthesis with source traceability, validation, and explicit escalation paths.", ["Keep source provenance visible", "Separate findings from decisions", "Escalate uncertainty instead of hiding it"]],
+  ["Launch a digital product", "Move from research and planning into the website, software, application or media work the launch actually needs."],
+  ["Produce and update digital assets", "Coordinate web, software and media deliverables without making the user operate a separate AI workflow for every output."],
+  ["Research before acting", "Keep sources, uncertainty and verification visible when a decision or production task depends on external information."],
+  ["Automate repeatable work", "Combine deterministic steps and intelligent capabilities while permissions, approvals and acceptance remain explicit."],
 ] as const;
 
 const operatingModel = [
-  ["1", "Define authority", "Identify who may request work, which tools may be used, and which side effects require approval."],
-  ["2", "Bound execution", "Route the job through deterministic services or explicitly constrained intelligent capabilities."],
-  ["3", "Validate outcome", "Check the result against acceptance criteria rather than relying on a narrative success claim."],
-  ["4", "Preserve evidence", "Keep enough operational context to support review, recovery, and accountable delivery."],
+  ["01", "Describe the outcome", "Start from the result, not from a list of tools."],
+  ["02", "Resolve the work", "ILAIOS identifies the capabilities and production paths that apply."],
+  ["03", "Execute within limits", "Identity, policy, approvals and bounded tools constrain admitted work."],
+  ["04", "Verify before delivery", "Acceptance checks determine whether the result can be returned as finished."],
 ] as const;
 
 export default function Solutions(){return <>
-  <section className="shell page-hero"><div className="eyebrow">Solutions</div><h1>Intelligent work, bounded by operational control.</h1><p className="lead">ILAIOS is designed for workflows where automation must remain useful without becoming unaccountable. The same governed execution model can support different operational domains while authority, validation, and evidence remain explicit.</p></section>
-  <section className="section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">Solution patterns</div><h2>Apply intelligence without moving authority into the model.</h2></div><p className="muted">These patterns describe the product and architecture direction of ILAIOS. They do not claim released customer deployments or generally available integrations.</p></div><div className="grid two-up">{solutions.map(([title,text,points])=><article className="card" key={title}><h3>{title}</h3><p>{text}</p><ul>{points.map(point=><li key={point}>{point}</li>)}</ul></article>)}</div></div></section>
-  <section className="section architecture-section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">Operating model</div><h2>From request to accepted outcome.</h2></div><p className="muted">A solution is not only a prompt or agent. It is a governed path that connects authority, execution, validation, and evidence.</p></div><div className="flow-grid">{operatingModel.map(([n,t,x])=><article className="flow-card" key={n}><span>{n}</span><h3>{t}</h3><p>{x}</p></article>)}</div></div></section>
-  <section className="section"><div className="shell split-copy"><div><div className="eyebrow">Choosing a path</div><h2>Start from operational risk, not from model capability.</h2></div><div><p className="lead small">The right automation path depends on the authority required, the reversibility of side effects, the quality of deterministic checks, and the evidence needed after execution.</p><p className="muted">ILAIOS favors deterministic execution whenever it can satisfy the task, and introduces intelligent capabilities where they add value inside explicit boundaries.</p><div className="actions"><Link className="button secondary" href="/architecture">Architecture</Link><Link className="button secondary" href="/security">Security model</Link><Link className="text-link" href="/trust">Trust Center →</Link></div></div></div></section>
+  <section className="shell page-hero compact-page-hero">
+    <motion.div
+      initial={{ y: 20, opacity: 0 }}
+      animate={{ y: 0, opacity: 1, transition: { duration: 0.8, ease: [0.4, 0, 0.2, 1] } }}
+    >
+      <div className="eyebrow">Solutions</div>
+      <h1>Start with the outcome, not the toolchain.</h1>
+      <p className="lead">ILAIOS is designed to coordinate the research, planning, production and verification a goal requires under one governed product boundary.</p>
+      <div className="actions"><Link className="button" href="/use-ilaios">Explore how to use ILAIOS</Link></div>
+    </motion.div>
+  </section>
+  <section className="section">
+    <motion.div
+      initial={{ x: -20, opacity: 0 }}
+      whileInView={{ x: 0, opacity: 1, transition: { duration: 0.6, ease: [0.4, 0, 0.2, 1] } }}
+    >
+      <div className="shell">
+        <div className="section-heading">
+          <div>
+            <div className="eyebrow">Outcome patterns</div>
+            <h2>Different goals can reuse the same controlled execution model.</h2>
+          </div>
+          <p className="muted">These examples describe product direction and are not claims that every integration or end-to-end path is generally available today.</p>
+        </div>
+        <motion.ul
+          className="principle-directory grid gap-6"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          transition={{ delayChildren: 0.1, staggerChildren: 0.2 }}
+        >
+          {solutions.map(([title,text],index)=>(
+            <motion.li
+              key={title}
+              initial={{ x: -10, opacity: 0 }}
+              whileInView={{ x: 0, opacity: 1, transition: { duration: 0.4, delay: index * 0.1 } }}
+              className="border border-gray-600 rounded-lg p-6 hover:bg-gray-700 hover:border-gray-600 hover:text-white transition-all duration-200 hover-lift hover-scale"
+            >
+              <span>{String(index+1).padStart(2,"0")}</span>
+              <strong>{title}</strong>
+              <p>{text}</p>
+            </motion.li>
+          ))}
+        </motion.ul>
+      </div>
+    </motion.div>
+  </section>
+  <section className="section surface-section">
+    <motion.div
+      initial={{ x: -20, opacity: 0 }}
+      whileInView={{ x: 0, opacity: 1, transition: { duration: 0.6, ease: [0.4, 0, 0.2, 1] } }}
+    >
+      <div className="shell">
+        <div className="compact-heading-row">
+          <div>
+            <div className="eyebrow">One operating model</div>
+            <h2>From requested result to verified delivery.</h2>
+          </div>
+        </div>
+        <motion.div
+          className="flow-grid grid gap-6"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          transition={{ delayChildren: 0.1, staggerChildren: 0.2 }}
+        >
+          {operatingModel.map(([n,t,x], index)=>(
+            <motion.div
+              key={n}
+              initial={{ x: -10, opacity: 0 }}
+              whileInView={{ x: 0, opacity: 1, transition: { duration: 0.4, delay: index * 0.1 } }}
+              className="flow-card border border-gray-600 rounded-lg p-6 hover:bg-gray-700 hover:border-gray-600 hover:text-white transition-all duration-200 hover-lift hover-scale"
+            >
+              <span>{n}</span>
+              <h3>{t}</h3>
+              <p>{x}</p>
+            </motion.div>
+          ))}
+        </motion.div>
+      </div>
+    </motion.div>
+  </section>
+  <section className="section compact-section">
+    <motion.div
+      initial={{ x: -20, opacity: 0 }}
+      whileInView={{ x: 0, opacity: 1, transition: { duration: 0.6, ease: [0.4, 0, 0.2, 1] } }}
+    >
+      <div className="shell callout">
+        <div>
+          <div className="eyebrow">Choose the right view</div>
+          <h2>Individual and enterprise use share the platform, but not the same product story.</h2>
+        </div>
+        <div className="actions flex items-center justify-center gap-4 mt-6">
+          <motion.a
+            key="individuals-link"
+            initial={{ x: -10, opacity: 0 }}
+            whileInView={{ x: 0, opacity: 1, transition: { duration: 0.4, delay: 0 } }}
+            className="button secondary border border-gray-600 px-8 py-3 rounded-md font-semibold hover:bg-gray-700 hover:text-white transition-colors duration-200 hover-lift hover-scale"
+            href="/individuals"
+          >
+            For individuals
+          </motion.a>
+          <motion.a
+            key="enterprise-link"
+            initial={{ x: -10, opacity: 0 }}
+            whileInView={{ x: 0, opacity: 1, transition: { duration: 0.4, delay: 0.1 } }}
+            className="button secondary border border-gray-600 px-8 py-3 rounded-md font-semibold hover:bg-gray-700 hover:text-white transition-colors duration-200 hover-lift hover-scale"
+            href="/enterprise"
+          >
+            For enterprises
+          </motion.a>
+          <motion.a
+            key="trust-link"
+            initial={{ x: -10, opacity: 0 }}
+            whileInView={{ x: 0, opacity: 1, transition: { duration: 0.4, delay: 0.2 } }}
+            className="text-link inline-flex items-center gap-2 text-white font-medium hover:bg-gray-700 hover:text-white transition-colors duration-200 hover-lift hover-scale"
+            href="/trust"
+          >
+            Trust boundary →
+          </motion.a>
+        </div>
+      </div>
+    </motion.div>
+  </section>
 </>}

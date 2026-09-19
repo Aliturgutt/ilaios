@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import shutil
 import sqlite3
 from collections.abc import Sequence
 from pathlib import Path
@@ -13,7 +12,7 @@ class MigrationError(RuntimeError):
     """Raised when a control-plane migration cannot complete safely."""
 
 
-LATEST_SCHEMA_VERSION = 7
+LATEST_SCHEMA_VERSION = 10
 
 _UP_MIGRATIONS = {
     1: """
@@ -177,6 +176,275 @@ _UP_MIGRATIONS = {
             subject_id TEXT PRIMARY KEY, stopped_at TEXT NOT NULL
         );
     """,
+    8: """
+        CREATE TABLE IF NOT EXISTS web_app_tenants (
+            tenant_id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            version INTEGER NOT NULL DEFAULT 1 CHECK (version >= 1),
+            deleted_at TEXT
+        );
+        CREATE TABLE IF NOT EXISTS web_app_users (
+            tenant_id TEXT NOT NULL REFERENCES web_app_tenants(tenant_id),
+            user_id TEXT NOT NULL,
+            display_name TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            version INTEGER NOT NULL DEFAULT 1 CHECK (version >= 1),
+            deleted_at TEXT,
+            PRIMARY KEY (tenant_id, user_id)
+        );
+        CREATE TABLE IF NOT EXISTS web_app_projects (
+            tenant_id TEXT NOT NULL REFERENCES web_app_tenants(tenant_id),
+            project_id TEXT NOT NULL,
+            owner_user_id TEXT NOT NULL,
+            name TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            version INTEGER NOT NULL DEFAULT 1 CHECK (version >= 1),
+            deleted_at TEXT,
+            PRIMARY KEY (tenant_id, project_id),
+            FOREIGN KEY (tenant_id, owner_user_id)
+                REFERENCES web_app_users(tenant_id, user_id)
+        );
+        CREATE TABLE IF NOT EXISTS web_app_goal_context (
+            goal_id TEXT PRIMARY KEY REFERENCES goals(goal_id) ON DELETE CASCADE,
+            tenant_id TEXT NOT NULL,
+            project_id TEXT NOT NULL,
+            owner_user_id TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            version INTEGER NOT NULL DEFAULT 1 CHECK (version >= 1),
+            deleted_at TEXT,
+            UNIQUE (tenant_id, project_id, goal_id),
+            FOREIGN KEY (tenant_id, project_id)
+                REFERENCES web_app_projects(tenant_id, project_id),
+            FOREIGN KEY (tenant_id, owner_user_id)
+                REFERENCES web_app_users(tenant_id, user_id)
+        );
+        CREATE TABLE IF NOT EXISTS web_app_workflow_context (
+            workflow_id TEXT PRIMARY KEY REFERENCES workflows(workflow_id) ON DELETE CASCADE,
+            tenant_id TEXT NOT NULL,
+            project_id TEXT NOT NULL,
+            owner_user_id TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            version INTEGER NOT NULL DEFAULT 1 CHECK (version >= 1),
+            deleted_at TEXT,
+            UNIQUE (tenant_id, project_id, workflow_id),
+            FOREIGN KEY (tenant_id, project_id)
+                REFERENCES web_app_projects(tenant_id, project_id),
+            FOREIGN KEY (tenant_id, owner_user_id)
+                REFERENCES web_app_users(tenant_id, user_id)
+        );
+        CREATE TABLE IF NOT EXISTS web_app_agents (
+            tenant_id TEXT NOT NULL,
+            project_id TEXT NOT NULL,
+            agent_id TEXT NOT NULL REFERENCES runtime_agents(agent_id),
+            owner_user_id TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            version INTEGER NOT NULL DEFAULT 1 CHECK (version >= 1),
+            deleted_at TEXT,
+            PRIMARY KEY (tenant_id, project_id, agent_id),
+            FOREIGN KEY (tenant_id, project_id)
+                REFERENCES web_app_projects(tenant_id, project_id),
+            FOREIGN KEY (tenant_id, owner_user_id)
+                REFERENCES web_app_users(tenant_id, user_id)
+        );
+        CREATE TABLE IF NOT EXISTS web_app_approvals (
+            approval_id TEXT PRIMARY KEY,
+            tenant_id TEXT NOT NULL,
+            project_id TEXT NOT NULL,
+            workflow_id TEXT NOT NULL,
+            requester_user_id TEXT NOT NULL,
+            reviewer_user_id TEXT,
+            state TEXT NOT NULL CHECK (
+                state IN ('PENDING', 'REVIEWING', 'APPROVED', 'REJECTED')
+            ),
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            version INTEGER NOT NULL DEFAULT 1 CHECK (version >= 1),
+            UNIQUE (tenant_id, project_id, approval_id),
+            FOREIGN KEY (tenant_id, project_id, workflow_id)
+                REFERENCES web_app_workflow_context(
+                    tenant_id, project_id, workflow_id
+                ),
+            FOREIGN KEY (tenant_id, requester_user_id)
+                REFERENCES web_app_users(tenant_id, user_id),
+            FOREIGN KEY (tenant_id, reviewer_user_id)
+                REFERENCES web_app_users(tenant_id, user_id)
+        );
+        CREATE TABLE IF NOT EXISTS web_app_evidence (
+            evidence_id TEXT PRIMARY KEY,
+            tenant_id TEXT NOT NULL,
+            project_id TEXT NOT NULL,
+            workflow_id TEXT,
+            owner_user_id TEXT,
+            artifact_sha256 TEXT NOT NULL CHECK (length(artifact_sha256) = 64),
+            status TEXT NOT NULL CHECK (
+                status IN ('GENERATED', 'REVIEWED', 'VERIFIED', 'FAILED')
+            ),
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            version INTEGER NOT NULL DEFAULT 1 CHECK (version >= 1),
+            UNIQUE (tenant_id, project_id, evidence_id),
+            FOREIGN KEY (tenant_id, project_id)
+                REFERENCES web_app_projects(tenant_id, project_id),
+            FOREIGN KEY (tenant_id, project_id, workflow_id)
+                REFERENCES web_app_workflow_context(
+                    tenant_id, project_id, workflow_id
+                ),
+            FOREIGN KEY (tenant_id, owner_user_id)
+                REFERENCES web_app_users(tenant_id, user_id)
+        );
+        CREATE TABLE IF NOT EXISTS web_app_outputs (
+            output_id TEXT PRIMARY KEY,
+            tenant_id TEXT NOT NULL,
+            project_id TEXT NOT NULL,
+            workflow_id TEXT,
+            owner_user_id TEXT NOT NULL,
+            evidence_id TEXT,
+            kind TEXT NOT NULL,
+            artifact_sha256 TEXT CHECK (
+                artifact_sha256 IS NULL OR length(artifact_sha256) = 64
+            ),
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            version INTEGER NOT NULL DEFAULT 1 CHECK (version >= 1),
+            deleted_at TEXT,
+            UNIQUE (tenant_id, project_id, output_id),
+            FOREIGN KEY (tenant_id, project_id)
+                REFERENCES web_app_projects(tenant_id, project_id),
+            FOREIGN KEY (tenant_id, project_id, workflow_id)
+                REFERENCES web_app_workflow_context(
+                    tenant_id, project_id, workflow_id
+                ),
+            FOREIGN KEY (tenant_id, owner_user_id)
+                REFERENCES web_app_users(tenant_id, user_id),
+            FOREIGN KEY (tenant_id, project_id, evidence_id)
+                REFERENCES web_app_evidence(tenant_id, project_id, evidence_id)
+        );
+        CREATE TABLE IF NOT EXISTS web_app_cost_records (
+            cost_record_id TEXT PRIMARY KEY,
+            tenant_id TEXT NOT NULL,
+            project_id TEXT NOT NULL,
+            workflow_id TEXT,
+            owner_user_id TEXT,
+            amount_minor INTEGER NOT NULL CHECK (amount_minor >= 0),
+            currency_code TEXT NOT NULL CHECK (
+                length(currency_code) = 3 AND currency_code = upper(currency_code)
+            ),
+            created_at TEXT NOT NULL,
+            UNIQUE (tenant_id, project_id, cost_record_id),
+            FOREIGN KEY (tenant_id, project_id)
+                REFERENCES web_app_projects(tenant_id, project_id),
+            FOREIGN KEY (tenant_id, project_id, workflow_id)
+                REFERENCES web_app_workflow_context(
+                    tenant_id, project_id, workflow_id
+                ),
+            FOREIGN KEY (tenant_id, owner_user_id)
+                REFERENCES web_app_users(tenant_id, user_id)
+        );
+        CREATE TABLE IF NOT EXISTS web_app_sessions (
+            session_id TEXT PRIMARY KEY,
+            tenant_id TEXT NOT NULL,
+            project_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            expires_at TEXT NOT NULL,
+            revoked_at TEXT,
+            version INTEGER NOT NULL DEFAULT 1 CHECK (version >= 1),
+            UNIQUE (tenant_id, project_id, session_id),
+            FOREIGN KEY (tenant_id, project_id)
+                REFERENCES web_app_projects(tenant_id, project_id),
+            FOREIGN KEY (tenant_id, user_id)
+                REFERENCES web_app_users(tenant_id, user_id)
+        );
+        CREATE TABLE IF NOT EXISTS web_app_integrations (
+            integration_id TEXT PRIMARY KEY,
+            tenant_id TEXT NOT NULL REFERENCES web_app_tenants(tenant_id),
+            project_id TEXT,
+            owner_user_id TEXT,
+            kind TEXT NOT NULL,
+            external_ref TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            version INTEGER NOT NULL DEFAULT 1 CHECK (version >= 1),
+            deleted_at TEXT,
+            UNIQUE (tenant_id, project_id, integration_id),
+            FOREIGN KEY (tenant_id, project_id)
+                REFERENCES web_app_projects(tenant_id, project_id),
+            FOREIGN KEY (tenant_id, owner_user_id)
+                REFERENCES web_app_users(tenant_id, user_id)
+        );
+    """,
+    9: """
+        CREATE TABLE IF NOT EXISTS identity_tenants (
+            tenant_id TEXT PRIMARY KEY,
+            status TEXT NOT NULL CHECK (status IN ('ACTIVE', 'SUSPENDED')),
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS identity_users (
+            user_id TEXT PRIMARY KEY,
+            enabled INTEGER NOT NULL CHECK (enabled IN (0, 1)),
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS identity_memberships (
+            tenant_id TEXT NOT NULL REFERENCES identity_tenants(tenant_id),
+            user_id TEXT NOT NULL REFERENCES identity_users(user_id),
+            role TEXT NOT NULL,
+            status TEXT NOT NULL CHECK (status IN ('ACTIVE', 'SUSPENDED', 'REVOKED')),
+            is_primary INTEGER NOT NULL DEFAULT 0 CHECK (is_primary IN (0, 1)),
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY (tenant_id, user_id)
+        );
+        CREATE TABLE IF NOT EXISTS identity_accounts (
+            identity_account_id TEXT PRIMARY KEY,
+            provider TEXT NOT NULL,
+            issuer_namespace TEXT NOT NULL DEFAULT '',
+            provider_subject TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            tenant_id TEXT NOT NULL,
+            verified_email TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            UNIQUE (provider, issuer_namespace, provider_subject),
+            FOREIGN KEY (tenant_id, user_id)
+                REFERENCES identity_memberships(tenant_id, user_id)
+        );
+        CREATE TABLE IF NOT EXISTS identity_sessions (
+            session_id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            tenant_id TEXT NOT NULL,
+            credential_hash TEXT NOT NULL CHECK (length(credential_hash) = 64),
+            created_at TEXT NOT NULL,
+            expires_at TEXT NOT NULL,
+            revoked_at TEXT,
+            FOREIGN KEY (tenant_id, user_id)
+                REFERENCES identity_memberships(tenant_id, user_id)
+        );
+        CREATE TABLE IF NOT EXISTS identity_entitlements (
+            tenant_id TEXT NOT NULL REFERENCES identity_tenants(tenant_id),
+            entitlement_key TEXT NOT NULL,
+            state TEXT NOT NULL CHECK (state IN ('ACTIVE', 'SUSPENDED', 'EXPIRED', 'REVOKED')),
+            limit_value INTEGER CHECK (limit_value IS NULL OR limit_value >= 0),
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY (tenant_id, entitlement_key)
+        );
+    """,
+    10: """
+        CREATE TABLE IF NOT EXISTS identity_email_challenges (
+            challenge_id TEXT PRIMARY KEY,
+            email TEXT NOT NULL,
+            secret_digest TEXT NOT NULL CHECK (length(secret_digest) = 64),
+            issued_at TEXT NOT NULL,
+            expires_at TEXT NOT NULL,
+            consumed_at TEXT
+        );
+    """,
 }
 
 _DOWN_MIGRATIONS = {
@@ -218,13 +486,24 @@ _DOWN_MIGRATIONS = {
         DROP TABLE grant_resources;
         DROP TABLE execution_grants;
     """,
+    8: """
+        SELECT 1;
+    """,
+    9: """
+        SELECT 1;
+    """,
+    10: """
+        SELECT 1;
+    """,
 }
 
 
 def migrate_database(database_path: Path) -> int:
-    """Apply every pending migration and return the resulting version."""
+    """Apply every pending migration atomically under a single-writer lock."""
     database_path.parent.mkdir(parents=True, exist_ok=True)
-    with _connect(database_path) as connection:
+    connection = _connect(database_path)
+    try:
+        connection.execute("BEGIN IMMEDIATE")
         _ensure_version_table(connection)
         _adopt_legacy_schema(connection)
         current = _current_version(connection)
@@ -234,35 +513,48 @@ def migrate_database(database_path: Path) -> int:
                 f"{LATEST_SCHEMA_VERSION}"
             )
         for version in range(current + 1, LATEST_SCHEMA_VERSION + 1):
-            connection.executescript(_UP_MIGRATIONS[version])
+            _execute_script_statements(connection, _UP_MIGRATIONS[version])
             connection.execute(
                 "INSERT INTO schema_migrations (version) VALUES (?)", (version,)
             )
+        connection.commit()
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        connection.close()
     return LATEST_SCHEMA_VERSION
 
 
 def rollback_database(database_path: Path, backup_path: Path) -> int:
-    """Back up the database, then roll one schema version back."""
+    """Back up the database, then roll one schema version back atomically."""
     if not database_path.is_file():
         raise MigrationError("database does not exist")
     if backup_path.exists():
         raise MigrationError("backup path already exists")
     backup_path.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(database_path, backup_path)
+    _snapshot_database(database_path, backup_path)
+    connection = _connect(database_path)
     try:
-        with _connect(database_path) as connection:
-            _ensure_version_table(connection)
-            current = _current_version(connection)
-            if current == 0:
-                raise MigrationError("database is already at schema version 0")
-            connection.executescript(_DOWN_MIGRATIONS[current])
-            connection.execute(
-                "DELETE FROM schema_migrations WHERE version = ?", (current,)
-            )
+        connection.execute("BEGIN IMMEDIATE")
+        _ensure_version_table(connection)
+        current = _current_version(connection)
+        if current == 0:
+            raise MigrationError("database is already at schema version 0")
+        _execute_script_statements(connection, _DOWN_MIGRATIONS[current])
+        connection.execute(
+            "DELETE FROM schema_migrations WHERE version = ?", (current,)
+        )
+        connection.commit()
         return current - 1
     except Exception:
-        shutil.copy2(backup_path, database_path)
+        connection.rollback()
+        connection.close()
+        _restore_database(backup_path, database_path)
         raise
+    finally:
+        if connection:
+            connection.close()
 
 
 def current_schema_version(database_path: Path) -> int:
@@ -278,9 +570,52 @@ def current_schema_version(database_path: Path) -> int:
 
 
 def _connect(database_path: Path) -> sqlite3.Connection:
-    connection = sqlite3.connect(database_path)
+    connection = sqlite3.connect(database_path, timeout=30.0, isolation_level=None)
     connection.execute("PRAGMA foreign_keys = ON")
+    connection.execute("PRAGMA busy_timeout = 30000")
     return connection
+
+
+def _execute_script_statements(connection: sqlite3.Connection, script: str) -> None:
+    """Execute complete SQL statements without implicit transaction boundaries."""
+    pending = ""
+    for line in script.splitlines(keepends=True):
+        pending += line
+        if not sqlite3.complete_statement(pending):
+            continue
+        statement = pending.strip()
+        if statement:
+            connection.execute(statement)
+        pending = ""
+    if pending.strip():
+        raise MigrationError("migration SQL contains an incomplete statement")
+
+
+def _snapshot_database(source_path: Path, snapshot_path: Path) -> None:
+    try:
+        with sqlite3.connect(source_path) as source:
+            with sqlite3.connect(snapshot_path) as snapshot:
+                source.backup(snapshot)
+        _verify_database_integrity(snapshot_path)
+    except sqlite3.Error as exc:
+        raise MigrationError(f"database snapshot failed: {source_path}") from exc
+
+
+def _restore_database(snapshot_path: Path, database_path: Path) -> None:
+    try:
+        with sqlite3.connect(snapshot_path) as snapshot:
+            with sqlite3.connect(database_path) as database:
+                snapshot.backup(database)
+        _verify_database_integrity(database_path)
+    except sqlite3.Error as exc:
+        raise MigrationError(f"database restore failed: {database_path}") from exc
+
+
+def _verify_database_integrity(database_path: Path) -> None:
+    with sqlite3.connect(database_path) as connection:
+        result = connection.execute("PRAGMA integrity_check").fetchone()
+    if result != ("ok",):
+        raise MigrationError(f"database integrity check failed: {database_path}")
 
 
 def _ensure_version_table(connection: sqlite3.Connection) -> None:

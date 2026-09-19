@@ -19,6 +19,8 @@ from src.video_automation.episode_assembly_request_planning import (
     EpisodeAssemblyRequest,
     EpisodeAssemblyRequestClip,
 )
+from src.video_automation.ffmpeg_media_engine import MediaCommandResult, MediaProbe
+from src.video_automation.final_mastering import Final1080pMasterer
 from src.video_automation.media_technical_validation import (
     EpisodeMediaTechnicalValidationManifest,
     MediaProbeObservation,
@@ -52,6 +54,43 @@ class _Executor:
         )
 
 
+class _MasteringEngine:
+    def __init__(self, source_dimensions: tuple[int, int]) -> None:
+        self.source_dimensions = source_dimensions
+        self.normalize_calls: list[tuple[int, int, int]] = []
+        self._outputs: dict[str, tuple[int, int]] = {}
+
+    def probe(self, path: str | Path) -> MediaProbe:
+        resolved = str(Path(path).resolve())
+        width, height = self._outputs.get(resolved, self.source_dimensions)
+        return MediaProbe(
+            path=resolved,
+            format_name="mp4",
+            duration_seconds=5.0,
+            streams=({"codec_type": "video", "width": width, "height": height},),
+        )
+
+    def normalize_video(
+        self,
+        *,
+        input_path: str | Path,
+        output_path: str | Path,
+        width: int,
+        height: int,
+        fps: int,
+        video_codec: str,
+        audio_codec: str,
+    ) -> MediaCommandResult:
+        assert Path(input_path).is_file()
+        assert video_codec == "h264"
+        assert audio_codec == "aac"
+        output = Path(output_path)
+        output.write_bytes(b"mastered-1080p")
+        self._outputs[str(output.resolve())] = (width, height)
+        self.normalize_calls.append((width, height, fps))
+        return MediaCommandResult(("ffmpeg",), 0, "", "")
+
+
 def _obs() -> MediaProbeObservation:
     return MediaProbeObservation("mp4", 5.0, 1080, 1920, 24.0, "h264", "aac", 1, 1)
 
@@ -70,6 +109,16 @@ def _request(ids: tuple[str, ...] = ("asset-1", "asset-2")) -> EpisodeAssemblyRe
         EpisodeAssemblyOutputPolicy("mp4", "h264", "aac", 1080, 1920, 24),
         {"clip_count": str(len(clips))},
     )
+
+
+def _request_with_dimensions(width: int, height: int) -> EpisodeAssemblyRequest:
+    request = _request()
+    object.__setattr__(
+        request,
+        "output_policy",
+        EpisodeAssemblyOutputPolicy("mp4", "h264", "aac", width, height, 24),
+    )
+    return request
 
 
 def _manifest(
@@ -121,6 +170,65 @@ def test_executes_in_order(tmp_path: Path) -> None:
         art.source_asset_ids == ("asset-1", "asset-2")
         and Path(art.output_path).read_bytes() == b"clip-1|clip-2"
     )
+
+
+def test_final_mastering_upgrades_720p_before_artifact_evidence(tmp_path: Path) -> None:
+    engine = _MasteringEngine((1280, 720))
+    art = EpisodeAssemblyExecutionCoordinator(
+        _Executor(),
+        final_masterer=Final1080pMasterer(engine),
+    ).execute(
+        _request_with_dimensions(1280, 720),
+        _manifest(tmp_path),
+        tmp_path / "out",
+    )
+
+    body = Path(art.output_path).read_bytes()
+    assert body == b"mastered-1080p"
+    assert (art.width, art.height) == (1920, 1080)
+    assert art.sha256_hex == sha256(body).hexdigest()
+    assert art.byte_length == len(body)
+    assert art.metadata["final_mastering"] == "upgraded"
+    assert art.metadata["final_mastering_source_resolution"] == "1280x720"
+    assert art.metadata["final_mastering_output_resolution"] == "1920x1080"
+    assert art.metadata["final_mastering_sha256"] == art.sha256_hex
+    assert art.metadata["final_mastering_byte_length"] == str(art.byte_length)
+    assert art.metadata["final_mastering_provider_cost_usd"] == "0"
+    assert engine.normalize_calls == [(1920, 1080, 24)]
+
+
+def test_final_mastering_preserves_1080p_without_reencode(tmp_path: Path) -> None:
+    engine = _MasteringEngine((1920, 1080))
+    art = EpisodeAssemblyExecutionCoordinator(
+        _Executor(),
+        final_masterer=Final1080pMasterer(engine),
+    ).execute(
+        _request_with_dimensions(1920, 1080),
+        _manifest(tmp_path),
+        tmp_path / "out",
+    )
+
+    assert Path(art.output_path).name == "request-001.mp4"
+    assert (art.width, art.height) == (1920, 1080)
+    assert art.metadata["final_mastering"] == "preserved"
+    assert art.metadata["final_mastering_provider_cost_usd"] == "0"
+    assert engine.normalize_calls == []
+
+
+def test_final_mastering_preserves_4k_without_reencode(tmp_path: Path) -> None:
+    engine = _MasteringEngine((3840, 2160))
+    art = EpisodeAssemblyExecutionCoordinator(
+        _Executor(),
+        final_masterer=Final1080pMasterer(engine),
+    ).execute(
+        _request_with_dimensions(3840, 2160),
+        _manifest(tmp_path),
+        tmp_path / "out",
+    )
+
+    assert (art.width, art.height) == (3840, 2160)
+    assert art.metadata["final_mastering"] == "preserved"
+    assert engine.normalize_calls == []
 
 
 def test_deterministic(tmp_path: Path) -> None:
