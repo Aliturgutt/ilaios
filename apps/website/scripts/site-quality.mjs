@@ -62,21 +62,33 @@ for (const social of requiredSocial) {
 }
 
 const routes = files.filter(file => file.endsWith(`${path.sep}page.tsx`));
-for (const file of routes) {
-  const rel = path.relative(app, file).replaceAll(path.sep, "/");
-  const text = await readFile(file, "utf8");
-  if (!text.includes("metadata") && !text.includes("generateMetadata")) {
-    failures.push(`route lacks metadata declaration: ${rel}`);
-    continue;
+  for (const file of routes) {
+    const rel = path.relative(app, file).replaceAll(path.sep, "/");
+    const pageText = await readFile(file, "utf8");
+    const metadataFile = path.join(path.dirname(file), "metadata.ts");
+    const metadataEntry = fileTexts.find(({ file: f }) => f === metadataFile);
+    const metadataText = metadataEntry ? metadataEntry.text : "";
+
+    let hasMetadataDeclaration = pageText.includes("metadata") || pageText.includes("generateMetadata")
+                                 || metadataText.includes("metadata") || metadataText.includes("generateMetadata");
+    if (!hasMetadataDeclaration) {
+      failures.push(`route lacks metadata declaration: ${rel}`);
+      continue;
+    }
+
+    if (!metadataEntry) {
+      failures.push(`metadata.ts file missing for route: ${rel}`);
+      continue;
+    }
+
+    if (!/title\s*:/.test(metadataText)) failures.push(`route lacks title metadata: ${rel}`);
+    if (!/description\s*:/.test(metadataText)) failures.push(`route lacks description metadata: ${rel}`);
+    if (!/alternates\s*:/.test(metadataText) || !/canonical\s*:/.test(metadataText)) failures.push(`route lacks canonical metadata: ${rel}`);
+    if (!/languages\s*:/.test(metadataText) || !/\ben\s*:/.test(metadataText) || !/\btr\s*:/.test(metadataText) || !/["']x-default["']\s*:/.test(metadataText)) {
+      failures.push(`route lacks complete en/tr/x-default hreflang metadata: ${rel}`);
+    }
+    if (/noindex/i.test(metadataText) || /index\s*:\s*false/.test(metadataText)) failures.push(`public route contains noindex directive: ${rel}`);
   }
-  if (!/title\s*:/.test(text)) failures.push(`route lacks title metadata: ${rel}`);
-  if (!/description\s*:/.test(text)) failures.push(`route lacks description metadata: ${rel}`);
-  if (!/alternates\s*:/.test(text) || !/canonical\s*:/.test(text)) failures.push(`route lacks canonical metadata: ${rel}`);
-  if (!/languages\s*:/.test(text) || !/\ben\s*:/.test(text) || !/\btr\s*:/.test(text) || !/["']x-default["']\s*:/.test(text)) {
-    failures.push(`route lacks complete en/tr/x-default hreflang metadata: ${rel}`);
-  }
-  if (/noindex/i.test(text) || /index\s*:\s*false/.test(text)) failures.push(`public route contains noindex directive: ${rel}`);
-}
 
 const sitemap = await readFile(path.join(app, "sitemap.ts"), "utf8");
 const robots = await readFile(path.join(app, "robots.ts"), "utf8");

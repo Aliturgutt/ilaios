@@ -1,9 +1,12 @@
-// metadata: see ./metadata.ts
-"use client";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { motion } from "motion/react";
 
+export const metadata: Metadata = {
+  title: "How ILAIOS Works",
+  description: "See the public ILAIOS flow from describing an outcome to governed execution, verification and delivery.",
+  alternates: { canonical: "/how-it-works", languages: { en: "/how-it-works", tr: "/tr/how-it-works", "x-default": "/how-it-works" } },
+};
 
 const steps = [
   ["01", "Describe what you want finished", "Start with the outcome, references and constraints. You do not need to choose the internal model, agent or provider stack."],
@@ -117,5 +120,5 @@ export default function Page() {
         </div>
       </div>
     </section>
-  </>
+  </>;
 }
