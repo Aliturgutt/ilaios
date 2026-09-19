@@ -1,3 +1,4 @@
+// metadata: see ./metadata.ts
 "use client";
 // Importers/callers: Imported by FactoriesPage.tsx
 // Affected API: React component using next/link and ThemedDiagram
