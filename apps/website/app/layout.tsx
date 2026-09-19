@@ -57,5 +57,3 @@ const themeBootstrap = `(() => { const stored = localStorage.getItem("ilaios-the
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const locale = (await headers()).get("x-ilaios-locale") === "tr" ? "tr" : "en";
   return <html lang={locale} suppressHydrationWarning><body><script dangerouslySetInnerHTML={{ __html: themeBootstrap }} /><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} /><SiteChrome>{children}</SiteChrome></body></html>;
-}
-s/[[:space:]]*$//
