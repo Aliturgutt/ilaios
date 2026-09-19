@@ -1,3 +1,4 @@
+"use client";
 import Link from "next/link";
 import SystemVisuals from "./SystemVisuals";
 import { motion } from "motion/react";

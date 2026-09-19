@@ -1,3 +1,4 @@
+"use client";
 import Link from "next/link";
 import CanonicalSystemDetail from "./CanonicalSystemDetail";
 import { motion } from "motion/react";

@@ -1,3 +1,4 @@
+"use client";
 // Importers/callers: Imported by HomePage.tsx
 // Affected API: React component using next/link and react hooks (useState, useRef)
 // Data schemas: Props (locale: Locale), state (modeIndex, stageIndex), refs (tabRefs)

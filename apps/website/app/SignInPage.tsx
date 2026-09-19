@@ -1,3 +1,4 @@
+"use client";
 import Image from "next/image";
 import styles from "./SignInPage.module.css";
 import { motion } from "motion/react";

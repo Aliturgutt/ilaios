@@ -1,3 +1,4 @@
+"use client";
 import Link from "next/link";
 import SpatialArchitecture from "./SpatialArchitecture";
 import SystemVisuals from "./SystemVisuals";
