@@ -1,16 +1,14 @@
 import type { Metadata } from "next";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://ilaios.com";
-
 export const metadata: Metadata = {
   title: "Use ILAIOS - ILAIOS",
   description: "ILAIOS'u yönetilen yapay zeka işlemleri için nasıl kullanacağınızı öğrenin.",
-  canonical: `${siteUrl}/tr/use-ilaios`,
   alternates: {
+    canonical: "/use-ilaios",
     languages: {
-      en: `${siteUrl}/use-ilaios`,
-      tr: `${siteUrl}/tr/use-ilaios`,
-      'x-default': `${siteUrl}/use-ilaios`,
+      en: "/use-ilaios",
+      tr: "/tr/use-ilaios",
+      'x-default': "/use-ilaios",
     },
   },
 };
