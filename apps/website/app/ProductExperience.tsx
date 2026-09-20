@@ -1,12 +1,6 @@
-// Importers/callers: Imported by HomePage.tsx
-// Affected API: React component using next/link and react hooks (useState, useRef)
-// Data schemas: Props (locale: Locale), state (modeIndex, stageIndex), refs (tabRefs)
-// User's verbatim instruction: Redesign the entire ILAIOS website to a world-class, premium technology product standard while strictly preserving the canonical brand identity defined in brand/manifest.yaml and brand/README.md. Elevate layout, typography, spacing, components, sections, cards, diagrams, interactions, animations, responsive behavior, and information presentation for both EN/TR and light/dark themes.
-
 "use client";
 
 import Link from "next/link";
-import { motion } from "motion/react";
 import { useRef, useState } from "react";
 
 type Locale = "en" | "tr";
@@ -58,132 +52,18 @@ export default function ProductExperience({ locale }: { locale: Locale }) {
   const mode = c.modes[modeIndex];
   const moveTab = (next: number) => { const index = (next + c.modes.length) % c.modes.length; setModeIndex(index); setStageIndex(0); tabRefs.current[index]?.focus(); };
 
-  return <div className="product-experience flex flex-col items-start gap-6 bg-gray-900 rounded-lg p-6 hover-lift" data-visual-role="interactive-product-demo">
-    <div className="product-experience-head flex flex-col items-start gap-4 w-full">
-      <motion.div
-        initial={{ y: 10, opacity: 0 }}
-        animate={{ y: 0, opacity: 1, transition: { duration: 0.6, ease: [0.4, 0, 0.2, 1] } }}
-      >
-        <div><span className="micro-label text-xs font-semibold tracking-wider text-gray-400">{c.label}</span><h2 className="text-3xl font-semibold tracking-tighter">{c.title}</h2></div>
-      </motion.div>
-      <motion.div
-        initial={{ y: 10, opacity: 0 }}
-        animate={{ y: 0, opacity: 1, transition: { duration: 0.6, ease: [0.4, 0, 0.2, 1], delay: 0.2 } }}
-      >
-        <p className="text-base leading-relaxed text-gray-300">{c.note}</p>
-      </motion.div>
+  return <div className="product-experience" data-visual-role="interactive-product-demo">
+    <div className="product-experience-head"><div><span className="micro-label">{c.label}</span><h2>{c.title}</h2></div><p>{c.note}</p></div>
+    <div className="product-mode-tabs" role="tablist" aria-label={locale === "tr" ? "Sonuç türü" : "Outcome type"}>
+      {c.modes.map((item, index) => <button key={item.key} ref={element => { tabRefs.current[index] = element; }} type="button" role="tab" aria-selected={modeIndex === index} tabIndex={modeIndex === index ? 0 : -1} className={modeIndex === index ? "is-active" : ""} onClick={() => { setModeIndex(index); setStageIndex(0); }} onKeyDown={event => { if (event.key === "ArrowRight") { event.preventDefault(); moveTab(modeIndex + 1); } if (event.key === "ArrowLeft") { event.preventDefault(); moveTab(modeIndex - 1); } if (event.key === "Home") { event.preventDefault(); moveTab(0); } if (event.key === "End") { event.preventDefault(); moveTab(c.modes.length - 1); } }}>{item.label}</button>)}
     </div>
-    <div className="product-mode-tabs flex flex-wrap items-center gap-3" role="tablist" aria-label={locale === "tr" ? "Sonuç türü" : "Outcome type"}>
-      {c.modes.map((item, index) => (
-        <motion.li
-          key={item.key}
-          initial={{ x: -10, opacity: 0 }}
-          whileInView={{ x: 0, opacity: 1, transition: { duration: 0.4, delay: index * 0.1 } }}
-        >
-          <button ref={element => { tabRefs.current[index] = element; }} type="button" role="tab" aria-selected={modeIndex === index} tabIndex={modeIndex === index ? 0 : -1} className={`${modeIndex === index ? "bg-gray-800 text-white" : "bg-gray-900 text-gray-400 hover:bg-gray-800 hover:text-white hover-lift hover-scale"} px-3 py-2 rounded-md font-medium transition-colors duration-200`} onClick={() => { setModeIndex(index); setStageIndex(0); }} onKeyDown={event => { if (event.key === "ArrowRight") { event.preventDefault(); moveTab(modeIndex + 1); } if (event.key === "ArrowLeft") { event.preventDefault(); moveTab(modeIndex - 1); } if (event.key === "Home") { event.preventDefault(); moveTab(0); } if (event.key === "End") { event.preventDefault(); moveTab(c.modes.length - 1); } }}>{item.label}</button>
-        </motion.li>
-      ))}
+    <div className="product-experience-grid" role="tabpanel">
+      <div className="goal-composer"><span className="micro-label">{c.request}</span><blockquote>{mode.prompt}</blockquote><Link className="text-link" href={mode.href}>{c.open} →</Link></div>
+      <div className="execution-preview"><div className="result-preview"><span>{c.delivery}</span><strong>{mode.result}</strong></div><div className="evidence-preview"><span>{c.checks}</span><ul>{mode.checks.map(item => <li key={item}>{item}</li>)}</ul></div></div>
     </div>
-    <div className="product-experience-grid grid gap-6 w-full" role="tabpanel">
-      <motion.ul
-        initial={{ x: -20, opacity: 0 }}
-        whileInView={{ x: 0, opacity: 1 }}
-        transition={{ delayChildren: 0.1, staggerChildren: 0.2 }}
-      >
-        <motion.li key="goal-composer">
-          <div className="goal-composer flex flex-col items-start gap-4">
-            <motion.span
-              initial={{ x: -10, opacity: 0 }}
-              whileInView={{ x: 0, opacity: 1, transition: { duration: 0.4 } }}
-            >
-              <span className="micro-label text-xs font-semibold tracking-wider text-gray-400">{c.request}</span>
-            </motion.span>
-            <motion.blockquote
-              initial={{ x: -10, opacity: 0 }}
-              whileInView={{ x: 0, opacity: 1, transition: { duration: 0.4, delay: 0.2 } }}
-            >
-              <blockquote className="text-base leading-relaxed text-gray-400">{mode.prompt}</blockquote>
-            </motion.blockquote>
-            <motion.a
-              initial={{ x: -10, opacity: 0 }}
-              whileInView={{ x: 0, opacity: 1, transition: { duration: 0.4, delay: 0.4 } }}
-              className="text-link inline-flex items-center gap-2 text-white font-medium hover:bg-gray-700 hover:text-white transition-colors duration-200 hover-lift"
-              href={mode.href}
-            >
-              {c.open} →
-            </motion.a>
-          </div>
-        </motion.li>
-        <motion.li key="execution-preview">
-          <div className="execution-preview grid gap-6">
-            <div className="result-preview flex flex-col items-start gap-2">
-              <motion.span
-                initial={{ x: -10, opacity: 0 }}
-                whileInView={{ x: 0, opacity: 1, transition: { duration: 0.4 } }}
-              >
-                <span className="text-xs font-semibold tracking-wider text-gray-400">{c.delivery}</span>
-              </motion.span>
-              <motion.strong
-                initial={{ x: -10, opacity: 0 }}
-                whileInView={{ x: 0, opacity: 1, transition: { duration: 0.4, delay: 0.2 } }}
-                className="text-lg font-semibold text-white"
-              >
-                {mode.result}
-              </motion.strong>
-            </div>
-            <div className="evidence-preview flex flex-col items-start gap-2">
-              <motion.span
-                initial={{ x: -10, opacity: 0 }}
-                whileInView={{ x: 0, opacity: 1, transition: { duration: 0.4 } }}
-              >
-                <span className="text-xs font-semibold tracking-wider text-gray-400">{c.checks}</span>
-              </motion.span>
-              <motion.ul
-                initial={{ x: -10, opacity: 0 }}
-                whileInView={{ x: 0, opacity: 1 }}
-                className="space-y-1"
-                transition={{ delayChildren: 0.1, staggerChildren: 0.15 }}
-              >
-                {mode.checks.map((item, idx) => (
-                  <motion.li
-                    key={item}
-                    initial={{ x: -5, opacity: 0 }}
-                    whileInView={{ x: 0, opacity: 1, transition: { duration: 0.3, delay: idx * 0.1 } }}
-                    className="text-base leading-relaxed text-gray-300"
-                  >
-                    {item}
-                  </motion.li>
-                ))}
-              </motion.ul>
-            </div>
-          </div>
-        </motion.li>
-      </motion.ul>
-    </div>
-    <div className="product-stage-control flex flex-col items-start gap-4 w-full" aria-label={locale === "tr" ? "Önizleme aşaması" : "Preview stage"}>
-      <div className="product-stage-tabs flex flex-wrap items-center gap-2">
-        {c.stages.map((stage, index) => (
-          <motion.button
-            key={stage}
-            initial={{ y: -5, opacity: 0 }}
-            whileInView={{ y: 0, opacity: 1, transition: { duration: 0.3, delay: index * 0.1 } }}
-            type="button"
-            aria-pressed={stageIndex === index}
-            className={`${stageIndex === index ? "bg-gray-800 text-white" : "bg-gray-900 text-gray-400 hover:bg-gray-800 hover:text-white hover-lift"} px-2 py-1 rounded-md font-medium transition-colors duration-200`}
-            onClick={() => setStageIndex(index)}
-          >
-            {stage}
-          </motion.button>
-        ))}
-      </div>
-      <motion.p
-        initial={{ x: -10, opacity: 0 }}
-        whileInView={{ x: 0, opacity: 1, transition: { duration: 0.4 } }}
-        aria-live="polite"
-        className="text-base leading-relaxed text-gray-300"
-      >
-        {c.stageNotes[stageIndex]}
-      </motion.p>
+    <div className="product-stage-control" aria-label={locale === "tr" ? "Önizleme aşaması" : "Preview stage"}>
+      <div className="product-stage-tabs">{c.stages.map((stage, index) => <button key={stage} type="button" aria-pressed={stageIndex === index} className={stageIndex === index ? "is-active" : ""} onClick={() => setStageIndex(index)}>{stage}</button>)}</div>
+      <p aria-live="polite">{c.stageNotes[stageIndex]}</p>
     </div>
   </div>;
 }
