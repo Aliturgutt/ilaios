@@ -234,7 +234,7 @@ p, small, .muted { color: var(--v2-muted); }
 
 /* Proof strip: editorial anchors instead of a thin utility bar. */
 .proof-strip { background: var(--v2-carbon) !important; border-color: var(--v2-line) !important; }
-.proof-strip-grid { border-top: 1px solid var(--v2-line); border-bottom: 1px solid var(--v2-line); }
+.proof-strip-grid { border-top: 0; border-bottom: 0; }
 .proof-strip-grid > div { padding: 26px 26px 26px 0 !important; }
 .proof-strip-grid > div + div { padding-left: 26px !important; border-left: 1px solid var(--v2-line) !important; }
 .proof-strip-grid strong { display: block; margin-bottom: 7px; font-size: 1rem; }

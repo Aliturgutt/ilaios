@@ -91,7 +91,7 @@ const copy = {
       label: "Web üretim alanı tam yaşam döngüsü",
       title: "Bitmiş web sitesi, tek bir üretim olayı değil; üretim zinciri ve kanıttır.",
       text: "Kanonik Web üretim alanı hedefi; araştırma, tasarım, uygulama, tarayıcı ve kalite kapıları, sınırlı onarım ve dağıtım doğrulaması üzerinden taşır.",
-      steps: ["Web sitesi hedefi", "Araştırma", "Bilgi mimarisi", "Metin", "Tasarım sistemi", "Görsel tasarım", "Uygulama", "Tarayıcı kalite kontrolü", "Güvenlik kalite kontrolü", "Erişilebilirlik", "Performans", "SEO", "Görsel kalite kontrolü", "Kabul", "Sınırlı onarım", "Dağıtım doğrulaması", "Bitmiş site + kanıt"],
+      steps: ["Web sitesi hedefi", "Araştırma", "Bilgi mimarisi", "Metin", "Tasarım sistemi", "Görsel tasarım", "Uygulama", "Tarayıcı kalite kontrolü", "Güvenlik kalite kontrolü", "Erişilebilirlik", "Performans", "SEO", "Görsel kalite kontrolü", "Kabul", "Sınırlı onarım", "Dağıtım doğrulaması", "Bitmiş site + kanıt", "Yayın sonrası izleme"],
     },
   },
 } as const;

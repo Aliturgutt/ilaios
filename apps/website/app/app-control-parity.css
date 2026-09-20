@@ -15,10 +15,29 @@
   box-sizing: border-box !important;
   height: 36px !important;
   min-height: 36px !important;
+  width: max-content !important;
+  min-width: 0 !important;
+  flex: 0 0 auto !important;
   gap: 7px !important;
   padding: 0 10px !important;
   font-size: 12px !important;
   line-height: 1 !important;
+}
+
+/* Wide header uses fixed grid tracks: reduce the track gap, not button padding. */
+@media (min-width: 1180px) {
+  html body .site-header .nav-utility {
+    grid-template-columns: 94px 88px 85px 119px !important;
+  }
+  html body .site-header .theme-toggle {
+    width: max-content !important;
+    justify-self: start !important;
+  }
+  html body .site-header .language-switch {
+    width: max-content !important;
+    justify-self: start !important;
+    margin-left: 0 !important;
+  }
 }
 
 .site-header .language-switch {

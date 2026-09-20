@@ -174,17 +174,17 @@ function FactoryVisual({ locale }: { locale: Locale }) {
   </article>;
 }
 
-function TrustVisual({ locale }: { locale: Locale }) {
+function TrustVisual({ locale, hideCounters = false }: { locale: Locale; hideCounters?: boolean }) {
   const c = copy[locale];
   const [active, setActive] = useState(1);
   const selected = c.trust.nodes[active];
   return <article className="system-visual" data-visual-role="trust-boundary-diagram">
-    <header><div><span className="micro-label">{c.trust.label}</span><h3>{c.trust.title}</h3><p>{c.trust.text}</p></div><span className="visual-badge">04 / 04</span></header>
+    <header><div><span className="micro-label">{c.trust.label}</span><h3>{c.trust.title}</h3><p>{c.trust.text}</p></div>{!hideCounters && <span className="visual-badge">04 / 04</span>}</header>
     <p className="system-visual-instruction">{c.instruction}</p>
     <div className="trust-visual" aria-label={c.trust.title}>
       {c.trust.nodes.map(([title, summary], index) => <div className="trust-node-wrap" key={title}><button type="button" className={`trust-node system-visual-control${index === 1 ? " is-core" : ""}${active === index ? " is-active" : ""}`} aria-pressed={active === index} onClick={() => setActive(index)}><strong>{title}</strong><small>{summary}</small></button>{index < c.trust.nodes.length - 1 && <i aria-hidden="true">→</i>}</div>)}
     </div>
-    <DetailPanel detail={{ label: `${String(active + 1).padStart(2, "0")} / 03`, title: selected[0], description: selected[2] }} />
+    <DetailPanel detail={{ label: hideCounters ? selected[0] : `${String(active + 1).padStart(2, "0")} / 03`, title: selected[0], description: selected[2] }} />
   </article>;
 }
 
@@ -192,7 +192,7 @@ export default function SystemVisuals({ locale, variant = "all" }: { locale: Loc
   if (variant === "execution") return <div className="system-visuals"><ExecutionVisual locale={locale} /></div>;
   if (variant === "planes") return <div className="system-visuals"><PlanesVisual locale={locale} /></div>;
   if (variant === "factory") return <div className="system-visuals"><FactoryVisual locale={locale} /></div>;
-  if (variant === "trust") return <div className="system-visuals"><TrustVisual locale={locale} /></div>;
+  if (variant === "trust") return <div className="system-visuals"><TrustVisual locale={locale} hideCounters /></div>;
   return <div className="system-visuals is-grid">
     <ExecutionVisual locale={locale} />
     <PlanesVisual locale={locale} />
