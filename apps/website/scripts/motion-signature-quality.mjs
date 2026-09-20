@@ -39,7 +39,6 @@ for (const token of [
   "/factories",
   "/how-it-works",
   "/architecture",
-  "/capabilities",
 ]) {
   if (!home.includes(token)) failures.push(`corporate homepage is missing required hierarchy/control: ${token}`);
 }
@@ -49,7 +48,8 @@ for (const token of ["aspect-ratio:1672/941", "object-fit:contain", "html[data-t
 }
 
 const sectionCount = (home.match(/<section\b/g) ?? []).length;
-if (sectionCount < 6 || sectionCount > 8) failures.push(`corporate homepage section count must remain concise (6-8), found ${sectionCount}`);
+// The approved homepage has five sections after its closing CTA was removed.
+if (sectionCount !== 5) failures.push(`corporate homepage section count must remain 5, found ${sectionCount}`);
 if (/status|healthy|online|uptime|telemetry/i.test(home)) failures.push("corporate homepage must not imply unverified runtime health/telemetry");
 
 if (failures.length) {

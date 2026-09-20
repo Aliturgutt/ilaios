@@ -3,6 +3,12 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
+  async redirects() {
+    return [
+      { source: "/updates", destination: "/resources", permanent: true },
+      { source: "/tr/updates", destination: "/tr/resources", permanent: true },
+    ];
+  },
   images: {
     unoptimized: true,
   },

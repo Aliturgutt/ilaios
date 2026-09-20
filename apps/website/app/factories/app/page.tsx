@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import ThemedDiagram from "../../ThemedDiagram";
-import { motion } from "motion/react";
 
 export const metadata: Metadata = {
   title: "App Factory",
@@ -17,103 +16,14 @@ const stages = [
   ["05", "Build, test & verify", "Run the required format/analyze/test/build/package checks and retain exact source-to-artifact evidence for the bounded platform path."],
   ["06", "Windows-first finished product", "The current repository evidence includes a bounded generated Flutter Windows application that was built, packaged and smoke-tested with content-addressed evidence."],
   ["07", "Mobile & Store gates", "Android/iOS execution, production signing, App Store/Play Store submission, certification and live install remain separate evidence-gated release work."],
+  ["08", "Delivery & acceptance record", "Record test results, artifact identity, approvals and delivery evidence for each completed platform scope; do not mark unproven publication or installation as complete."],
 ] as const;
 
 export default function Page() { return <>
-  {/* Hero Section with Motion */}
-  <section className="shell page-hero compact-page-hero pt-16 pb-16">
-    <motion.div
-      initial={{ y: 20, opacity: 0 }}
-      animate={{ y: 0, opacity: 1, transition: { duration: 0.8, ease: [0.4, 0, 0.2, 1] } }}
-    >
-      <div className="eyebrow text-sm tracking-wider text-gray-400">ILAIOS App Factory</div>
-      <h1 className="text-4xl font-bold tracking-tighter mb-4 text-white">From product idea to a bounded application outcome, with release authority kept explicit.</h1>
-      <p className="text-base leading-relaxed mb-6 text-gray-300">App Factory is no longer only a review-plan concept: repository evidence includes a bounded Windows-first finished-product path. That does not make Android/iOS, production signing or Store publication complete.</p>
-      <div className="factory-availability-banner flex items-center gap-3 mb-6">
-        <span className="availability-chip is-preview px-2 py-1 text-xs font-medium bg-gray-800 text-white rounded">Preview</span>
-        <p className="text-sm leading-none text-gray-300">Windows-first bounded finished-product evidence exists in the repository. Android/iOS, signing, Store publication, live install and arbitrary-app breadth remain separate gates.</p>
-      </div>
-    </motion.div>
-  </section>
-  <section className="section surface-section factory-visual-section pt-20 pb-20">
-    <motion.div
-      initial={{ x: -20, opacity: 0 }}
-      whileInView={{ x: 0, opacity: 1, transition: { duration: 0.6, ease: [0.4, 0, 0.2, 1] } }}
-    >
-      <div className="shell">
-        <div className="section-heading">
-          <div className="eyebrow text-sm tracking-wider text-gray-400">App Factory target lifecycle</div>
-          <h2 className="text-3xl font-bold tracking-tighter mb-4 text-white">Turn product ideas into store-ready targets without claiming Store publication before proof.</h2>
-        </div>
-        <p className="text-base leading-relaxed text-gray-300">The supplied visual describes the target product lifecycle. “Store Ready” is a release-readiness target, not evidence that signing, submission, certification or live installation has already occurred.</p>
-        <ThemedDiagram light="/visuals/app-light.avif" dark="/visuals/app-dark.avif" alt="ILAIOS App Factory diagram showing prompt and references, product and UX specification, architecture, build, test and verify, iOS or Android preparation and Store Ready target" caption="Target lifecycle: prompt + references → product/UX spec → architecture → build → test & verify → platform packaging → Store readiness. Current mobile/Store completion remains evidence-gated." priority />
-      </div>
-    </motion.div>
-  </section>
-  <section className="section pt-20 pb-20">
-    <motion.div
-      initial={{ x: -20, opacity: 0 }}
-      whileInView={{ x: 0, opacity: 1, transition: { duration: 0.6, ease: [0.4, 0, 0.2, 1] } }}
-    >
-      <div className="shell">
-        <div className="section-heading">
-          <div className="eyebrow text-sm tracking-wider text-gray-400">Current reality + target truth</div>
-          <h2 className="text-3xl font-bold tracking-tighter mb-4 text-white">Windows evidence is current reality. Mobile Store release remains target work.</h2>
-        </div>
-        <p className="text-base leading-relaxed mb-6 text-gray-300">This separation prevents the target architecture from being presented as production completion.</p>
-        <div className="stage-list grid gap-6">
-          {stages.map(([n, t, x], index) => (
-            <motion.div
-              key={n}
-              initial={{ x: -10, opacity: 0 }}
-              whileInView={{ x: 0, opacity: 1, transition: { duration: 0.4, delay: index * 0.1 } }}
-              className="border border-gray-600 rounded-lg p-6 hover:bg-gray-700 hover:border-gray-600 hover:text-white transition-all duration-200 hover-lift hover-scale"
-            >
-              <div className="flex items-start gap-2">
-                <span className="text-xs font-bold text-gray-400">{n}</span>
-                <div>
-                  <strong className="text-base font-semibold text-white">{t}</strong>
-                  <p className="text-base leading-relaxed text-gray-300">{x}</p>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-    </motion.div>
-  </section>
-  <section className="section compact-section pt-20 pb-20">
-    <motion.div
-      initial={{ y: 20, opacity: 0 }}
-      animate={{ y: 0, opacity: 1, transition: { duration: 0.8, ease: [0.4, 0, 0.2, 1] } }}
-    >
-      <div className="shell">
-        <div className="compact-heading-row">
-          <div className="eyebrow text-sm tracking-wider text-gray-400">Release boundary</div>
-          <h2 className="text-3xl font-bold tracking-tighter mb-4 text-white">Build evidence does not silently grant signing, Store submission or publication authority.</h2>
-        </div>
-        <p className="text-base leading-relaxed mb-6 text-gray-300">Those actions require their own credentials, approvals, exact artifact identity, platform checks and external evidence.</p>
-        <div className="actions flex items-center justify-center gap-4 mt-6">
-          <motion.a
-            key="use-ilaios-link"
-            initial={{ x: -10, opacity: 0 }}
-            whileInView={{ x: 0, opacity: 1, transition: { duration: 0.4, delay: 0 } }}
-            className="button bg-gray-900 text-white px-6 py-3 rounded-md font-semibold hover:bg-gray-700 transition-colors duration-200 hover-lift hover-scale"
-            href="/use-ilaios"
-          >
-            How to use ILAIOS
-          </motion.a>
-          <motion.a
-            key="all-factories-link"
-            initial={{ x: -10, opacity: 0 }}
-            whileInView={{ x: 0, opacity: 1, transition: { duration: 0.4, delay: 0.1 } }}
-            className="button secondary border border-gray-600 px-6 py-3 rounded-md font-semibold hover:bg-gray-700 hover:text-white transition-colors duration-200 hover-lift hover-scale"
-            href="/factories"
-          >
-            All factories
-          </motion.a>
-        </div>
-      </div>
-    </motion.div>
-  </section>
+  <section className="shell page-hero app-factory-copy"><div className="eyebrow">ILAIOS App Factory</div><h1>From product idea to a bounded application outcome, with release authority kept explicit.</h1><p className="lead">App Factory is no longer only a review-plan concept: repository evidence includes a bounded Windows-first finished-product path. That does not make Android/iOS, production signing or Store publication complete.</p><div className="factory-availability-banner"><p>Windows-first bounded finished-product evidence exists in the repository. Android/iOS, signing, Store publication, live install and arbitrary-app breadth remain separate gates.</p></div></section>
+
+  <section className="section surface-section factory-visual-section app-factory-visual-copy"><div className="shell"><div className="section-heading"><div><div className="eyebrow">App Factory target lifecycle</div><h2>Turn product ideas into store-ready targets without claiming Store publication before proof.</h2></div><p>The supplied visual describes the target product lifecycle. “Store Ready” is a release-readiness target, not evidence that signing, submission, certification or live installation has already occurred.</p></div><ThemedDiagram light="/visuals/app-light.avif" dark="/visuals/app-dark.avif" alt="ILAIOS App Factory diagram showing prompt and references, product and UX specification, architecture, build, test and verify, iOS or Android preparation and Store Ready target" caption="Target lifecycle: prompt + references → product/UX spec → architecture → build → test & verify → platform packaging → Store readiness. Current mobile/Store completion remains evidence-gated." priority /></div></section>
+
+  <section className="section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">Current reality + target truth</div><h2>Windows evidence is current reality. Mobile Store release remains target work.</h2></div><p className="muted">This separation prevents the target architecture from being presented as production completion.</p></div><div className="grid two-up">{stages.map(([n,t,x]) => <article className="card" key={n}><div className="eyebrow">{n}</div><h2>{t}</h2><p>{x}</p></article>)}</div></div></section>
+  <section className="section"><div className="shell callout app-factory-publish-callout"><div><div className="eyebrow">Release boundary</div><h2>Build evidence does not silently grant signing, Store submission or publication authority.</h2><p className="muted">Those actions require their own credentials, approvals, exact artifact identity, platform checks and external evidence.</p></div><div className="actions"><Link className="button" href="/use-ilaios">How to use ILAIOS</Link><Link className="button secondary" href="/factories">All factories</Link></div></div></section>
 </>; }

@@ -1,8 +1,4 @@
-'use client';
-
 import Link from "next/link";
-import { useState, useEffect, useRef } from "react";
-import { motion } from "motion/react";
 
 type Locale = "en" | "tr";
 type Audience = "enterprise" | "individuals";
@@ -35,12 +31,12 @@ const copy = {
   tr: {
     enterprise: {
       eyebrow: "Kurumlar için",
-      title: "Karmaşık işleri controllü ve incelenebilir sonuçlara dönüştürün.",
+      title: "Karmaşık işleri kontrollü ve incelenebilir sonuçlara dönüştürün.",
       lead: "ILAIOS; ekiplerin işi tek yerden talep etmesi, üretimi koordine etmesi ve önemli işlemleri açık kurumsal kontroller içinde tutması için tasarlanır.",
       focusLabel: "Ekiplerin ilerletebileceği işler",
       focusTitle: "İş sonucuyla başlayın. Yönetişimi işin çevresinde tutun.",
-      outcomes: [["Bir web deneyimi yayınlayın", "Gereksinim ve içerikten geliştirme, QA ve teslim hazırlığına ayrı bir araç zincirinin operatörü olmadan ilerleyin."], ["Yazılım işi teslim edin", "Üretilen kodu bitmiş saymak yerine repository bağlamı, test, inceleme ve kabul etrafında mühendislik işini yapılandırın."], ["Medya üretin", "Araştırma, senaryo, varlıklar, ses, render ve doğrulamayı tek yönetilen üretim akışında koordine edin."], ["Bir kararı araştırın", "Kaynak, iddia, belirsizlik ve inceleme bağnamı bağlı tutarak sonucun nasıl oluştuğını ekipçe görebilin."], ["Tekrarlanan işleri otomatikleştirin", "Operasyonel işleri görünür durum ve açık devir noktaları olan sınırlandırılmış akışlara dönüştürün."], ["Ne olduğunu inceleyin", "Önemli işlemleri ve kabul bağnamı birbirinden kopuk araçlarda kaybetmek yerine incelenebilir tutun."]],
-      operating: [["01", "Sonucu tarif edin", "Ekip neyin bitmesi gerektiğini ve gerekli kurumsal bağnamı belirtir."], ["02", "Sınırları belirleyin", "Kimlik, izinler ve gerekli onaylar işin neyi kullanabileceğini veya değiştirebileceğini belirler."], ["03", "Üretin ve doğrulayın", "Uygun yetenekler kabul etmiş işi yapar; kabul kontrolleri neyin ilerleyeceğini belirler."], ["04", "Bağnamıyla teslim alın", "Sonuç, inceleme ve takip için gereken durum ve kanıtla birlikte sunulur."]],
+      outcomes: [["Bir web deneyimi yayınlayın", "Gereksinim ve içerikten geliştirme, kalite güvencesi ve teslim hazırlığına ayrı bir araç zincirinin operatörü olmadan ilerleyin."], ["Yazılım işi teslim edin", "Üretilen kodu bitmiş saymak yerine kod deposu bağlamı, test, inceleme ve kabul etrafında mühendislik işini yapılandırın."], ["Medya üretin", "Araştırma, senaryo, varlıklar, ses, işleme ve doğrulamayı tek yönetilen üretim akışında koordine edin."], ["Bir kararı araştırın", "Kaynak, iddia, belirsizlik ve inceleme bağlamını bağlı tutarak sonucun nasıl oluştuğunu ekipçe görebilin."], ["Tekrarlanan işleri otomatikleştirin", "Operasyonel işleri görünür durum ve açık devir noktaları olan sınırlandırılmış akışlara dönüştürün."], ["Ne olduğunu inceleyin", "Önemli işlemleri ve kabul bağlamını birbirinden kopuk araçlarda kaybetmek yerine incelenebilir tutun."]],
+      operating: [["01", "Sonucu tarif edin", "Ekip neyin bitmesi gerektiğini ve gerekli kurumsal bağlamı belirtir."], ["02", "Sınırları belirleyin", "Kimlik, izinler ve gerekli onaylar işin neyi kullanabileceğini veya değiştirebileceğini belirler."], ["03", "Üretin ve doğrulayın", "Uygun yetenekler kabul edilmiş işi yapar; kabul kontrolleri neyin ilerleyeceğini belirler."], ["04", "Bağlamıyla teslim alın", "Sonuç, inceleme ve takip için gereken durum ve kanıtla birlikte sunulur."]],
       primary: "Üretim alanlarını keşfet",
       secondary: "Mimariyi incele",
     },
@@ -50,178 +46,29 @@ const copy = {
       lead: "ILAIOS; bir fikri veya işi araştırma, web, yazılım, medya ve kişisel iş akışları boyunca incelenebilir bir sonuca taşımaya yardımcı olmak için tasarlanır.",
       focusLabel: "Önce sonuç",
       focusTitle: "Araçları koordine etmeye daha az, neyin bitmesi gerektiğine daha fazla zaman ayırın.",
-      outcomes: [["Araştırma", "Bir soruyu kaynakları, iddiaları ve belirsizliği görülebilen yapılandırılmış araştırmaya dönüştürün."], ["Web sitesi", "Hedef ve referanslardan yapı, tasarım, geliştirme ve QA üzerinden bitmiş siteye ilerleyin."], ["Yazılım", "İşi tamamlanmış saymadan önce değişiklikleri repository bağlamı, testler ve incelemeyle bağlı tutun."], ["Uygulama", "Daha geniş production yeteneği gelişmeye devam ederken uygulama işini planlayın ve yapılandırın."], ["Video ve medya", "Senaryo, varlıklar, ses, render ve doğrulamayı tek üretim akışında koordine edin."], ["Kişisel operasyon", "Sistemin yetkisini sessizce genişletmeden tekrarlanan işleri hazırlayın ve yönetin."]],
-      operating: [["01", "Ne istediğinizi söyleyin", "İç model, ajan veya sağlayıcı seçmek yerine sonucu tarif edin."], ["02", "Gerekli bağnamı ekleyin", "Referanslar, proje bağnamı ve izinler işe nelerin katılabileceğini belirler."], ["03", "İşi yürütün", "Uygun yetenekler görevi izin verilen sınırnarlarda yapar."], ["04", "Sonucu inceleyin", "Sonuç ve doğrulama görünür kalır; sonraki adıma siz karar verirsiniz."]],
+      outcomes: [["Araştırma", "Bir soruyu kaynakları, iddiaları ve belirsizliği görülebilen yapılandırılmış araştırmaya dönüştürün."], ["Web sitesi", "Hedef ve referanslardan yapı, tasarım, geliştirme ve kalite güvencesi üzerinden bitmiş siteye ilerleyin."], ["Yazılım", "İşi tamamlanmış saymadan önce değişiklikleri kod deposu bağlamı, testler ve incelemeyle bağlı tutun."], ["Uygulama", "Daha geniş üretim yeteneği gelişmeye devam ederken uygulama işini planlayın ve yapılandırın."], ["Video ve medya", "Senaryo, varlıklar, ses, işleme ve doğrulamayı tek üretim akışında koordine edin."], ["Kişisel operasyon", "Sistemin yetkisini sessizce genişletmeden tekrarlanan işleri hazırlayın ve yönetin."]],
+      operating: [["01", "Ne istediğinizi söyleyin", "İç model, ajan veya sağlayıcı seçmek yerine sonucu tarif edin."], ["02", "Gerekli bağlamı ekleyin", "Referanslar, proje bağlamı ve izinler işe nelerin katılabileceğini belirler."], ["03", "İşi yürütün", "Uygun yetenekler görevi izin verilen sınırlar içinde yapar."], ["04", "Sonucu inceleyin", "Sonuç ve doğrulama görünür kalır; sonraki adıma siz karar verirsiniz."]],
       primary: "ILAIOS neler üretebilir?",
       secondary: "Nasıl çalışır?",
     },
   },
 } as const;
 
+const enterpriseLeadColumnStyle = {
+  alignSelf: "center",
+  display: "flex",
+  flexDirection: "column",
+  justifyContent: "center",
+} as const;
+
 export default function AudiencePage({ locale, audience }: { locale: Locale; audience: Audience }) {
   const c = copy[locale][audience];
   const base = locale === "tr" ? "/tr" : "";
-  const isEnterprise = audience === "enterprise";
   const secondaryHref = audience === "enterprise" ? `${base}/architecture` : `${base}/how-it-works`;
-
-  const [visibleOutcomes, setVisibleOutcomes] = useState(Array(c.outcomes.length).fill(false));
-  const [visibleOperating, setVisibleOperating] = useState(Array(c.operating.length).fill(false));
-
-  const outcomeRefs = useRef<Array<HTMLDivElement | null>>([]);
-  const operatingRefs = useRef<Array<HTMLDivElement | null>>([]);
-
-  const setOutcomeRef = (index: number) => (element: HTMLDivElement | null) => {
-    outcomeRefs.current[index] = element;
-  };
-
-  const setOperatingRef = (index: number) => (element: HTMLDivElement | null) => {
-    operatingRefs.current[index] = element;
-  };
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const observerOptions = {
-      threshold: 0.1,
-    };
-
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          const index = outcomeRefs.current.indexOf(entry.target as HTMLDivElement);
-          if (index !== -1) {
-            setVisibleOutcomes((prev) => {
-              const newArray = [...prev];
-              newArray[index] = true;
-              return newArray;
-            });
-          }
-        }
-      });
-    }, observerOptions);
-
-    const operatingObserver = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          const index = operatingRefs.current.indexOf(entry.target as HTMLDivElement);
-          if (index !== -1) {
-            setVisibleOperating((prev) => {
-              const newArray = [...prev];
-              newArray[index] = true;
-              return newArray;
-            });
-          }
-        }
-      });
-    }, observerOptions);
-
-    outcomeRefs.current.forEach((ref) => {
-      if (ref) observer.observe(ref);
-    });
-
-    operatingRefs.current.forEach((ref) => {
-      if (ref) operatingObserver.observe(ref);
-    });
-
-    return () => {
-      observer.disconnect();
-      operatingObserver.disconnect();
-    };
-  }, []);
-
+  const isEnterprise = audience === "enterprise";
   return <>
-    {/* Hero Section with Motion */}
-    <section className={`shell page-hero compact-page-hero pt-20 pb-20 audience-${audience}`}>
-      <motion.div
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1, transition: { duration: 0.8, ease: [0.4, 0, 0.2, 1] } }}
-      >
-        <div>
-          <div className="eyebrow text-sm tracking-wider text-gray-400">{c.eyebrow}</div>
-          <h1 className="text-5xl font-bold tracking-tighter mb-4">{c.title}</h1>
-        </div>
-        <div className="text-base leading-relaxed mt-4">
-          <p className="mb-4">{c.lead}</p>
-          <div className="actions flex items-center gap-4">
-            <Link
-              href={`${base}/factories`}
-              className="button bg-gray-900 text-white px-8 py-3 rounded-md font-semibold hover:bg-gray-700 transition-colors duration-200 hover-lift hover-scale"
-            >
-              {c.primary}
-            </Link>
-            <Link
-              href={secondaryHref}
-              className="button secondary border border-gray-600 px-8 py-3 rounded-md font-semibold hover:bg-gray-700 hover:text-white transition-colors duration-200 hover-lift hover-scale"
-            >
-              {c.secondary}
-            </Link>
-          </div>
-        </div>
-      </motion.div>
-    </section>
-    <section className="section pt-24 pb-24">
-      <motion.div
-        initial={{ x: -20, opacity: 0 }}
-        whileInView={{ x: 0, opacity: 1, transition: { duration: 0.6, ease: [0.4, 0, 0.2, 1] } }}
-      >
-        <div className="shell audience-focus">
-          <div className="flex flex-col items-start gap-2 max-w-3xl">
-            <span className="micro-label text-xs font-bold text-gray-400">{c.focusLabel}</span>
-            <h2 className="text-4xl font-bold tracking-tighter mb-4">{c.focusTitle}</h2>
-          </div>
-          <div className="audience-outcome-list grid gap-8 pt-8">
-            {c.outcomes.map(([title, text], index) => (
-              <motion.div
-                key={title}
-                initial={{ x: -10, opacity: 0 }}
-                whileInView={{ x: 0, opacity: 1, transition: { duration: 0.4, delay: index * 0.1 } }}
-                className={`border border-text rounded-lg p-6 hover:bg-bg-lighter hover:border-text hover:text-text transition-all duration-200 ${visibleOutcomes[index] ? "visible" : ""} hover-lift hover-scale`}
-              >
-                <div className="flex items-start gap-3">
-                  <span className="text-xs font-bold text-gray-400 shrink-0">{String(index + 1).padStart(2, "0")}</span>
-                  <div>
-                    <strong className="text-lg font-semibold">{title}</strong>
-                    <p className="text-base leading-relaxed mt-2">{text}</p>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </motion.div>
-    </section>
-    <section className="section surface-section pt-24 pb-24">
-      <motion.div
-        initial={{ x: -20, opacity: 0 }}
-        whileInView={{ x: 0, opacity: 1, transition: { duration: 0.6, ease: [0.4, 0, 0.2, 1] } }}
-      >
-        <div className="shell">
-          <div className="compact-heading-row">
-            <div className="max-w-3xl">
-              <div className="eyebrow text-sm tracking-wider text-gray-400">{locale === "tr" ? "Nasıl ilerler?" : "How it moves"}</div>
-              <h2 className="text-3xl font-bold tracking-tighter mb-4">{locale === "tr" ? "Basit talep. Kontrollü çalışma. İncelenebilir sonuç." : "Simple request. Controlled work. Reviewable result."}</h2>
-            </div>
-          </div>
-          <div className="audience-process grid gap-8 pt-8">
-            {c.operating.map(([n, title, text], index) => (
-              <motion.div
-                key={n}
-                initial={{ x: -10, opacity: 0 }}
-                whileInView={{ x: 0, opacity: 1, transition: { duration: 0.4, delay: index * 0.1 } }}
-                className={`border border-text rounded-lg p-6 hover:bg-bg-lighter hover:border-text hover:text-text transition-all duration-200 ${visibleOperating[index] ? "visible" : ""} hover-lift hover-scale`}
-              >
-                <div className="flex items-start gap-3">
-                  <span className="text-xs font-bold text-gray-400 shrink-0">{n}</span>
-                  <div>
-                    <strong className="text-lg font-semibold">{title}</strong>
-                    <p className="text-base leading-relaxed mt-2">{text}</p>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </motion.div>
-    </section>
+    <section className={`shell audience-hero audience-${audience}`}><div><div className="eyebrow">{c.eyebrow}</div><h1>{c.title}</h1></div><div style={isEnterprise ? enterpriseLeadColumnStyle : undefined}><p className="lead">{c.lead}</p><div className="actions"><Link className="button" href={`${base}/factories`}>{c.primary}</Link><Link className="button secondary" href={secondaryHref}>{c.secondary}</Link></div></div></section>
+    <section className="section"><div className="shell audience-focus"><div><span className="micro-label">{c.focusLabel}</span><h2>{c.focusTitle}</h2></div><div className="audience-outcome-list">{c.outcomes.map(([title, text]) => <article key={title}><div><strong>{title}</strong><p>{text}</p></div></article>)}</div></div></section>
+    <section className="section surface-section"><div className="shell"><div className="compact-heading-row"><div><div className="eyebrow">{locale === "tr" ? "Nasıl ilerler?" : "How it moves"}</div><h2>{locale === "tr" ? "Basit talep. Kontrollü çalışma. İncelenebilir sonuç." : "Simple request. Controlled work. Reviewable result."}</h2></div></div><div className="audience-process">{c.operating.map(([, title, text]) => <article key={title}><strong>{title}</strong><p>{text}</p></article>)}</div></div></section>
   </>;
 }

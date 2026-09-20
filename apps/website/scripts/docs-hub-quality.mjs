@@ -17,7 +17,12 @@ for (const [source, label, terms] of [
 ]) {
   for (const term of terms) requireText(source, term, label);
   requireText(source, "compact-page-hero", label);
-  requireText(source, "detail-directory", label);
+  if (label === "Turkish docs hub") {
+    requireText(source, "docs-link-grid", label);
+    requireText(source, "docs-pending", label);
+  } else {
+    requireText(source, "detail-directory", label);
+  }
 }
 
 if (/href=["'`]\/[^"'`]*(?:api|recovery)/i.test(en) || /href=["'`]\/tr\/[^"'`]*(?:api|recovery|kurtarma)/i.test(tr)) {

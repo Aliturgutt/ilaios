@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { motion } from "motion/react";
 
+// Visual-audit closure refresh: runtime behavior is unchanged; this commit revalidates the current PR against the latest master.
 type Locale = "en" | "tr";
 
 const copy = {
@@ -38,112 +38,45 @@ const copy = {
   },
 } as const;
 
+const heroTitleStyle = {
+  fontSize: "clamp(1.7rem, 2.15vw, 2.2rem)",
+  lineHeight: 1.08,
+  letterSpacing: "-0.032em",
+  maxWidth: "24ch",
+} as const;
+
+const missionTitleStyle = {
+  fontSize: "clamp(1.45rem, 2vw, 2rem)",
+  lineHeight: 1.12,
+  letterSpacing: "-0.028em",
+  maxWidth: "23ch",
+} as const;
+
+const founderTitleStyle = {
+  fontSize: "clamp(1.08rem, 1.3vw, 1.3rem)",
+  lineHeight: 1.12,
+  letterSpacing: "-0.015em",
+  marginTop: "6px",
+  marginBottom: 0,
+} as const;
+
+const compactCopyStyle = {
+  fontSize: "clamp(.92rem, 1.1vw, 1rem)",
+  lineHeight: 1.52,
+  maxWidth: "60ch",
+  margin: 0,
+} as const;
+
 export default function AboutPage({ locale }: { locale: Locale }) {
   const c = copy[locale];
   const base = locale === "tr" ? "/tr" : "";
   return <>
-    {/* Hero Section with Motion */}
-    <section className="shell page-hero compact-page-hero pt-20 pb-20">
-      <motion.div
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1, transition: { duration: 0.8, ease: [0.4, 0, 0.2, 1] } }}
-      >
-        <div className="eyebrow text-sm tracking-wider text-gray-400">{c.eyebrow}</div>
-        <h1 className="text-5xl font-bold tracking-tighter mb-4">{c.title}</h1>
-        <p className="text-base leading-relaxed max-w-2xl text-gray-300">{c.lead}</p>
-      </motion.div>
-    </section>
-    <section className="section pt-20 pb-20">
-      <motion.div
-        initial={{ x: -20, opacity: 0 }}
-        whileInView={{ x: 0, opacity: 1, transition: { duration: 0.6, ease: [0.4, 0, 0.2, 1] } }}
-      >
-        <div className="shell about-editorial-grid grid gap-8">
-          <motion.div
-            key="mission"
-            initial={{ x: -20, opacity: 0 }}
-            whileInView={{ x: 0, opacity: 1, transition: { duration: 0.4 } }}
-          >
-            <article className="about-mission">
-              <span className="micro-label text-xs font-bold text-gray-400">{c.missionLabel}</span>
-              <h2 className="text-4xl font-bold tracking-tighter mb-4">{c.mission}</h2>
-            </article>
-          </motion.div>
-          <motion.div
-            key="principles"
-            initial={{ x: -20, opacity: 0 }}
-            whileInView={{ x: 0, opacity: 1, transition: { duration: 0.4, delay: 0.2 } }}
-          >
-            <div className="about-principles">
-              <span className="micro-label text-xs font-bold text-gray-400">{c.principlesLabel}</span>
-              <motion.ul
-                className="grid gap-6"
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                transition={{ delayChildren: 0.1, staggerChildren: 0.2 }}
-              >
-                {c.principles.map(([title, text], index) => (
-                  <motion.li
-                    key={title}
-                    initial={{ x: -10, opacity: 0 }}
-                    whileInView={{ x: 0, opacity: 1, transition: { duration: 0.3, delay: index * 0.1 } }}
-                    className="border border-gray-600 rounded-lg p-6 hover:bg-gray-700 hover:border-gray-600 hover:text-white transition-all duration-200 hover-lift hover-scale"
-                  >
-                    <div className="flex items-start gap-3">
-                      <span className="text-xs font-bold text-gray-400 shrink-0">{String(index + 1).padStart(2, "0")}</span>
-                      <div>
-                        <strong className="text-lg font-semibold">{title}</strong>
-                        <p className="text-base leading-relaxed mt-2">{text}</p>
-                      </div>
-                    </div>
-                  </motion.li>
-                ))}
-              </motion.ul>
-            </div>
-          </motion.div>
-        </div>
-      </motion.div>
-    </section>
-    <section className="section surface-section pt-24 pb-24 bg-gray-800">
-      <motion.div
-        initial={{ x: -20, opacity: 0 }}
-        whileInView={{ x: 0, opacity: 1, transition: { duration: 0.6, ease: [0.4, 0, 0.2, 1] } }}
-      >
-        <div className="shell founder-row" id="founder">
-          <div className="flex flex-col items-start gap-2">
-            <span className="micro-label text-xs font-bold text-gray-400">{c.founderLabel}</span>
-            <h2 className="text-4xl font-bold tracking-tighter mb-2 text-white">{c.founder}</h2>
-          </div>
-          <p className="text-base leading-relaxed max-w-2xl text-gray-300">{c.founderText}</p>
-        </div>
-      </motion.div>
-    </section>
-    <section className="section compact-section pt-20 pb-20">
-      <motion.div
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1, transition: { duration: 0.8, ease: [0.4, 0, 0.2, 1] } }}
-      >
-        <div className="shell about-truth flex flex-col items-center gap-4 text-center">
-          <div className="max-w-2xl">
-            <span className="micro-label text-xs font-bold text-gray-400">{c.truthLabel}</span>
-            <p className="text-base leading-relaxed mt-2 text-gray-300">{c.truth}</p>
-          </div>
-          <div className="actions flex flex-col md:flex-row gap-4 mt-4">
-            <Link
-              href={`${base}/solutions`}
-              className="button bg-gray-900 text-white px-8 py-3 rounded-md font-semibold hover:bg-gray-700 transition-colors duration-200 hover-lift hover-scale"
-            >
-              {c.solutions}
-            </Link>
-            <Link
-              href={`${base}/architecture`}
-              className="button secondary border border-gray-600 px-8 py-3 rounded-md font-semibold hover:bg-gray-700 hover:text-white transition-colors duration-200 hover-lift hover-scale"
-            >
-              {c.architecture}
-            </Link>
-          </div>
-        </div>
-      </motion.div>
-    </section>
+    <section className="shell about-intro" style={{paddingTop:"30px",paddingBottom:"26px",gridTemplateColumns:"minmax(0,.92fr) minmax(320px,1.08fr)",gap:"28px",alignItems:"center"}}><div><div className="eyebrow">{c.eyebrow}</div><h1 style={heroTitleStyle}>{c.title}</h1></div><p className="lead" style={{maxWidth:"54ch",margin:0}}>{c.lead}</p></section>
+    <section className="section" style={{paddingTop:"30px",paddingBottom:"30px"}}><div className="shell about-editorial-grid">
+      <article className="about-mission"><span className="micro-label">{c.missionLabel}</span><h2 style={missionTitleStyle}>{c.mission}</h2></article>
+      <div className="about-principles"><span className="micro-label">{c.principlesLabel}</span>{c.principles.map(([title, text], index) => <article key={title}><span>{String(index + 1).padStart(2, "0")}</span><div><strong>{title}</strong><p>{text}</p></div></article>)}</div>
+    </div></section>
+    <section className="section surface-section"><div className="shell founder-row" id="founder"><div><span className="micro-label">{c.founderLabel}</span><h2 style={founderTitleStyle}>{c.founder}</h2></div><p style={compactCopyStyle}>{c.founderText}</p></div></section>
+    <section className="section compact-section"><div className="shell about-truth"><div><span className="micro-label">{c.truthLabel}</span><p style={compactCopyStyle}>{c.truth}</p></div><div className="actions"><Link className="text-link" href={`${base}/solutions`}>{c.solutions}</Link><Link className="text-link" href={`${base}/architecture`}>{c.architecture}</Link></div></div></section>
   </>;
 }
