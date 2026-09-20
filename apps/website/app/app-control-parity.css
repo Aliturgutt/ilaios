@@ -12,8 +12,13 @@
 }
 
 .site-header .theme-toggle {
+  box-sizing: border-box !important;
+  height: 36px !important;
+  min-height: 36px !important;
   gap: 7px !important;
-  padding: 6px 10px !important;
+  padding: 0 10px !important;
+  font-size: 12px !important;
+  line-height: 1 !important;
 }
 
 .site-header .language-switch {

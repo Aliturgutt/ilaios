@@ -222,3 +222,36 @@ html body main :where(section,[id]) {
     max-width: 100% !important;
   }
 }
+
+/* Nine-area homepage preview readability. */
+.product-experience .product-experience-head { grid-template-columns: minmax(0, 1fr) !important; gap: 8px !important; }
+.product-experience .product-experience-head p { max-width: 68ch !important; font-size: .875rem !important; line-height: 1.55 !important; }
+.product-experience .product-experience-grid { min-height: 0 !important; }
+.product-experience .evidence-preview > span,
+.product-experience .evidence-preview li { font-size: .875rem !important; line-height: 1.55 !important; }
+.product-experience .product-mode-tabs button { min-height: 36px; }
+
+/* Mobile discovery cue for the nine-area tab strip. */
+.product-mode-scroll-hint { display: none; }
+@media (max-width: 560px) {
+  .product-experience .product-mode-scroll-hint { display: block; margin: 7px 0 4px; color: var(--muted, #aeb8be); font-size: .75rem; line-height: 1.5; }
+}
+
+/* Homepage/footer link targets measured below 44px in Chrome. */
+.home-control-ledger-v2 a.text-link { display: inline-flex; align-items: center; min-height: 44px; }
+.site-footer .footer-nav-grid a,
+.site-footer .footer-social a { display: inline-flex; align-items: center; min-height: 44px; }
+/* Preserve touch targets while avoiding the one-column mobile footer stack. */
+@media (max-width: 600px) {
+  html body .site-footer .footer-nav-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .site-footer .footer-row a { display: inline-flex; align-items: center; min-height: 44px; }
+}
+
+/* Homepage: text contrast and legibility in the nine-area and process sections. */
+html[data-theme="light"] body .surface-section .compact-cta p { color: #505050 !important; }
+html[data-theme="light"] body .home-process-rail-v2 article > span { color: #505050 !important; }
+html[data-theme="light"] body .home-process-rail-v2 article p { color: #505050 !important; }
+@media (min-width: 601px) {
+  .home-process-rail-v2 article p { font-size: .875rem !important; line-height: 1.55 !important; }
+}
+.product-readiness { display: inline-flex; align-items: center; margin: 8px 0; padding: 5px 10px; border: 1px solid currentColor; border-radius: 999px; color: var(--fg, #222); font-size: .8125rem; line-height: 1.4; }
