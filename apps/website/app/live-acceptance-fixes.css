@@ -255,3 +255,13 @@ html[data-theme="light"] body .home-process-rail-v2 article p { color: #505050 !
   .home-process-rail-v2 article p { font-size: .875rem !important; line-height: 1.55 !important; }
 }
 .product-readiness { display: inline-flex; align-items: center; margin: 8px 0; padding: 5px 10px; border: 1px solid currentColor; border-radius: 999px; color: var(--fg, #222); font-size: .8125rem; line-height: 1.4; }
+
+/* Homepage screenshot review: keep the workflow stages adjacent to the preview content. */
+@media (min-width: 761px) {
+  .product-experience .product-experience-grid { align-items: start !important; }
+  .product-experience .execution-preview { align-self: start !important; }
+}
+/* Give the outcome explanation readable contrast on the light surface. */
+html[data-theme="light"] body .surface-section .compact-cta p { color: #505050 !important; }
+/* Make the five process descriptions readable without changing their semantic order. */
+.home-process-rail-v2 article p { font-size: max(.875rem, 14px) !important; line-height: 1.55 !important; }
