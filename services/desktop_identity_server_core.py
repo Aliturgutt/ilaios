@@ -66,6 +66,10 @@ class DesktopIdentityHTTPServer(ThreadingHTTPServer):
         # Conversation documents belong to this existing authenticated adapter,
         # not to Li memory, Knowledge, or an independent Assistant service.
         self.assistant_lock = threading.RLock()
+        # Transport-local occupancy only. Model usage/budget remain owned by
+        # UsageGovernor; this does not mint inference or execution admission.
+        self.assistant_admission_lock = threading.Lock()
+        self.assistant_active_sessions: set[tuple[str, str, str]] = set()
 
     def service_actions(self) -> None:
         """Run bounded crash/orphan reconciliation from the trusted server lifecycle."""
@@ -208,7 +212,7 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
                 max_bytes=(
                     _REFERENCE_UPLOAD_BODY_BYTES
                     if path == "/v1/reference-assets"
-                    else 1_048_576
+                    else (65_536 if path == "/v1/assistant" else 1_048_576)
                 )
             )
             if path == "/v1/runtime/shutdown":
@@ -308,6 +312,23 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
         )
 
     def _assistant(self, body: dict[str, Any]) -> None:
+        session = self._authenticated_session()
+        key = (session.principal_id, session.tenant_id, session.session_id)
+        with self.server.assistant_admission_lock:
+            if key in self.server.assistant_active_sessions:
+                self._send_error(HTTPStatus.TOO_MANY_REQUESTS, "Assistant request already pending")
+                return
+            if len(self.server.assistant_active_sessions) >= 16:
+                self._send_error(HTTPStatus.SERVICE_UNAVAILABLE, "Assistant busy")
+                return
+            self.server.assistant_active_sessions.add(key)
+        try:
+            self._assistant_operation(body)
+        finally:
+            with self.server.assistant_admission_lock:
+                self.server.assistant_active_sessions.discard(key)
+
+    def _assistant_operation(self, body: dict[str, Any]) -> None:
         """Account-scoped chat transport under the existing session authority.
 
         Project/workload grants are not inferred from client context. V1 account
@@ -340,7 +361,25 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
         }
         owner = hashlib.sha256(json.dumps(binding, sort_keys=True).encode()).hexdigest()
         root = database.parent / "assistant-conversations" / owner
-        with self.server.assistant_lock:
+        def revalidate() -> None:
+            current = self._authenticated_session()
+            current_persona = (
+                "li" if identity.is_li_founder_session(current.session_id) else "assistant"
+            )
+            if (current.session_id != session.session_id
+                    or current.principal_id != session.principal_id
+                    or current.tenant_id != session.tenant_id
+                    or current_persona != persona):
+                raise DesktopIdentityError("Assistant session changed")
+
+        # Reuse the existing serialization owner; do not queue indefinitely.
+        if not self.server.assistant_lock.acquire(timeout=2.0):
+            self._send_error(HTTPStatus.SERVICE_UNAVAILABLE, "Assistant busy; reload before retrying")
+            return
+        try:
+            # Authentication before waiting is insufficient: logout or entitlement
+            # revocation may have occurred while another request held the lock.
+            revalidate()
             root.mkdir(parents=True, exist_ok=True, mode=0o700)
 
             def load(path: Path) -> dict[str, Any]:
@@ -365,6 +404,7 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
                 return cast(dict[str, Any], value)
 
             def save(value: dict[str, Any]) -> None:
+                revalidate()
                 destination = root / (str(value["conversation_id"]) + ".json")
                 temporary = root / (uuid.uuid4().hex + ".tmp")
                 try:
@@ -406,6 +446,7 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
                     return
                 document = load(path)
                 if operation == "delete":
+                    revalidate()
                     path.unlink()
                     result["deleted"] = True
                 elif operation == "send":
@@ -428,6 +469,7 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
                         if len(messages) >= 200:
                             raise ValueError("Assistant message limit reached")
                         answer = _assistant_guidance(text, cast(str, locale))
+                        revalidate()
                         now = datetime.now(timezone.utc).isoformat()
                         messages.extend([
                             {"role": "user", "text": text, "created_at": now,
@@ -440,7 +482,10 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
                     result["conversation"] = document
                 else:
                     result["conversation"] = document
+            revalidate()
             self._send_json(HTTPStatus.OK, result)
+        finally:
+            self.server.assistant_lock.release()
 
     def _complete_browser_callback(self, query: dict[str, list[str]]) -> None:
         identity = self._require_identity()
@@ -783,7 +828,13 @@ def _assistant_guidance(text: str, locale: str) -> dict[str, object]:
         "UNKNOWN — A current authorized source for this question is not connected. Describe your goal in "
         "Start work; use Approvals and Evidence to inspect the actual operation."
     )
-    if any(word in query for word in ("price", "cost", "free", "paid", "ücret", "fiyat", "maliyet")):
+    if any(word in query for word in (
+        "memory", "hafıza", "founder", "kurucu", "secret", "gizli",
+        "tenant", "project", "proje", "workload", "job", "durum",
+        "current", "available", "stale", "güncel", "çalışıyor", "knowledge",
+    )):
+        pass  # No authenticated live/private source is connected.
+    elif any(word in query for word in ("price", "cost", "free", "paid", "ücret", "fiyat", "maliyet")):
         answer = (
             "UNKNOWN — Güncel fiyat teklifi bağlı değil. Ücretsiz veya ücretli olduğunu varsaymayın. "
             "İşi mevcut akışta hazırlayın; gerekli fiyat, bütçe ve onay kontrolleri çalıştırılmadan harcama yapılamaz."
@@ -818,7 +869,58 @@ def _assistant_guidance(text: str, locale: str) -> dict[str, object]:
         status = "GUIDANCE"
         sources = [{"source_id": "desktop-assistant-navigation-guidance", "visibility": "USER_DOCUMENTATION",
                     "source_version": hashlib.sha256(answer.encode()).hexdigest()}]
-    return {"text": answer, "status": status, "provenance": sources}
+    observed_at = datetime.now(timezone.utc).isoformat()
+    for source in sources:
+        source.update({
+            "observed_at": observed_at,
+            "evidence_id": source["source_id"] + ":" + source["source_version"],
+            "freshness": "SNAPSHOT_NOT_LIVE",
+        })
+    # These fields describe this deterministic fallback, not provider claims.
+    # No dispatch or grant is manufactured when the conversational route is absent.
+    response: dict[str, object] = {
+        "text": answer, "status": status, "provenance": sources,
+        "response_class": "PRODUCT_GUIDANCE" if status == "GUIDANCE" else "UNKNOWN",
+        "live": False, "proposed_action": None, "confirmation_required": False,
+        "cost_state": "UNKNOWN", "approval_state": "NOT_REQUESTED",
+        "model_status": "ASSISTANT_UNAVAILABLE",
+    }
+    _validate_assistant_guidance(response)
+    return response
+
+
+def _validate_assistant_guidance(response: dict[str, object]) -> None:
+    """Validate the bounded fallback envelope; it cannot carry model authority."""
+    if set(response) != {
+        "text", "status", "provenance", "response_class", "live", "proposed_action",
+        "confirmation_required", "cost_state", "approval_state", "model_status",
+    }:
+        raise ValueError("Assistant response invalid")
+    text = response["text"]
+    if not isinstance(text, str) or not text or len(text) > 8000:
+        raise ValueError("Assistant response invalid")
+    if (response["status"] not in ("GUIDANCE", "UNKNOWN")
+            or response["response_class"] != (
+                "PRODUCT_GUIDANCE" if response["status"] == "GUIDANCE" else "UNKNOWN")
+            or response["live"] is not False
+            or response["proposed_action"] is not None
+            or response["confirmation_required"] is not False
+            or response["cost_state"] != "UNKNOWN"
+            or response["approval_state"] != "NOT_REQUESTED"
+            or response["model_status"] != "ASSISTANT_UNAVAILABLE"):
+        raise ValueError("Assistant response invalid")
+    sources = response["provenance"]
+    if (not isinstance(sources, list) or len(sources) > 2
+            or (response["status"] == "UNKNOWN" and sources)):
+        raise ValueError("Assistant provenance invalid")
+    for source in sources:
+        if (not isinstance(source, dict) or set(source) != {
+            "source_id", "visibility", "source_version", "observed_at", "evidence_id", "freshness",
+        } or any(not isinstance(value, str) or not value or len(value) > 256
+                 for value in source.values())
+                or source["visibility"] not in ("PUBLIC_PRODUCT", "USER_DOCUMENTATION")
+                or source["freshness"] != "SNAPSHOT_NOT_LIVE"):
+            raise ValueError("Assistant provenance invalid")
 
 
 def _require_reference_store(
