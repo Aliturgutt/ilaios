@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -14,6 +15,7 @@ class AssistantOverlay extends StatefulWidget {
   const AssistantOverlay({
     required this.session,
     required this.onClose,
+    this.isOpen = true,
     this.onRequest,
     this.onFetchLiState,
     this.onFetchLiMemories,
@@ -24,6 +26,7 @@ class AssistantOverlay extends StatefulWidget {
 
   final DesktopUserSession session;
   final VoidCallback onClose;
+  final bool isOpen;
   final Future<Map<String, dynamic>> Function(Map<String, Object?>)? onRequest;
   final Future<DesktopLiState> Function()? onFetchLiState;
   final Future<List<DesktopLiMemory>> Function()? onFetchLiMemories;
@@ -36,6 +39,8 @@ class AssistantOverlay extends StatefulWidget {
 
 class _AssistantOverlayState extends State<AssistantOverlay> {
   final _composer = TextEditingController();
+  final _composerFocus = FocusNode(debugLabel: 'Assistant composer');
+  final _closeFocus = FocusNode(debugLabel: 'Assistant close');
   List<Map<String, dynamic>> _history = [];
   Map<String, dynamic>? _conversation;
   bool _founder = false;
@@ -44,6 +49,7 @@ class _AssistantOverlayState extends State<AssistantOverlay> {
   bool _error = false;
   String? _workState;
   String? _pendingMessageId;
+  Completer<void>? _cancelRequest;
 
   String _copy(String en, String tr) =>
       IlaiosLocaleScope.of(context).locale == IlaiosLocale.turkish ? tr : en;
@@ -52,18 +58,56 @@ class _AssistantOverlayState extends State<AssistantOverlay> {
   void initState() {
     super.initState();
     _load();
+    _focusPanel();
   }
 
   @override
   void dispose() {
+    _stopWaiting();
     _composer.dispose();
+    _composerFocus.dispose();
+    _closeFocus.dispose();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant AssistantOverlay oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!oldWidget.isOpen && widget.isOpen) _focusPanel();
+  }
+
+  void _focusPanel() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && widget.isOpen) {
+        (_busy || _error ? _closeFocus : _composerFocus).requestFocus();
+      }
+    });
+  }
+
+  void _stopWaiting() {
+    final cancel = _cancelRequest;
+    if (cancel != null && !cancel.isCompleted) cancel.complete();
+  }
+
+  Future<T> _bounded<T>(Future<T> request) async {
+    final cancel = Completer<void>();
+    _cancelRequest = cancel;
+    try {
+      return await Future.any<T>([
+        request,
+        cancel.future.then<T>((_) =>
+            throw const IdentityClientException('Assistant request cancelled')),
+      ]).timeout(const Duration(seconds: 30));
+    } finally {
+      if (identical(_cancelRequest, cancel)) _cancelRequest = null;
+    }
   }
 
   Future<Map<String, dynamic>> _request(Map<String, Object?> body) async {
     final request = widget.onRequest;
     if (request == null) throw const IdentityClientException('Assistant unavailable');
-    final response = await request(body);
+    final response = await _bounded(request(body));
+    if (!mounted) throw const IdentityClientException('Assistant closed');
     final binding = response['binding'];
     if (binding is! Map<String, dynamic> ||
         binding.length != 5 || !binding.containsKey('project_id') || !binding.containsKey('workload_id') ||
@@ -78,7 +122,7 @@ class _AssistantOverlayState extends State<AssistantOverlay> {
       if (!widget.session.liFounder || verify == null) {
         throw const IdentityClientException('Access unavailable');
       }
-      final state = await verify();
+      final state = await _bounded(verify());
       if (!state.founderOperator || state.name != 'Li' ||
           state.userId != widget.session.principalId ||
           state.tenantId != widget.session.tenantId ||
@@ -138,6 +182,7 @@ class _AssistantOverlayState extends State<AssistantOverlay> {
         _accept(response);
       }
       setState(() { _busy = false; _error = false; });
+      _focusPanel();
     } on Object {
       if (mounted) {
         setState(() {
@@ -163,6 +208,7 @@ class _AssistantOverlayState extends State<AssistantOverlay> {
       if (!mounted) return;
       _history = _maps(listed['conversations']);
       setState(() { _busy = false; _error = false; });
+      _focusPanel();
     } on Object {
       if (mounted) {
         setState(() {
@@ -200,11 +246,47 @@ class _AssistantOverlayState extends State<AssistantOverlay> {
       if (!mounted) return;
       _history = _maps(listed['conversations']);
       setState(() { _busy = false; _error = false; });
+      _focusPanel();
     } on Object {
       if (mounted) {
         setState(() {
           _busy = false; _error = true; _founder = false;
           _conversation = null; _memory = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _delete() async {
+    final id = _conversation?['conversation_id'];
+    if (_busy || id == null) return;
+    final approved = await showDialog<bool>(context: context, builder: (context) => AlertDialog(
+      title: Text(_copy('Delete conversation?', 'Sohbet silinsin mi?')),
+      content: Text(_copy('This removes the saved conversation.', 'Kaydedilmiş sohbet silinir.')),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context, false),
+            child: Text(_copy('Cancel', 'Vazgeç'))),
+        FilledButton(onPressed: () => Navigator.pop(context, true),
+            child: Text(_copy('Delete', 'Sil'))),
+      ],
+    ));
+    if (!mounted || approved != true) return;
+    setState(() => _busy = true);
+    try {
+      final response = await _request({'operation': 'delete', 'conversation_id': id});
+      if (!mounted) return;
+      if (response['deleted'] != true) {
+        throw const IdentityClientException('Deletion unverified');
+      }
+      _conversation = null;
+      _composer.clear();
+      _pendingMessageId = null;
+      await _load();
+    } on Object {
+      if (mounted) {
+        setState(() {
+          _busy = false; _error = true; _founder = false;
+          _conversation = null; _history = []; _memory = false;
         });
       }
     }
@@ -255,18 +337,25 @@ class _AssistantOverlayState extends State<AssistantOverlay> {
     final chatTop = math.max(leftTop + 40, height * 637 / 1024)
         .clamp(0.0, math.max(0.0, height - 220)).toDouble();
     final messages = _conversation?['messages'] as List? ?? const [];
-    return Stack(children: [
+    return ExcludeFocus(excluding: !widget.isOpen, child: FocusScope(
+      child: FocusTraversalGroup(
+      policy: ReadingOrderTraversalPolicy(),
+      child: Stack(children: [
       Positioned(left: 0, top: math.min(leftTop, chatTop - 32), bottom: bottom, width: leftWidth,
         child: _surface(const Key('assistant-history-arm'), Column(children: [
           Padding(padding: const EdgeInsets.all(12), child: Row(children: [
             const AssistantSymbol(), const SizedBox(width: 8),
             Expanded(child: Text(_copy('Assistant', 'Asistan'), style: const TextStyle(fontWeight: FontWeight.w600))),
-            IconButton(key: const Key('assistant-close'), tooltip: _copy('Close', 'Kapat'),
+            IconButton(key: const Key('assistant-close'), focusNode: _closeFocus, tooltip: _copy('Close', 'Kapat'),
                 onPressed: widget.onClose, icon: const Icon(Icons.close)),
           ])),
           TextButton(key: const Key('assistant-new'), onPressed: _busy ? null : () => _select(null),
               child: Text(_copy('New conversation', 'Yeni sohbet'))),
           Expanded(child: ListView(children: [
+            if (_conversation != null)
+              TextButton(key: const Key('assistant-delete'),
+                onPressed: _busy ? null : _delete,
+                child: Text(_copy('Delete conversation', 'Sohbeti sil'))),
             for (var i = 0; i < _history.length; i++)
               ListTile(dense: true, selected: _conversation?['conversation_id'] == _history[i]['conversation_id'],
                 title: Text('${_copy('Conversation', 'Sohbet')} ${_history.length - i}'),
@@ -282,6 +371,9 @@ class _AssistantOverlayState extends State<AssistantOverlay> {
             const AssistantSymbol(), const SizedBox(width: 10),
             Expanded(child: Text(_founder ? 'Li — Founder Intelligence' : 'ILAIOS Assistant',
                 key: const Key('assistant-panel-identity'), style: const TextStyle(fontWeight: FontWeight.w600))),
+            if (_busy) TextButton(key: const Key('assistant-cancel-request'),
+              onPressed: _stopWaiting,
+              child: Text(_copy('Stop waiting', 'Beklemeyi durdur'))),
             if (_busy) const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
           ])),
           Expanded(child: _memory && _founder
@@ -307,6 +399,7 @@ class _AssistantOverlayState extends State<AssistantOverlay> {
                 ])),
           if (!_memory) Padding(padding: const EdgeInsets.all(10), child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
             Expanded(child: TextField(key: const Key('assistant-composer'), controller: _composer,
+              focusNode: _composerFocus,
               enabled: !_busy, minLines: 1, maxLines: 3, maxLength: 8000,
               onChanged: (_) { _pendingMessageId = null; },
               decoration: InputDecoration(hintText: _copy('Message', 'Mesaj'), counterText: ''))),
@@ -321,6 +414,6 @@ class _AssistantOverlayState extends State<AssistantOverlay> {
                 child: Text(_copy('Reload history', 'Geçmişi yenile'))),
           ]),
         ]))),
-    ]);
+    ]))));
   });
 }
