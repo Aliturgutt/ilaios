@@ -359,7 +359,7 @@ def test_durable_evidence_write_failure_does_not_return_success(tmp_path: Path) 
     def fail_append(*args: object) -> None:
         raise EvidenceError("durable provenance unavailable")
 
-    store.append_provenance = fail_append  # type: ignore[method-assign]
+    store.append_provenance = fail_append  # type: ignore[assignment]
     with pytest.raises(EvidenceError, match="durable provenance unavailable"):
         bridge.execute(request)
 
@@ -369,6 +369,6 @@ def test_missing_durable_evidence_store_fails_closed(tmp_path: Path) -> None:
     bridge, _, _ = _configured(tmp_path)
     request = _request(tmp_path, package_root)
     bridge.submit(request, now=datetime.now(timezone.utc))
-    bridge._evidence_store = None
+    bridge._evidence_store = None  # type: ignore[assignment]
     with pytest.raises(AgentSkillsRuntimeError, match="durable evidence store"):
         bridge.execute(request)
