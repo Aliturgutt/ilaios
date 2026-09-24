@@ -2,7 +2,6 @@ import Link from "next/link";
 import SpatialArchitecture from "./SpatialArchitecture";
 import SystemVisuals from "./SystemVisuals";
 import CanonicalSystemDetail from "./CanonicalSystemDetail";
-import { motion } from "motion/react";
 
 type Locale = "en" | "tr";
 
@@ -43,7 +42,7 @@ const copy = {
     details: [["Kontrol katmanı", "Yetkinin nasıl merkezde kaldığı", "/tr/platform/control-plane"], ["Yürütme", "Kabul edilmiş işin nasıl yapıldığı", "/tr/platform/execution"], ["Kanıt", "Sonuçların nasıl incelenebilir kaldığı", "/tr/platform/evidence"]],
     assuranceEyebrow: "Teknik güvence",
     assuranceTitle: "Kimlik, yetkili bağlam ve yönetilen bilgi ürün akışının altında açıkça korunur.",
-    assuranceLead: "Bu teknik görünümler talep kimliğini, yetkilendirmeyi ve kaynak kökeni ana pazarlama anlatısına dönüştürmeden incelenebilir tutar.",
+    assuranceLead: "Bu teknik görünümler talep kimliğini, yetkilendirmeyi ve kaynak kökenini ana pazarlama anlatısına dönüştürmeden incelenebilir tutar.",
     technical: "Teknik modeli mi arıyorsun?",
     architecture: "Mimariyi incele",
     use: "ILAIOS'un neler üretebildiğini keşfet",
@@ -55,161 +54,13 @@ export default function PlatformPage({ locale }: { locale: Locale }) {
   const c = copy[locale];
   const base = locale === "tr" ? "/tr" : "";
   return <>
-    {/* Hero Section with Motion */}
-    <section className="shell page-hero compact-page-hero pt-20 pb-20">
-      <motion.div
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1, transition: { duration: 0.8, ease: [0.4, 0, 0.2, 1] } }}
-      >
-        <div className="eyebrow text-sm tracking-wider text-gray-400">{c.eyebrow}</div>
-        <h1 className="text-5xl font-semibold tracking-tighter mb-4">{c.title}</h1>
-        <p className="text-base leading-relaxed max-w-2xl mb-6 text-gray-300">{c.lead}</p>
-        <div className="actions flex items-center gap-4 mt-4">
-          <Link className="button bg-gray-900 text-white px-8 py-3 rounded-md font-semibold hover:bg-gray-700 transition-colors duration-200 hover-lift hover-scale" href={`${base}/use-ilaios`}>
-            {c.use}
-          </Link>
-        </div>
-      </motion.div>
-    </section>
-    <section className="section pt-20 pb-20">
-      <motion.div
-        initial={{ x: -20, opacity: 0 }}
-        whileInView={{ x: 0, opacity: 1, transition: { duration: 0.6, ease: [0.4, 0, 0.2, 1] } }}
-      >
-        <div className="shell platform-map-layout grid gap-8">
-          <div className="platform-plane-list">
-            <div className="eyebrow text-sm tracking-wider text-gray-400">{c.mapEyebrow}</div>
-            <h2 className="text-3xl font-semibold tracking-tighter mb-4">{c.mapTitle}</h2>
-            {c.planes.map(([title, text], index) => (
-              <motion.div
-                key={title}
-                initial={{ x: -10, opacity: 0 }}
-                whileInView={{ x: 0, opacity: 1, transition: { duration: 0.4, delay: index * 0.1 } }}
-                className="border border-gray-600 rounded-lg p-6 hover:bg-gray-700 hover:border-gray-600 hover:text-white transition-all duration-200 hover-lift hover-scale"
-              >
-                <span className="text-xs font-semibold text-gray-400 shrink-0">{String(index + 1).padStart(2, "0")}</span>
-                <div>
-                  <strong className="text-lg font-semibold text-white">{title}</strong>
-                  <p className="text-base leading-relaxed text-gray-300">{text}</p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-          <SpatialArchitecture locale={locale} />
-        </div>
-      </motion.div>
-    </section>
-    <section className="section surface-section pt-24 pb-24">
-      <motion.div
-        initial={{ x: -20, opacity: 0 }}
-        whileInView={{ x: 0, opacity: 1, transition: { duration: 0.6, ease: [0.4, 0, 0.2, 1] } }}
-      >
-        <div className="shell">
-          <div className="section-heading">
-            <div>
-              <div className="eyebrow text-sm tracking-wider text-gray-400">{locale === "tr" ? "Kontrol farkı" : "The control difference"}</div>
-              <h2 className="text-3xl font-semibold tracking-tighter mb-4">{c.separationTitle}</h2>
-            </div>
-            <p className="text-base leading-relaxed mb-6 text-gray-300">{c.separationLead}</p>
-          </div>
-          <SystemVisuals locale={locale} variant="planes" />
-        </div>
-      </motion.div>
-    </section>
-    <section className="section pt-20 pb-20">
-      <motion.div
-        initial={{ x: -20, opacity: 0 }}
-        whileInView={{ x: 0, opacity: 1, transition: { duration: 0.6, ease: [0.4, 0, 0.2, 1] } }}
-      >
-        <div className="shell">
-          <div className="compact-heading-row">
-            <div>
-              <div className="eyebrow text-sm tracking-wider text-gray-400">{c.runtimeEyebrow}</div>
-              <h2 className="text-3xl font-semibold tracking-tighter mb-4">{c.runtimeTitle}</h2>
-            </div>
-          </div>
-          <div className="runtime-line grid gap-6 pt-8">
-            {c.runtime.map(([title, detail], index) => (
-              <motion.div
-                key={title}
-                initial={{ x: -10, opacity: 0 }}
-                whileInView={{ x: 0, opacity: 1, transition: { duration: 0.4, delay: index * 0.1 } }}
-                className="flex flex-col items-start gap-2"
-              >
-                <span className="text-xs font-semibold text-gray-400 shrink-0">{String(index + 1).padStart(2, "0")}</span>
-                <strong className="text-lg font-semibold text-white">{title}</strong>
-                <small className="text-sm text-gray-400">{detail}</small>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </motion.div>
-    </section>
-    <section className="section surface-section pt-24 pb-24">
-      <motion.div
-        initial={{ x: -20, opacity: 0 }}
-        whileInView={{ x: 0, opacity: 1, transition: { duration: 0.6, ease: [0.4, 0, 0.2, 1] } }}
-      >
-        <div className="shell">
-          <div className="section-heading">
-            <div>
-              <div className="eyebrow text-sm tracking-wider text-gray-400">{c.assuranceEyebrow}</div>
-              <h2 className="text-3xl font-semibold tracking-tighter mb-4">{c.assuranceTitle}</h2>
-            </div>
-            <p className="text-base leading-relaxed mb-6 text-gray-300">{c.assuranceLead}</p>
-          </div>
-          <CanonicalSystemDetail locale={locale} variant="journey" />
-          <CanonicalSystemDetail locale={locale} variant="knowledge" />
-        </div>
-      </motion.div>
-    </section>
-    <section className="section"><motion.div
-        initial={{ x: -20, opacity: 0 }}
-        whileInView={{ x: 0, opacity: 1, transition: { duration: 0.6, ease: [0.4, 0, 0.2, 1] } }}
-      >
-        <div className="shell detail-directory grid gap-4 pt-8">
-          {c.details.map(([title, text, href], index) => (
-            <motion.div
-              key={href}
-              initial={{ x: -10, opacity: 0 }}
-              whileInView={{ x: 0, opacity: 1, transition: { duration: 0.4, delay: index * 0.1 } }}
-              className="flex items-center gap-2 px-4 py-3 bg-gray-800 rounded-md text-base font-medium hover:bg-gray-700 hover:text-white transition-colors duration-200 hover-lift hover-scale"
-            >
-              <span>{title}</span>
-              <strong>{text}</strong>
-              <i>→</i>
-            </motion.div>
-          ))}
-        </div>
-      </motion.div></section>
-    <section className="section compact-section pt-20 pb-20">
-      <motion.div
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1, transition: { duration: 0.8, ease: [0.4, 0, 0.2, 1] } }}
-      >
-        <div className="shell compact-cta text-center">
-          <div>
-            <div className="eyebrow text-sm tracking-wider text-gray-400">{c.technical}</div>
-            <h2 className="text-3xl font-semibold tracking-tighter mb-4">{c.separationTitle}</h2>
-          </div>
-          <div className="actions flex items-center justify-center gap-4 mt-8">
-            <Link className="button secondary border border-gray-600 px-8 py-3 rounded-md font-semibold hover:bg-gray-700 hover:text-white transition-colors duration-200 hover-lift hover-scale" href={`${base}/architecture`}>
-              {c.architecture}
-            </Link>
-          </div>
-        </div>
-      </motion.div>
-    </section>
-    <section className="section compact-section pt-20 pb-20">
-      <motion.div
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1, transition: { duration: 0.8, ease: [0.4, 0, 0.2, 1] } }}
-      >
-        <div className="shell status-note text-center">
-          <span className="text-sm tracking-wider text-gray-400">{locale === "tr" ? "Güncel durum" : "Current reality"}</span>
-          <p className="text-base leading-relaxed mt-2 text-gray-300">{c.current}</p>
-        </div>
-      </motion.div>
-    </section>
+    <section className="shell page-hero compact-page-hero"><div className="eyebrow">{c.eyebrow}</div><h1>{c.title}</h1><p className="lead">{c.lead}</p><div className="actions"><Link className="button" href={`${base}/use-ilaios`}>{c.use}</Link></div></section>
+    <section className="section"><div className="shell platform-map-layout"><div className="platform-plane-list"><div className="eyebrow">{c.mapEyebrow}</div><h2>{c.mapTitle}</h2>{c.planes.map(([title, text], index) => <article key={title}><span>{String(index + 1).padStart(2, "0")}</span><div><strong>{title}</strong><p>{text}</p></div></article>)}</div><SpatialArchitecture locale={locale} /></div></section>
+    <section className="section surface-section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">{locale === "tr" ? "Kontrol farkı" : "The control difference"}</div><h2>{c.separationTitle}</h2></div><p>{c.separationLead}</p></div><SystemVisuals locale={locale} variant="planes" /></div></section>
+    <section className="section"><div className="shell"><div className="compact-heading-row"><div><div className="eyebrow">{c.runtimeEyebrow}</div><h2>{c.runtimeTitle}</h2></div></div><div className="runtime-line">{c.runtime.map(([title, detail], index) => <div key={title}><span>{String(index + 1).padStart(2, "0")}</span><strong>{title}</strong><small>{detail}</small></div>)}</div></div></section>
+    <section className="section surface-section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">{c.assuranceEyebrow}</div><h2>{c.assuranceTitle}</h2></div><p>{c.assuranceLead}</p></div><CanonicalSystemDetail locale={locale} variant="journey" /><CanonicalSystemDetail locale={locale} variant="knowledge" /></div></section>
+    <section className="section"><div className="shell detail-directory">{c.details.map(([title, text, href]) => <Link href={href} key={href}><span>{title}</span><strong>{text}</strong><i>→</i></Link>)}</div></section>
+    <section className="section compact-section"><div className="shell compact-cta"><div><div className="eyebrow">{c.technical}</div><h2>{c.separationTitle}</h2></div><div className="actions"><Link className="button secondary" href={`${base}/architecture`}>{c.architecture}</Link></div></div></section>
+    <section className="section compact-section"><div className="shell status-note"><span>{locale === "tr" ? "Güncel durum" : "Current reality"}</span><p>{c.current}</p></div></section>
   </>;
 }

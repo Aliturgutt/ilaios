@@ -44,3 +44,45 @@
   .canonical-linear>div>strong{grid-column:2;font-size:.88rem;line-height:1.4}
   .canonical-linear>div>i{display:none}
 }
+
+/* Web factory: keep all 17 lifecycle steps in balanced, readable rows. */
+.canonical-detail-panel[data-visual-role="web-factory-full-lifecycle"] .canonical-linear {
+  display:grid !important;
+  grid-template-columns:repeat(6,minmax(0,1fr)) !important;
+  gap:0;
+  overflow:visible !important;
+  margin-left:0;
+  border-left:0;
+}
+.canonical-detail-panel[data-visual-role="web-factory-full-lifecycle"] .canonical-linear > div {
+  display:block;
+  min-width:0 !important;
+  width:auto !important;
+  padding:12px 10px;
+  border:1px solid var(--line);
+  border-radius:0;
+}
+.canonical-detail-panel[data-visual-role="web-factory-full-lifecycle"] .canonical-linear > div > span {
+  position:static;
+  display:block;
+  width:auto;
+  height:auto;
+  margin:0 0 7px;
+  border:0;
+  background:transparent;
+}
+.canonical-detail-panel[data-visual-role="web-factory-full-lifecycle"] .canonical-linear > div > strong {
+  display:block;
+  font-size:.82rem;
+  line-height:1.45;
+}
+.canonical-detail-panel[data-visual-role="web-factory-full-lifecycle"] .canonical-linear > div > i {display:none !important}
+@media (min-width:761px) and (max-width:1100px) {
+  .canonical-detail-panel[data-visual-role="web-factory-full-lifecycle"] .canonical-linear {grid-template-columns:repeat(4,minmax(0,1fr)) !important}
+}
+@media (max-width:760px) {
+  .canonical-detail-panel[data-visual-role="web-factory-full-lifecycle"] .canonical-linear {grid-template-columns:repeat(2,minmax(0,1fr)) !important}
+}
+@media (max-width:420px) {
+  .canonical-detail-panel[data-visual-role="web-factory-full-lifecycle"] .canonical-linear {grid-template-columns:1fr !important}
+}

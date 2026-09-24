@@ -24,15 +24,6 @@ const heroTitleStyle = {
   maxWidth: "19ch",
 } as const;
 
-const placeholderCardStyle = {
-  minHeight: "116px",
-  padding: "20px",
-  border: "1px solid var(--line)",
-  borderRadius: "var(--v2-radius)",
-  background: "transparent",
-  boxSizing: "border-box",
-} as const;
-
 export default function Page() {
   return <>
     <section className="shell page-hero compact-page-hero">
@@ -42,11 +33,14 @@ export default function Page() {
     </section>
     <section className="section">
       <div className="shell">
-        <div className="detail-directory">
-          {docs.map(([title, text, href]) => href ? (
-            <Link href={href} key={title}><span>{title}</span><strong>{text}</strong><i>→</i></Link>
-          ) : (
-            <article style={placeholderCardStyle} key={title}><div className="eyebrow">{title}</div><p>{text}</p></article>
+        <div className="docs-link-grid">
+          {docs.filter((entry) => entry[2] !== null).map(([title, text, href]) => (
+            <Link href={href!} key={title}><span>{title}</span><strong>{text}</strong><i aria-hidden="true">→</i></Link>
+          ))}
+        </div>
+        <div className="docs-pending" aria-label="Henüz yayınlanmamış dokümanlar">
+          {docs.filter((entry) => entry[2] === null).map(([title, text]) => (
+            <article key={title}><span className="eyebrow">{title} · Hazırlanıyor</span><p>{text}</p></article>
           ))}
         </div>
       </div>

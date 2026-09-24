@@ -1,6 +1,5 @@
 import Link from "next/link";
 import SystemVisuals from "./SystemVisuals";
-import { motion } from "motion/react";
 
 type Locale = "en" | "tr";
 
@@ -36,12 +35,12 @@ const copy = {
     contract: "doğrulanmış yetki",
     core: "Yetkilendir · Sınırla · Doğrula",
     visualTitle: "Bir talep tek başına dış sistem etkisine dönüşmez.",
-    visualLead: "Modeller, araçlar, sağlayıcılar, tarayıcılar ve worker'lar yürütme kaynağı olarak kalır. Ne yapabileceklerini kontrol sınırı, neyin kabul edilebileceğini ise doğrulama belirler.",
+    visualLead: "Modeller, araçlar, sağlayıcılar, tarayıcılar ve çalışan süreçler yürütme kaynağı olarak kalır. Ne yapabileceklerini kontrol sınırı, neyin kabul edilebileceğini ise doğrulama belirler.",
     admissionTitle: "Hassas iş başlamadan önce gerekli kontroller çözülür.",
-    admissionLead: "Kimlik ve tenant kapsamı, politika, gerekli onay, izinli araç ve hedefler, veri kısıtları, bütçe ve kabul ölçütleri sınırlandırılmış yürütmeden önce belirlenir. Gerekli yetki eksikse işlem kapalı kalır.",
+    admissionLead: "Kimlik ve kiracı kapsamı, politika, gerekli onay, izinli araç ve hedefler, veri kısıtları, bütçe ve kabul ölçütleri sınırlandırılmış yürütmeden önce belirlenir. Gerekli yetki eksikse işlem kapalı kalır.",
     pathTitle: "Kamuya açık güvenlik modeli sade: yetkilendir, sınırla, doğrula ve kanıtı koru.",
     path: [["01", "Talep", "Kimliği doğrulanmış niyet"], ["02", "Yetkilendir", "Kimlik · politika · onay"], ["03", "Sınırla", "Araçlar · hedefler · veri"], ["04", "Doğrula", "Kabul ölçütleri"], ["05", "Kaydet", "Kanıt · denetim bağlamı"]],
-    principles: [["En az yetki", "Yetki açık, dar ve geri alınabilir olmalıdır."], ["Tenant izolasyonu", "Verinin ilgili olması yeterli değildir; doğru tenant ve yetki bağlamı yine gereklidir."], ["İnsan otoritesi", "Onay gerektiğinde önerilen işleme bağlanır ve bir ajan tarafından kendi kendine verilemez."], ["Kapalı kal", "Gerekli yetki, doğrulama veya kanıt eksikse hassas iş ilerlemez."], ["İddiadan önce kanıt", "Güvenlikle ilgili sonuçlar model anlatımına değil incelenebilir kanıta dayanır."], ["Erken iddia yok", "Sertifika ve doğrulamalar yalnız bağımsız olarak alınmış ve güncelse belirtilir."]],
+    principles: [["En az yetki", "Yetki açık, dar ve geri alınabilir olmalıdır."], ["Kiracı izolasyonu", "Verinin ilgili olması yeterli değildir; doğru kiracı ve yetki bağlamı yine gereklidir."], ["İnsan otoritesi", "Onay gerektiğinde önerilen işleme bağlanır ve bir ajan tarafından kendi kendine verilemez."], ["Kapalı kal", "Gerekli yetki, doğrulama veya kanıt eksikse hassas iş ilerlemez."], ["İddiadan önce kanıt", "Güvenlikle ilgili sonuçlar model anlatımına değil incelenebilir kanıta dayanır."], ["Erken iddia yok", "Sertifika ve doğrulamalar yalnız bağımsız olarak alınmış ve güncelse belirtilir."]],
     permissions: "İzinler",
     approvals: "Onaylar",
     audit: "Denetim",
@@ -49,188 +48,18 @@ const copy = {
   },
 } as const;
 
+const readableSurface = { color: "var(--text)", WebkitTextFillColor: "var(--text)" } as const;
+const readableMuted = { color: "var(--muted)", WebkitTextFillColor: "var(--muted)" } as const;
+
 export default function SecurityPage({ locale }: { locale: Locale }) {
   const c = copy[locale];
   const base = locale === "tr" ? "/tr" : "";
   return <>
-    {/* Hero Section with Motion */}
-    <section className="shell page-hero compact-page-hero pt-20 pb-20">
-      <motion.div
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1, transition: { duration: 0.8, ease: [0.4, 0, 0.2, 1] } }}
-      >
-        <div>
-          <div className="eyebrow text-sm tracking-wider text-gray-400">{c.eyebrow}</div>
-          <h1 className="text-5xl font-bold tracking-tighter mb-4">{c.title}</h1>
-        </div>
-        <p className="text-base leading-relaxed max-w-2xl mt-4">{c.lead}</p>
-      </motion.div>
-    </section>
-    <section className="section pt-24 pb-24">
-      <motion.div
-        initial={{ x: -20, opacity: 0 }}
-        whileInView={{ x: 0, opacity: 1, transition: { duration: 0.6, ease: [0.4, 0, 0.2, 1] } }}
-      >
-        <div className="shell security-boundary-layout grid gap-8 md:grid-cols-2 items-start">
-          <div>
-            <div className="eyebrow text-sm tracking-wider text-gray-400">{locale === "tr" ? "Güven sınırı" : "Trust boundary"}</div>
-            <h2 className="text-3xl font-bold tracking-tighter mb-4">{c.boundaryTitle}</h2>
-            <p className="text-base leading-relaxed mb-6">{c.boundaryText}</p>
-            <div className="security-detail-links flex flex-col gap-3">
-              <motion.a
-                key="permissions"
-                initial={{ x: -10, opacity: 0 }}
-                whileInView={{ x: 0, opacity: 1, transition: { duration: 0.4, delay: 0 } }}
-                className="text-link inline-flex items-center gap-2 text-gray-400 font-medium hover:text-black transition-colors duration-200 hover-lift hover-scale"
-                href={`${base}/security/permissions`}
-              >
-                {c.permissions} →
-              </motion.a>
-              <motion.a
-                key="approvals"
-                initial={{ x: -10, opacity: 0 }}
-                whileInView={{ x: 0, opacity: 1, transition: { duration: 0.4, delay: 0.1 } }}
-                className="text-link inline-flex items-center gap-2 text-gray-400 font-medium hover:text-black transition-colors duration-200 hover-lift hover-scale"
-                href={`${base}/security/approvals`}
-              >
-                {c.approvals} →
-              </motion.a>
-              <motion.a
-                key="audit"
-                initial={{ x: -10, opacity: 0 }}
-                whileInView={{ x: 0, opacity: 1, transition: { duration: 0.4, delay: 0.2 } }}
-                className="text-link inline-flex items-center gap-2 text-gray-400 font-medium hover:text-black transition-colors duration-200 hover-lift hover-scale"
-                href={`${base}/security/audit`}
-              >
-                {c.audit} →
-              </motion.a>
-            </div>
-          </div>
-          <motion.div
-            key="trust-gate"
-            initial={{ x: -20, opacity: 0 }}
-            whileInView={{ x: 0, opacity: 1, transition: { duration: 0.4, delay: 0.3 } }}
-            className="flex flex-col items-center gap-4 p-6 border border-text rounded-lg hover:bg-bg-lighter hover:border-text hover:text-text transition-all duration-200 hover-lift hover-scale"
-          >
-            <div className="dark-surface px-4 py-2 text-center">
-              <span className="text-xs font-bold text-gray-400">CLIENT</span>
-              <p className="text-sm font-semibold">{c.client}</p>
-            </div>
-            <i className="text-gray-400"><small>{c.contract}</small></i>
-            <div className="is-authority dark-surface px-4 py-2 text-center">
-              <span className="text-xs font-bold text-gray-400">CONTROL PLANE</span>
-              <p className="text-sm font-semibold">{c.core}</p>
-            </div>
-          </motion.div>
-        </div>
-      </motion.div>
-    </section>
-    <section className="section surface-section pt-24 pb-24">
-      <motion.div
-        initial={{ x: -20, opacity: 0 }}
-        whileInView={{ x: 0, opacity: 1, transition: { duration: 0.6, ease: [0.4, 0, 0.2, 1] } }}
-      >
-        <div className="shell">
-          <div className="section-heading">
-            <div>
-              <div className="eyebrow text-sm tracking-wider text-gray-400">{locale === "tr" ? "Talep → dış etki" : "Request → side effect"}</div>
-              <h2 className="text-3xl font-bold tracking-tighter mb-4">{c.visualTitle}</h2>
-            </div>
-            <p className="text-base leading-relaxed mb-6">{c.visualLead}</p>
-          </div>
-          <SystemVisuals locale={locale} variant="trust" />
-        </div>
-      </motion.div>
-    </section>
-    <section className="section pt-24 pb-24">
-      <motion.div
-        initial={{ x: -20, opacity: 0 }}
-        whileInView={{ x: 0, opacity: 1, transition: { duration: 0.6, ease: [0.4, 0, 0.2, 1] } }}
-      >
-        <div className="shell">
-          <div className="section-heading">
-            <div>
-              <div className="eyebrow text-sm tracking-wider text-gray-400">{locale === "tr" ? "Yürütme öncesi" : "Before execution"}</div>
-              <h2 className="text-3xl font-bold tracking-tighter mb-4">{c.admissionTitle}</h2>
-            </div>
-            <p className="text-base leading-relaxed mb-6">{c.admissionLead}</p>
-          </div>
-          <div className="security-process grid gap-8">
-            {c.path.map(([n, title, detail], index) => (
-              <motion.div
-                key={n}
-                initial={{ x: -10, opacity: 0 }}
-                whileInView={{ x: 0, opacity: 1, transition: { duration: 0.4, delay: index * 0.1 } }}
-                className="border border-text rounded-lg p-6 hover:bg-bg-lighter hover:border-text hover:text-text transition-all duration-200 hover-lift hover-scale"
-              >
-                <span className="text-xs font-bold text-gray-400">{n}</span>
-                <strong className="text-lg font-semibold block mt-2">{title}</strong>
-                <small className="text-sm text-gray-400 block mt-1">{detail}</small>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </motion.div>
-    </section>
-    <section className="section surface-section pt-24 pb-24">
-      <motion.div
-        initial={{ x: -20, opacity: 0 }}
-        whileInView={{ x: 0, opacity: 1, transition: { duration: 0.6, ease: [0.4, 0, 0.2, 1] } }}
-      >
-        <div className="shell">
-          <div className="compact-heading-row">
-            <div>
-              <div className="eyebrow text-sm tracking-wider text-gray-400">{locale === "tr" ? "Güvenlik ilkeleri" : "Security principles"}</div>
-              <h2 className="text-3xl font-bold tracking-tighter mb-4">{c.pathTitle}</h2>
-            </div>
-          </div>
-          <div className="principle-directory grid gap-8 pt-8">
-            {c.principles.map(([title, text], index) => (
-              <motion.div
-                key={title}
-                initial={{ x: -10, opacity: 0 }}
-                whileInView={{ x: 0, opacity: 1, transition: { duration: 0.4, delay: index * 0.1 } }}
-                className="border border-text rounded-lg p-6 hover:bg-bg-lighter hover:border-text hover:text-text transition-all duration-200 hover-lift hover-scale"
-              >
-                <span className="text-xs font-bold text-gray-400">{String(index + 1).padStart(2, "0")}</span>
-                <strong className="text-lg font-semibold block mt-2">{title}</strong>
-                <p className="text-base leading-relaxed text-gray-400 mt-1">{text}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </motion.div>
-    </section>
-    <section className="section compact-section pt-20 pb-20">
-      <motion.div
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1, transition: { duration: 0.8, ease: [0.4, 0, 0.2, 1] } }}
-      >
-        <div className="shell status-note text-center">
-          <span className="micro-label text-xs font-bold text-gray-400">{locale === "tr" ? "Sorumlu bildirim" : "Responsible reporting"}</span>
-          <p className="text-base leading-relaxed mt-2">{c.report}</p>
-          <p className="mt-2">
-            <motion.a
-              key="security-email"
-              initial={{ x: -10, opacity: 0 }}
-              whileInView={{ x: 0, opacity: 1, transition: { duration: 0.4, delay: 0 } }}
-              className="text-link hover:text-text hover-lift hover-scale"
-              href="mailto:security@ilaios.com"
-            >
-              security@ilaios.com
-            </motion.a> ·
-            <motion.a
-              key="abuse-email"
-              initial={{ x: -10, opacity: 0 }}
-              whileInView={{ x: 0, opacity: 1, transition: { duration: 0.4, delay: 0.1 } }}
-              className="text-link hover:text-text hover-lift hover-scale"
-              href="mailto:abuse@ilaios.com"
-            >
-              abuse@ilaios.com
-            </motion.a>
-          </p>
-        </div>
-      </motion.div>
-    </section>
+    <section className="shell page-hero compact-page-hero"><div className="eyebrow">{c.eyebrow}</div><h1>{c.title}</h1><p className="lead">{c.lead}</p></section>
+    <section className="section"><div className="shell security-boundary-layout security-page-layout"><div><div className="eyebrow">{locale === "tr" ? "Güven sınırı" : "Trust boundary"}</div><h2>{c.boundaryTitle}</h2><p>{c.boundaryText}</p><div className="security-detail-links"><Link href={`${base}/security/permissions`}>{c.permissions} →</Link><Link href={`${base}/security/approvals`}>{c.approvals} →</Link><Link href={`${base}/security/audit`}>{c.audit} →</Link></div></div><div className="trust-gate security-page-gate"><div className="is-authority dark-surface"><span>{locale === "tr" ? "İSTEMCİ" : "CLIENT"}</span><strong>{c.client}</strong></div><div className="security-gate-connector" aria-label={c.contract}><span>{c.contract}</span><span className="security-gate-arrow" aria-hidden="true">→</span></div><div className="is-authority dark-surface"><span>{locale === "tr" ? "KONTROL KATMANI" : "CONTROL PLANE"}</span><strong>{c.core}</strong></div></div></div></section>
+    <section className="section surface-section"><div className="shell security-page-visual"><div className="section-heading"><div><div className="eyebrow">{locale === "tr" ? "Talep → dış etki" : "Request → side effect"}</div><h2>{c.visualTitle}</h2></div><p>{c.visualLead}</p></div><SystemVisuals locale={locale} variant="trust" /></div></section>
+    <section className="section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">{locale === "tr" ? "Yürütme öncesi" : "Before execution"}</div><h2>{c.admissionTitle}</h2></div><p>{c.admissionLead}</p></div><div className="security-process security-page-process">{c.path.map(([, title, detail]) => <article className="dark-surface" style={readableSurface} key={title}><strong style={readableSurface}>{title}</strong><small style={readableMuted}>{detail}</small></article>)}</div></div></section>
+    <section className="section surface-section"><div className="shell"><div className="compact-heading-row"><div><div className="eyebrow">{locale === "tr" ? "Güvenlik ilkeleri" : "Security principles"}</div><h2>{c.pathTitle}</h2></div></div><div className="principle-directory security-page-principles">{c.principles.map(([title, text]) => <article className="dark-surface" style={readableSurface} key={title}><strong style={readableSurface}>{title}</strong><p style={readableMuted}>{text}</p></article>)}</div></div></section>
+    <section className="section compact-section"><div className="shell status-note security-page-report"><span>{locale === "tr" ? "Sorumlu bildirim" : "Responsible reporting"}</span><p>{c.report}</p><p><a className="text-link" href="mailto:security@ilaios.com">security@ilaios.com</a> · <a className="text-link" href="mailto:abuse@ilaios.com">abuse@ilaios.com</a></p></div></section>
   </>;
 }

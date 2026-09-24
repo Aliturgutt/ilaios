@@ -9,7 +9,7 @@ function currentTheme(): Theme {
   return document.documentElement.dataset.theme === "light" ? "light" : "dark";
 }
 
-export default function ThemeToggle({ locale, className }: { locale: Locale; className?: string }) {
+export default function ThemeToggle({ locale }: { locale: Locale }) {
   const label = locale === "tr" ? "Temayı değiştir" : "Toggle theme";
 
   const toggle = () => {
@@ -19,7 +19,7 @@ export default function ThemeToggle({ locale, className }: { locale: Locale; cla
     localStorage.setItem(STORAGE_KEY, next);
   };
 
-  return <button className={`theme-toggle ${className ?? ''}`} type="button" onClick={toggle} aria-label={label} title={label}>
+  return <button className="theme-toggle" type="button" onClick={toggle} aria-label={label} title={label}>
     <span aria-hidden="true">◐</span>
     <strong>{locale === "tr" ? "Tema" : "Theme"}</strong>
   </button>;

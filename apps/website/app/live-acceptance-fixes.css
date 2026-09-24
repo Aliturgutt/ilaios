@@ -222,3 +222,539 @@ html body main :where(section,[id]) {
     max-width: 100% !important;
   }
 }
+
+/* Nine-area homepage preview readability. */
+.product-experience .product-experience-head { grid-template-columns: minmax(0, 1fr) !important; gap: 8px !important; }
+.product-experience .product-experience-head p { max-width: 68ch !important; font-size: .875rem !important; line-height: 1.55 !important; }
+.product-experience .product-experience-grid { min-height: 0 !important; }
+.product-experience .evidence-preview > span,
+.product-experience .evidence-preview li { font-size: .875rem !important; line-height: 1.55 !important; }
+.product-experience .product-mode-tabs button { min-height: 36px; }
+
+/* Mobile discovery cue for the nine-area tab strip. */
+.product-mode-scroll-hint { display: none; }
+@media (max-width: 560px) {
+  .product-experience .product-mode-scroll-hint { display: block; margin: 7px 0 4px; color: var(--muted, #aeb8be); font-size: .75rem; line-height: 1.5; }
+}
+
+/* Homepage/footer link targets measured below 44px in Chrome. */
+.home-control-ledger-v2 a.text-link { display: inline-flex; align-items: center; min-height: 44px; }
+.site-footer .footer-nav-grid a,
+.site-footer .footer-social a { display: inline-flex; align-items: center; min-height: 44px; }
+/* Preserve touch targets while avoiding the one-column mobile footer stack. */
+@media (max-width: 600px) {
+  html body .site-footer .footer-nav-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .site-footer .footer-row a { display: inline-flex; align-items: center; min-height: 44px; }
+}
+
+/* Homepage: text contrast and legibility in the nine-area and process sections. */
+html[data-theme="light"] body .surface-section .compact-cta p { color: #505050 !important; }
+html[data-theme="light"] body .home-process-rail-v2 article > span { color: #505050 !important; }
+html[data-theme="light"] body .home-process-rail-v2 article p { color: #505050 !important; }
+@media (min-width: 601px) {
+  .home-process-rail-v2 article p { font-size: .875rem !important; line-height: 1.55 !important; }
+}
+.product-readiness { display: inline-flex; align-items: center; margin: 8px 0; padding: 5px 10px; border: 1px solid currentColor; border-radius: 999px; color: var(--fg, #222); font-size: .8125rem; line-height: 1.4; }
+
+/* Homepage screenshot review: keep the workflow stages adjacent to the preview content. */
+@media (min-width: 761px) {
+  .product-experience .product-experience-grid { align-items: start !important; }
+  .product-experience .execution-preview { align-self: start !important; }
+}
+/* Give the outcome explanation readable contrast on the light surface. */
+html[data-theme="light"] body .surface-section .compact-cta p { color: #505050 !important; }
+/* Make the five process descriptions readable without changing their semantic order. */
+.home-process-rail-v2 article p { font-size: max(.875rem, 14px) !important; line-height: 1.55 !important; }
+
+/* Production catalog: maintain readable contrast on hovered/focused cards. */
+html[data-theme="light"] body .factories-catalog-grid > .card:is(:hover, :focus-within) {
+  background: #1c1c1c !important;
+  border-color: #777 !important;
+}
+html[data-theme="light"] body .factories-catalog-grid > .card:is(:hover, :focus-within) :is(.micro-label, h3, p, .text-link) {
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+  opacity: 1 !important;
+}
+html[data-theme="dark"] body .factories-catalog-grid > .card:is(:hover, :focus-within) :is(.micro-label, h3, p, .text-link) {
+  color: #f3f4f5 !important;
+  -webkit-text-fill-color: #f3f4f5 !important;
+  opacity: 1 !important;
+}
+
+/* Production catalog: align all nine card links without changing other pages. */
+.factories-catalog-grid > .card {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start;
+}
+.factories-catalog-grid > .card > .text-link {
+  margin-top: auto !important;
+  padding-top: 12px;
+}
+.factories-catalog-grid { margin-bottom: 8px; }
+.factories-combine-section { border-top: 1px solid var(--line); }
+@media (min-width: 941px) {
+  .factories-combine-section .compact-cta {
+    grid-template-columns: minmax(0, 780px) auto !important;
+    justify-content: start !important;
+    column-gap: clamp(20px, 3vw, 48px) !important;
+  }
+}
+@media (max-width: 940px) {
+  .factories-combine-section .compact-cta { grid-template-columns: minmax(0, 1fr) !important; }
+  .factories-combine-section .actions { flex-wrap: wrap; }
+}
+
+/* Platform page only: approved black primary call-to-action. */
+html[data-theme="light"] body main:has(.platform-map-layout) .page-hero .actions > a.button:not(.secondary) { background: #0a0a0a !important; background-color: #0a0a0a !important; border-color: #0a0a0a !important; color: #fff !important; -webkit-text-fill-color: #fff !important; }
+
+/* Platform current-status label: readable grey on the light surface. */
+html[data-theme="light"] body main:has(.platform-map-layout) .status-note > span { color: #555 !important; }
+
+/* Platform execution map: readable labels on light cards and the selected dark card. */
+html[data-theme="light"] body main:has(.platform-map-layout) .spatial-node:not(.is-active) :where(span,strong,small) {
+  color: #303030 !important;
+  -webkit-text-fill-color: #303030 !important;
+  opacity: 1 !important;
+}
+html[data-theme="light"] body main:has(.platform-map-layout) .spatial-node.is-active {
+  background: #222 !important;
+  border-color: #777 !important;
+}
+html[data-theme="light"] body main:has(.platform-map-layout) .spatial-node.is-active :where(span,strong,small) {
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+  opacity: 1 !important;
+}
+
+/* Shared Website footer: preserve the approved homepage layout on every page. */
+body .site-footer { padding-top: clamp(24px, 3vw, 42px) !important; padding-bottom: 0 !important; }
+/* Match the compact footer reference without changing site-wide typography. */
+@media (min-width: 941px) {
+  html body .site-footer .footer-main { grid-template-columns: minmax(280px, 350px) minmax(0, 750px) !important; justify-content: start !important; gap: clamp(32px, 3vw, 55px) !important; padding-top: 28px !important; padding-bottom: 20px !important; }
+  html body .site-footer .footer-nav-grid { grid-template-columns: repeat(5, minmax(112px, 1fr)) !important; gap: 12px !important; }
+  html body .site-footer .footer-nav-grid > div { gap: 0 !important; }
+  html body .site-footer .footer-nav-grid a { min-height: 32px !important; }
+  html body .site-footer .footer-social a { min-height: 32px !important; }
+}
+body .site-footer .footer-row { padding-block: 12px !important; }
+html[data-theme="light"] body .site-footer .footer-row { color: #505050 !important; }
+html[data-theme="dark"] body .site-footer .footer-row { color: #b3b3b3 !important; }
+
+/* Readable text on dark hover surfaces throughout the Website. */
+html[data-theme="light"] body main .grid > .card:hover { background: #1c1c1c !important; }
+html[data-theme="light"] body main .grid > .card:hover :where(h2,h3,h4,p,small,span,strong,li,a) { color: #f5f5f5 !important; -webkit-text-fill-color: #f5f5f5 !important; opacity: 1 !important; }
+/* Header only: use the approved charcoal for hovered and selected navigation items. */
+html[data-theme="light"] body .site-header .nav-primary a:is(:hover,:focus-visible,[aria-current="page"]),
+html[data-theme="light"] body .site-header .nav-utility > a:is(:hover,:focus-visible,[aria-current="page"]),
+html[data-theme="light"] body .site-header .explore-menu summary:is(:hover,:focus-visible),
+html[data-theme="light"] body .site-header .explore-menu[open] summary { background: #222 !important; background-color: #222 !important; border-color: #777 !important; color: #fff !important; -webkit-text-fill-color: #fff !important; }
+/* The navigation uses a dark hover background: keep its text legible. */
+html[data-theme="light"] body .nav-primary a:hover,
+html[data-theme="light"] body .nav-utility > a:hover,
+html[data-theme="light"] body .explore-menu summary:is(:hover, :focus-visible),
+html[data-theme="light"] body .explore-menu[open] summary,
+html[data-theme="light"] body .explore-menu-panel a:is(:hover, :focus-visible),
+html[data-theme="light"] body .explore-menu-panel a[aria-current="page"] {
+  color: #f5f5f5 !important;
+  -webkit-text-fill-color: #f5f5f5 !important;
+}
+/* Selected and hovered dark action buttons must never inherit dark text. */
+html[data-theme="light"] body main :is(a,button):is(:hover, :focus-visible, [aria-current="page"]):where(.button, .btn, .button-primary, .btn-primary) {
+  color: #f5f5f5 !important;
+  -webkit-text-fill-color: #f5f5f5 !important;
+}
+/* Step numbers on white cards should remain visible without changing the approved layout. */
+html[data-theme="light"] body main .process-rail > article > span { color: #555 !important; opacity: 1 !important; }
+
+/* Use ILAIOS pricing: readable light cards, without changing other dark surfaces. */
+html[data-theme="light"] body #plans .use-factory-card.dark-surface {
+  background: #fff !important;
+  color: #171717 !important;
+  border: 1px solid #b9b9b9 !important;
+}
+html[data-theme="light"] body #plans .use-factory-card.dark-surface :where(h3,small,span,strong) {
+  color: #171717 !important;
+  -webkit-text-fill-color: #171717 !important;
+  opacity: 1 !important;
+}
+html[data-theme="light"] body #plans .use-factory-card.dark-surface :where(p,li) {
+  color: #444 !important;
+  -webkit-text-fill-color: #444 !important;
+  opacity: 1 !important;
+}
+html[data-theme="light"] body #plans .use-factory-card.dark-surface li { border-bottom-color: #d0d0d0 !important; }
+html[data-theme="light"] body #plans .use-factory-card.dark-surface .availability-chip {
+  background: #f2f2f2 !important;
+  color: #171717 !important;
+  -webkit-text-fill-color: #171717 !important;
+  border-color: #aaa !important;
+}
+/* Match the approved five-column pricing reference at desktop widths. */
+html body #plans .use-factory-grid { gap: 16px !important; align-items: stretch !important; }
+@media (min-width: 1400px) {
+  html body #plans .use-factory-grid { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
+}
+@media (min-width: 900px) and (max-width: 1399px) {
+  html body #plans .use-factory-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+}
+@media (min-width: 600px) and (max-width: 899px) {
+  html body #plans .use-factory-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+html body #plans .use-factory-card { display: flex !important; flex-direction: column !important; min-width: 0 !important; min-height: 0 !important; padding: 24px 22px !important; border-radius: 16px !important; box-shadow: none !important; }
+html body #plans .use-factory-card-head { display: contents !important; }
+html body #plans .use-factory-card-head > small { order: 0 !important; font-size: 1.05rem !important; font-weight: 700 !important; letter-spacing: normal !important; text-transform: none !important; }
+html body #plans .use-factory-card-head > .availability-chip { order: 1 !important; align-self: flex-start !important; margin: 26px 0 30px !important; padding: 0 !important; background: transparent !important; border: 0 !important; border-radius: 0 !important; font-size: 1.35rem !important; font-weight: 700 !important; }
+html body #plans .use-factory-card h3 { display: none !important; }
+html body #plans .use-factory-card > p { order: 2 !important; min-height: 100px !important; margin: 0 0 18px !important; line-height: 1.55 !important; }
+html body #plans .use-factory-card ul { order: 3 !important; margin: 0 0 22px !important; padding: 0 !important; }
+html body #plans .use-factory-card li { padding: 10px 0 !important; line-height: 1.45 !important; }
+html body #plans .use-factory-card > small { order: 4 !important; margin-top: auto !important; padding-top: 14px !important; line-height: 1.45 !important; }
+html body #plans .use-factory-card .use-plan-action { order: 5 !important; display: flex !important; justify-content: center !important; align-items: center !important; width: 100% !important; min-height: 48px !important; margin-top: 24px !important; background: #171717 !important; color: #fff !important; -webkit-text-fill-color: #fff !important; border-radius: 9px !important; font-weight: 600 !important; }
+/* Subscription-page reference: match the source card dimensions and rhythm. */
+html body #plans .use-factory-grid { gap: 12px !important; }
+html body #plans .use-factory-card { padding: 21px 17px !important; border-radius: 12px !important; min-height: 390px !important; }
+html body #plans .use-factory-card-head > small { font-size: 16px !important; }
+html body #plans .use-plan-price { font-size: 21px !important; min-height: 56px !important; margin: 20px 0 4px !important; letter-spacing: -.025em !important; }
+html body #plans .use-plan-included { min-height: 42px !important; margin: 0 !important; font-size: 13px !important; }
+html body #plans .use-plan-video { min-height: 0 !important; margin: 10px 0 14px !important; font-size: 13px !important; line-height: 1.6 !important; }
+html body #plans .use-plan-facts { flex: 1 !important; margin: 0 0 22px !important; border-top: 1px solid #d5d5d5 !important; }
+html body #plans .use-plan-facts li { padding: 8px 0 !important; font-size: 12px !important; }
+html body #plans .use-plan-enterprise-note { flex: 1 !important; margin: 0 !important; border-top: 1px solid #d5d5d5 !important; padding-top: 12px !important; font-size: 12px !important; }
+html body #plans .use-factory-card .use-plan-action { min-height: 0 !important; margin-top: auto !important; padding: 10px 12px !important; font-size: 13px !important; border-radius: 7px !important; }
+/* Subscription-page reference: five compact white cards with aligned actions. */
+html[data-theme="light"] body #plans { background: #fff !important; }
+html[data-theme="light"] body #plans .use-factory-card.dark-surface { border: 2px solid #202020 !important; color: #111 !important; }
+html body #plans .use-factory-card { padding: 28px 22px 26px !important; border-radius: 16px !important; }
+html body #plans .use-factory-card-head { display: flex !important; justify-content: space-between !important; align-items: flex-start !important; min-height: 24px !important; }
+html body #plans .use-factory-card-head > small { font-size: 1.15rem !important; }
+html body #plans .use-plan-recommended { border: 1px solid #222 !important; border-radius: 999px !important; padding: 5px 9px !important; font-size: .7rem !important; font-weight: 700 !important; }
+html body #plans .use-plan-price { display: block !important; margin: 26px 0 48px !important; min-height: 34px !important; font-size: clamp(1.05rem, 1.35vw, 1.45rem) !important; line-height: 1.35 !important; letter-spacing: normal !important; text-transform: none !important; }
+html body #plans .use-plan-included { min-height: 54px !important; margin: 0 0 24px !important; font-size: .875rem !important; }
+html body #plans .use-plan-video { min-height: 90px !important; margin: 0 0 14px !important; font-size: .875rem !important; line-height: 1.6 !important; }
+html body #plans .use-plan-facts { list-style: none !important; padding: 0 !important; margin: 0 0 24px !important; }
+html body #plans .use-plan-facts li { padding: 10px 0 !important; border-bottom: 1px solid #d5d5d5 !important; font-size: .875rem !important; }
+html body #plans .use-plan-enterprise-note { margin: 0 0 24px !important; font-size: .875rem !important; line-height: 1.6 !important; }
+html body #plans .use-factory-card .use-plan-action { margin-top: auto !important; padding: 10px 12px !important; min-height: 0 !important; font-size: 13px !important; border-radius: 7px !important; }
+html body #plans .use-factory-card .availability-chip { background: transparent !important; border: 0 !important; }
+@media (max-width: 599px) {
+  html body #plans .use-factory-grid { grid-template-columns: minmax(0, 1fr) !important; }
+  html body #plans .use-factory-card > p { min-height: 0 !important; }
+}
+/* Exact sizing model from app.ilaios.com/subscription/styles.css; override legacy generic card rules. */
+html body #plans .use-factory-grid { max-width: 1232px !important; margin-inline: auto !important; gap: 12px !important; }
+html body #plans .use-factory-grid > .use-factory-card.dark-surface { box-sizing: border-box !important; min-height: 390px !important; padding: 21px 17px !important; border-radius: 12px !important; }
+html body #plans .use-factory-card .use-factory-card-head { display: flex !important; min-height: 0 !important; align-items: flex-start !important; justify-content: space-between !important; }
+html body #plans .use-factory-card .use-factory-card-head > small { font-size: 16px !important; line-height: 1.3 !important; }
+html body #plans .use-factory-card .use-plan-price { min-height: 56px !important; margin: 20px 0 4px !important; font-size: 21px !important; line-height: 1.35 !important; letter-spacing: -.025em !important; }
+html body #plans .use-factory-card > p.use-plan-included { order: 2 !important; min-height: 42px !important; margin: 0 !important; font-size: 13px !important; line-height: 1.6 !important; }
+html body #plans .use-factory-card > p.use-plan-video { order: 3 !important; min-height: 0 !important; margin: 10px 0 14px !important; font-size: 13px !important; line-height: 1.6 !important; }
+html body #plans .use-factory-card > ul.use-plan-facts { order: 4 !important; flex: 1 1 auto !important; min-height: 0 !important; margin: 0 0 22px !important; padding: 0 !important; border-top: 1px solid #d5d5d5 !important; }
+html body #plans .use-factory-card > ul.use-plan-facts li { padding: 8px 0 !important; font-size: 12px !important; line-height: 1.45 !important; }
+html body #plans .use-factory-card > p.use-plan-enterprise-note { order: 4 !important; flex: 1 1 auto !important; min-height: 0 !important; margin: 0 !important; padding-top: 12px !important; font-size: 12px !important; border-top: 1px solid #d5d5d5 !important; }
+html body #plans .use-factory-card > a.use-plan-action { order: 5 !important; flex: 0 0 auto !important; min-height: 0 !important; margin-top: auto !important; padding: 10px 12px !important; font-size: 13px !important; line-height: 1.4 !important; border-radius: 7px !important; }
+@media (min-width: 1051px) { html body #plans .use-factory-grid { grid-template-columns: repeat(5,minmax(0,1fr)) !important; } }
+@media (min-width: 661px) and (max-width: 1050px) { html body #plans .use-factory-grid { grid-template-columns: repeat(3,minmax(0,1fr)) !important; } }
+@media (max-width: 660px) { html body #plans .use-factory-grid { grid-template-columns: minmax(0,1fr) !important; } }
+@media (min-width: 901px) {
+  html body #plans + .section .section-heading { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) !important; }
+  html body #plans + .section .section-heading h2 { max-width: 24ch !important; }
+}
+
+/* Production-area cards: compact navigation, independent of the approved plan cards. */
+html body .use-production-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 18px !important; }
+html body .use-production-grid > .use-production-card { min-height: 0 !important; padding: 24px !important; gap: 12px !important; }
+html body .use-production-card > h3 { display: block !important; margin: 0 !important; font-size: 1.25rem !important; line-height: 1.35 !important; }
+html body .use-production-card > p { min-height: 0 !important; margin: 0 !important; font-size: .9375rem !important; line-height: 1.55 !important; }
+html body .use-production-card > blockquote { margin: 4px 0 0 !important; padding: 10px 0 10px 16px !important; font-size: .9375rem !important; line-height: 1.55 !important; }
+html body .use-production-card > .text-link { margin-top: auto !important; padding-top: 10px !important; min-height: 44px !important; display: inline-flex !important; align-items: center !important; }
+@media (max-width: 1000px) { html body .use-production-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; } }
+@media (max-width: 650px) { html body .use-production-grid { grid-template-columns: minmax(0, 1fr) !important; } }
+
+/* Numberless, content-sized informational cards on the Use ILAIOS page. */
+html body .use-plain-grid > article { min-height: 0 !important; padding: 24px 26px !important; }
+html body .use-plain-grid > article > span { display: none !important; }
+html body .use-plain-grid > article > strong { margin: 0 0 10px !important; font-size: 1.05rem !important; line-height: 1.4 !important; }
+html body .use-plain-grid > article > p { font-size: .9375rem !important; line-height: 1.55 !important; }
+@media (max-width: 650px) { html body .use-plain-grid > article { padding: 20px !important; } }
+
+/* Enterprise audience: align with the homepage's compact typography and spacing. */
+html body .audience-hero.audience-enterprise { grid-template-columns: 1fr 1fr !important; align-items: center !important; gap: 36px !important; padding: 40px 0 !important; }
+html body .audience-enterprise h1 { max-width: 18ch !important; font-size: clamp(2rem, 3vw, 3rem) !important; line-height: 1.12 !important; letter-spacing: -.035em !important; }
+html body .audience-enterprise .lead { font-size: 1rem !important; line-height: 1.55 !important; }
+html body main:has(> .audience-enterprise) > .section { padding-top: 36px !important; padding-bottom: 36px !important; }
+html body main:has(> .audience-enterprise) .audience-focus { grid-template-columns: .85fr 1.15fr !important; gap: 32px !important; }
+html body main:has(> .audience-enterprise) section h2 { font-size: clamp(1.5rem, 2.2vw, 2.1rem) !important; line-height: 1.18 !important; }
+html body main:has(> .audience-enterprise) .audience-outcome-list { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+html body main:has(> .audience-enterprise) .audience-outcome-list article { display: block !important; padding: 16px !important; min-height: 0 !important; }
+html body main:has(> .audience-enterprise) .audience-outcome-list strong, html body main:has(> .audience-enterprise) .audience-process strong { font-size: .9375rem !important; line-height: 1.4 !important; }
+html body main:has(> .audience-enterprise) .audience-outcome-list p, html body main:has(> .audience-enterprise) .audience-process p { color: #505050 !important; font-size: .875rem !important; line-height: 1.55 !important; margin-top: 7px !important; }
+html body main:has(> .audience-enterprise) .audience-process article { display: block !important; padding: 18px !important; }
+@media (max-width: 760px) { html body .audience-hero.audience-enterprise, html body main:has(> .audience-enterprise) .audience-focus { grid-template-columns: 1fr !important; gap: 18px !important; } html body main:has(> .audience-enterprise) .audience-outcome-list { grid-template-columns: 1fr !important; } html body main:has(> .audience-enterprise) .audience-process { grid-template-columns: 1fr !important; } }
+
+/* Individuals: use the homepage typography scale without changing other approved pages. */
+html body .audience-hero.audience-individuals h1 { font-family: "Sora", "Segoe UI Variable", "Segoe UI", Arial, sans-serif !important; font-size: clamp(2rem, 3vw, 3rem) !important; line-height: 1.12 !important; letter-spacing: -.035em !important; }
+html body .audience-hero.audience-individuals .lead { font-size: 1rem !important; line-height: 1.55 !important; }
+html body main:has(> .audience-individuals) section h2 { font-family: "Sora", "Segoe UI Variable", "Segoe UI", Arial, sans-serif !important; font-size: clamp(1.5rem, 2.2vw, 2.1rem) !important; line-height: 1.18 !important; }
+/* Individuals: outcome cards have no number column; give the text the full card width. */
+html body main:has(> .audience-individuals) .audience-focus { grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr) !important; gap: 32px !important; }
+html body main:has(> .audience-individuals) .audience-outcome-list { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+html body main:has(> .audience-individuals) .audience-outcome-list article { display: block !important; min-width: 0 !important; min-height: 0 !important; padding: 18px 20px !important; }
+html body main:has(> .audience-individuals) .audience-outcome-list article > div { display: block !important; width: 100% !important; min-width: 0 !important; grid-column: auto !important; }
+html body main:has(> .audience-individuals) .audience-outcome-list strong { font-size: .9375rem !important; line-height: 1.4 !important; overflow-wrap: normal !important; }
+html body main:has(> .audience-individuals) .audience-outcome-list p { margin-top: 7px !important; color: #505050 !important; font-size: .875rem !important; line-height: 1.55 !important; overflow-wrap: normal !important; }
+@media (max-width: 900px) { html body main:has(> .audience-individuals) .audience-focus { grid-template-columns: minmax(0, 1fr) !important; gap: 24px !important; } }
+@media (max-width: 600px) { html body main:has(> .audience-individuals) .audience-outcome-list { grid-template-columns: minmax(0, 1fr) !important; } }
+
+/* Turkish solutions: four equal, readable outcome cards in a balanced 2x2 layout. */
+html body .solutions-outcome-grid { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 16px !important; border: 0 !important; }
+html body .solutions-outcome-grid article, html body .solutions-outcome-grid article:nth-child(n) { display: block !important; min-width: 0 !important; min-height: 0 !important; padding: 20px 22px !important; border: 1px solid var(--line, #d1d1d1) !important; border-radius: 12px !important; }
+html body .solutions-outcome-grid article > strong { display: block !important; margin: 0 0 8px !important; font-size: .9375rem !important; line-height: 1.4 !important; }
+html body .solutions-outcome-grid article > p { grid-column: auto !important; margin: 0 !important; font-size: .875rem !important; line-height: 1.55 !important; }
+@media (max-width: 600px) { html body .solutions-outcome-grid { grid-template-columns: minmax(0, 1fr) !important; gap: 12px !important; } }
+
+/* Turkish docs: balanced five-link directory and separate unpublished references. */
+html body .docs-link-grid { display: grid !important; grid-template-columns: repeat(6, minmax(0, 1fr)) !important; gap: 18px !important; }
+html body .docs-link-grid > a { position: relative !important; grid-column: span 2 !important; min-width: 0 !important; min-height: 150px !important; display: grid !important; grid-template-columns: minmax(0, 1fr) 24px !important; grid-template-rows: auto 1fr !important; grid-template-areas: "label arrow" "text arrow" !important; align-items: start !important; gap: 12px 16px !important; padding: 22px 24px !important; border: 1px solid #c9c9c9 !important; border-radius: 12px !important; background: #fff !important; color: #171717 !important; text-decoration: none !important; }
+html body .docs-link-grid > a > span { grid-area: label !important; color: #333 !important; font-size: .875rem !important; letter-spacing: .05em !important; }
+html body .docs-link-grid > a > strong { grid-area: text !important; color: #555 !important; -webkit-text-fill-color: #555 !important; font-size: .875rem !important; font-weight: 400 !important; line-height: 1.55 !important; }
+html body .docs-link-grid > a > span { color: #222 !important; -webkit-text-fill-color: #222 !important; font-weight: 600 !important; }
+html body .docs-link-grid > a > i { -webkit-text-fill-color: #222 !important; }
+html body .docs-link-grid > a:visited > strong { color: #555 !important; -webkit-text-fill-color: #555 !important; }
+html body .docs-link-grid > a > i { position: static !important; grid-area: arrow !important; justify-self: end !important; align-self: center !important; transform: none !important; margin: 0 !important; color: #171717 !important; font-size: 1.25rem !important; font-style: normal !important; }
+html body .docs-link-grid > a:hover, html body .docs-link-grid > a:focus-visible { border-color: #555 !important; background: #f5f5f5 !important; }
+html body .docs-link-grid > a:nth-child(n+4) { grid-column: span 3 !important; }
+html body .docs-link-grid > a > strong { margin: 0 !important; max-width: 54ch !important; line-height: 1.5 !important; }
+html body .docs-pending { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 18px !important; margin-top: 18px !important; }
+html[data-theme="light"] body .docs-pending > article, html body .docs-pending > article { min-width: 0 !important; padding: 20px 24px !important; border: 1px solid #c9c9c9 !important; border-radius: 12px !important; background: #fff !important; background-color: #fff !important; background-image: none !important; color: #242424 !important; }
+html body .docs-pending > article > .eyebrow { color: #333 !important; -webkit-text-fill-color: #333 !important; }
+html body .docs-pending p { max-width: 62ch !important; margin: 10px 0 0 !important; color: #666 !important; font-size: .875rem !important; line-height: 1.55 !important; }
+@media (max-width: 850px) { html body .docs-link-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; } html body .docs-link-grid > a, html body .docs-link-grid > a:nth-child(n+4) { grid-column: span 1 !important; } html body .docs-link-grid > a:last-child { grid-column: 1 / -1 !important; } }
+@media (max-width: 600px) { html body .docs-link-grid, html body .docs-pending { grid-template-columns: minmax(0, 1fr) !important; } html body .docs-link-grid > a, html body .docs-link-grid > a:last-child { grid-column: 1 !important; } }
+
+/* Architecture trust boundaries: four balanced cards, with compact readable copy. */
+html body main:has(.architecture-primary) .shell > .boundary-ledger:has(> article:nth-child(4):last-child) {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 14px !important;
+  border-top: 0 !important;
+  align-items: stretch !important;
+}
+html body main:has(.architecture-primary) .shell > .boundary-ledger:has(> article:nth-child(4):last-child) > article {
+  display: flex !important;
+  flex-direction: column !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  padding: 18px 20px !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 12px !important;
+}
+html body main:has(.architecture-primary) .shell > .boundary-ledger:has(> article:nth-child(4):last-child) > article > span { display: none !important; }
+html body main:has(.architecture-primary) .shell > .boundary-ledger:has(> article:nth-child(4):last-child) > article > strong { margin: 0 0 9px !important; font-size: 1rem !important; line-height: 1.35 !important; }
+html body main:has(.architecture-primary) .shell > .boundary-ledger:has(> article:nth-child(4):last-child) > article > p { margin: 0 !important; font-size: .875rem !important; line-height: 1.55 !important; overflow-wrap: normal !important; }
+@media (max-width: 1050px) { html body main:has(.architecture-primary) .shell > .boundary-ledger:has(> article:nth-child(4):last-child) { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; } }
+@media (max-width: 600px) { html body main:has(.architecture-primary) .shell > .boundary-ledger:has(> article:nth-child(4):last-child) { grid-template-columns: minmax(0, 1fr) !important; } }
+
+/* Architecture: five system layers must remain readable in the left column. */
+html body .architecture-primary { grid-template-columns: minmax(0, 1fr) minmax(0, 1.65fr) !important; gap: 32px !important; align-items: start !important; }
+html body .architecture-primary > div:first-child > h2 { max-width: 36ch !important; font-size: clamp(1.65rem, 2.4vw, 2.3rem) !important; line-height: 1.18 !important; }
+html body .architecture-primary > .architecture-right { display: grid !important; grid-template-columns: minmax(0, 1fr) !important; align-content: start !important; gap: 22px !important; min-width: 0 !important; }
+html body .architecture-primary > .architecture-right > .spatial-map { width: 100% !important; min-width: 0 !important; }
+html body .architecture-primary .architecture-hero-inset { min-width: 0 !important; padding: 24px 28px !important; border: 1px solid var(--line) !important; border-radius: 12px !important; }
+html body .architecture-primary .architecture-hero-inset h1 { max-width: 25ch !important; margin: 10px 0 12px !important; font-size: clamp(1.5rem, 2.1vw, 2.1rem) !important; line-height: 1.2 !important; }
+html body .architecture-primary .architecture-hero-inset .lead { max-width: 75ch !important; margin: 0 0 18px !important; font-size: .9375rem !important; line-height: 1.55 !important; }
+html body .architecture-primary .architecture-hero-inset .actions { margin-top: 0 !important; }
+@media (max-width: 650px) { html body .architecture-primary .architecture-hero-inset { padding: 20px !important; } }
+html body .architecture-primary .spatial-stage { min-height: 155px !important; }
+html body .architecture-primary .spatial-node { padding: 18px 14px !important; }
+html body .architecture-primary .spatial-node strong { font-size: .875rem !important; }
+html body .architecture-primary .spatial-node small { font-size: .8rem !important; line-height: 1.45 !important; }
+html body .architecture-primary > div:first-child { min-width: 0 !important; }
+html body .architecture-primary > div:first-child .architecture-layer-list { display: grid !important; grid-template-columns: minmax(0, 1fr) !important; gap: 0 !important; margin-top: 18px !important; border-top: 1px solid var(--line) !important; align-items: stretch !important; }
+html body .architecture-primary > div:first-child .architecture-layer-list > article { display: block !important; min-width: 0 !important; padding: 14px 0 !important; }
+html body .architecture-primary > div:first-child .architecture-layer-list > article > span { display: none !important; }
+html body .architecture-primary > div:first-child .architecture-layer-list > article > strong { display: block !important; width: auto !important; margin-bottom: 6px !important; font-size: .9375rem !important; line-height: 1.4 !important; }
+html body .architecture-primary > div:first-child .architecture-layer-list > article > p { display: block !important; width: auto !important; margin: 0 !important; color: #505050 !important; font-size: .875rem !important; line-height: 1.55 !important; overflow-wrap: normal !important; word-break: normal !important; }
+@media (max-width: 900px) { html body .architecture-primary { grid-template-columns: minmax(0, 1fr) !important; gap: 24px !important; } }
+
+/* Architecture only: nested architecture rows must not inherit the outer three-column ledger. */
+html body main:has(.architecture-primary) [data-visual-role="system-architecture-map"] .architecture-layer-list { display: grid !important; grid-template-columns: minmax(0, 1fr) !important; gap: 18px !important; border: 0 !important; }
+html body main:has(.architecture-primary) [data-visual-role="system-architecture-map"] .architecture-layer-list > article { display: flex !important; flex-direction: column !important; align-items: stretch !important; gap: 8px !important; min-width: 0 !important; min-height: 0 !important; width: 100% !important; padding: 22px !important; border: 1px solid var(--line, #ccc) !important; border-radius: 12px !important; }
+html body main:has(.architecture-primary) [data-visual-role="system-architecture-map"] .architecture-layer-list > article > :is(strong,p) { display: block !important; width: auto !important; max-width: none !important; margin: 0 0 10px !important; overflow-wrap: normal !important; }
+html body main:has(.architecture-primary) [data-visual-role="system-architecture-map"] .boundary-ledger { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 12px !important; margin-top: 8px !important; }
+/* The factory layer contains one long description, not three columns of cards. */
+html body main:has(.architecture-primary) [data-visual-role="system-architecture-map"] .boundary-ledger:has(> .card:only-child) { grid-template-columns: minmax(0, 1fr) !important; }
+html body main:has(.architecture-primary) [data-visual-role="system-architecture-map"] .boundary-ledger > .card:only-child { width: 100% !important; padding: 16px 18px !important; }
+html body main:has(.architecture-primary) [data-visual-role="system-architecture-map"] .boundary-ledger > .card:only-child > p { max-width: 90ch !important; }
+html body main:has(.architecture-primary) [data-visual-role="system-architecture-map"] .boundary-ledger > .card { display: block !important; min-width: 0 !important; width: auto !important; padding: 16px !important; overflow-wrap: normal !important; }
+html body main:has(.architecture-primary) [data-visual-role="system-architecture-map"] .boundary-ledger > .card > :is(strong,p) { display: block !important; width: auto !important; max-width: none !important; margin: 0 0 8px !important; overflow-wrap: normal !important; word-break: normal !important; }
+html body main:has(.architecture-primary) [data-visual-role="system-architecture-map"] :is(.architecture-layer-list > article > span,.boundary-ledger > .card > span),
+html body main:has(.architecture-primary) .architecture-layer-list > article > span,
+html body main:has(.architecture-primary) .boundary-ledger > article > span { display: none !important; }
+html body main:has(.architecture-primary) [data-visual-role="system-architecture-map"] p,
+html body main:has(.architecture-primary) .architecture-layer-list p { color: #505050 !important; line-height: 1.55 !important; }
+html body main:has(.architecture-primary) .spatial-node > span { display: none !important; }
+html body main:has(.architecture-primary) .spatial-node.is-active :is(strong,small) { color: #fff !important; -webkit-text-fill-color: #fff !important; }
+/* Architecture only: selected map step matches the approved charcoal reference. */
+html[data-theme="light"] body main:has(.architecture-primary) .spatial-node.is-active { background: #222 !important; background-color: #222 !important; }
+html body main:has(.architecture-primary) .spatial-map-detail .micro-label { font-size: 0 !important; }
+html body main:has(.architecture-primary) .spatial-map-detail .micro-label::first-letter { font-size: 0 !important; }
+@media (max-width: 1000px) { html body main:has(.architecture-primary) [data-visual-role="system-architecture-map"] .boundary-ledger { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; } }
+@media (max-width: 600px) { html body main:has(.architecture-primary) [data-visual-role="system-architecture-map"] .boundary-ledger { grid-template-columns: minmax(0, 1fr) !important; } }
+
+
+/* Security page only: readable trust boundary and compact, numberless layouts. */
+html body main .security-page-gate > .is-authority { background: #202020 !important; border-color: #444 !important; }
+html body main .security-page-gate > .is-authority > :is(span,strong) { color: #fff !important; -webkit-text-fill-color: #fff !important; }
+html body main .security-page-gate > .is-authority > span { color: #e0e0e0 !important; -webkit-text-fill-color: #e0e0e0 !important; }
+html body main .security-page-gate > i { background: transparent !important; min-width: 75px !important; }
+html body main .security-page-gate > i small { background: #fff !important; color: #333 !important; -webkit-text-fill-color: #333 !important; padding: 4px 7px !important; white-space: nowrap !important; }
+html body main .security-page-visual > .section-heading { margin-bottom: 20px !important; }
+html body main .security-page-process { gap: 12px !important; border: 0 !important; }
+html body main .security-page-process > article { display: flex !important; flex-direction: column !important; justify-content: center !important; min-height: 105px !important; padding: 17px !important; border: 1px solid var(--line) !important; border-radius: 9px !important; }
+html body main .security-page-process > article > strong { margin: 0 0 8px !important; font-size: .92rem !important; }
+html body main .security-page-process > article > small { margin: 0 !important; font-size: .8rem !important; line-height: 1.45 !important; }
+html body main .security-page-principles { gap: 12px !important; border: 0 !important; }
+html body main .security-page-principles > article { display: flex !important; flex-direction: column !important; justify-content: flex-start !important; min-height: 0 !important; gap: 10px !important; padding: 20px !important; border: 1px solid var(--line) !important; border-radius: 9px !important; }
+html body main .security-page-principles > article > strong { margin: 0 !important; font-size: .94rem !important; }
+html body main .security-page-principles > article > p { margin: 0 !important; font-size: .83rem !important; line-height: 1.5 !important; }
+html body main .security-page-report { display: grid !important; grid-template-columns: 1fr !important; gap: 10px !important; align-items: start !important; }
+html body main .security-page-report > span { color: #333 !important; -webkit-text-fill-color: #333 !important; }
+html body main .security-page-report > p { margin: 0 !important; max-width: 90ch !important; }
+html body main .security-page-report a { color: var(--text) !important; text-decoration: underline !important; text-underline-offset: 3px !important; }
+@media (max-width: 900px) { html body main .security-page-process { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; } html body main .security-page-principles { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; } }
+@media (max-width: 600px) { html body main .security-page-process, html body main .security-page-principles { grid-template-columns: minmax(0, 1fr) !important; } html body main .security-page-gate > i { min-height: 42px !important; } }
+
+/* Security trust gate: one centered, readable directional connector. */
+html body main .security-page-gate { grid-template-columns: minmax(0, 1fr) minmax(125px, 160px) minmax(0, 1fr) !important; gap: 0 !important; align-items: center !important; }
+html body main .security-page-gate > .security-gate-connector { display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; gap: 10px !important; min-width: 0 !important; padding: 0 8px !important; background: transparent !important; border: 0 !important; }
+html body main .security-page-gate > .security-gate-connector > span:first-child { display: block !important; margin: 0 !important; color: var(--text) !important; -webkit-text-fill-color: var(--text) !important; font-size: .72rem !important; letter-spacing: 0 !important; line-height: 1.3 !important; text-align: center !important; }
+html body main .security-page-gate > .security-gate-connector > .security-gate-arrow { display: block !important; width: 100% !important; margin: 0 !important; color: var(--text) !important; -webkit-text-fill-color: var(--text) !important; font-size: 1.3rem !important; line-height: 1 !important; text-align: center !important; border-top: 1px solid var(--line-strong) !important; }
+html body main .security-page-gate > .security-gate-connector::before, html body main .security-page-gate > .security-gate-connector::after { content: none !important; }
+@media (max-width: 760px) { html body main .security-page-gate { grid-template-columns: minmax(0, 1fr) !important; gap: 0 !important; } html body main .security-page-gate > .security-gate-connector { padding: 14px 0 !important; gap: 5px !important; } html body main .security-page-gate > .security-gate-connector > .security-gate-arrow { width: 42px !important; transform: rotate(90deg) !important; border-top: 0 !important; } }
+
+/* Security: matching dark-gray client and control cards. */
+html body main .security-page-gate > .dark-surface,
+html body main .security-page-gate > .is-authority.dark-surface { background: #353535 !important; background-color: #353535 !important; background-image: none !important; border: 1px solid #000 !important; box-shadow: none !important; }
+html body main .security-page-gate > .dark-surface > span,
+html body main .security-page-gate > .is-authority.dark-surface > span { color: #dedede !important; -webkit-text-fill-color: #dedede !important; }
+html body main .security-page-gate > .dark-surface > strong,
+html body main .security-page-gate > .is-authority.dark-surface > strong { color: #fff !important; -webkit-text-fill-color: #fff !important; }
+
+/* Security detail routes only: compact, aligned content and legible navigation. */
+html body main:has(.security-detail-hero) .security-detail-hero { padding-top: 52px !important; padding-bottom: 42px !important; }
+html body main:has(.security-detail-hero) .security-detail-hero h1 { max-width: 24ch !important; }
+html body main:has(.security-detail-hero) .security-detail-hero .lead { max-width: 68ch !important; }
+html body main:has(.security-detail-hero) > .section { padding-top: 34px !important; padding-bottom: 34px !important; }
+html body main:has(.security-detail-hero) .security-detail-grid { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 16px !important; }
+html body main:has(.security-detail-hero) .security-detail-grid > .card { display: flex !important; flex-direction: column !important; align-items: flex-start !important; justify-content: flex-start !important; min-width: 0 !important; min-height: 155px !important; padding: 24px !important; border: 1px solid #c8c8c8 !important; border-radius: 10px !important; background: #fff !important; color: #171717 !important; }
+html body main:has(.security-detail-hero) .security-detail-grid > .card h3 { margin: 0 0 12px !important; color: #171717 !important; font-size: 1.1rem !important; line-height: 1.3 !important; }
+html body main:has(.security-detail-hero) .security-detail-grid > .card p { margin: 0 !important; color: #555 !important; line-height: 1.55 !important; }
+html body main:has(.security-detail-hero) .detail-page-navigation { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 16px !important; margin-top: 0 !important; }
+html body main:has(.security-detail-hero) .detail-page-navigation > .detail-nav-link { display: flex !important; flex-direction: column !important; align-items: flex-start !important; gap: 7px !important; min-width: 0 !important; padding: 20px 24px !important; border: 1px solid #c8c8c8 !important; border-radius: 10px !important; background: #fff !important; text-decoration: none !important; }
+html body main:has(.security-detail-hero) .detail-page-navigation > .detail-nav-link.next { align-items: flex-end !important; text-align: right !important; }
+html body main:has(.security-detail-hero) .detail-page-navigation > .detail-nav-link span { color: #666 !important; font-size: .78rem !important; }
+html body main:has(.security-detail-hero) .detail-page-navigation > .detail-nav-link strong { color: #171717 !important; font-size: 1.05rem !important; }
+@media (max-width: 800px) { html body main:has(.security-detail-hero) .security-detail-grid { grid-template-columns: minmax(0, 1fr) !important; } html body main:has(.security-detail-hero) .security-detail-grid > .card { min-height: 0 !important; } }
+@media (max-width: 500px) { html body main:has(.security-detail-hero) .detail-page-navigation { grid-template-columns: minmax(0, 1fr) !important; } html body main:has(.security-detail-hero) .detail-page-navigation > .detail-nav-link.next { align-items: flex-start !important; text-align: left !important; } }
+
+/* Trust Center only: remove numbered columns and align content across locales. */
+html body main:has(.trust-page-hero) .trust-page-controls { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 14px !important; border: 0 !important; }
+html body main:has(.trust-page-hero) .trust-page-controls > article { display: flex !important; flex-direction: column !important; justify-content: flex-start !important; align-items: flex-start !important; min-width: 0 !important; min-height: 0 !important; padding: 24px !important; gap: 10px !important; border: 1px solid #c9c9c9 !important; border-radius: 10px !important; background: #fff !important; }
+html body main:has(.trust-page-hero) .trust-page-controls > article > strong { display: block !important; margin: 0 !important; color: #171717 !important; font-size: 1.06rem !important; }
+html body main:has(.trust-page-hero) .trust-page-controls > article > p { display: block !important; margin: 0 !important; color: #555 !important; font-size: .94rem !important; line-height: 1.55 !important; }
+html body main:has(.trust-page-hero) .trust-page-boundaries { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 14px !important; }
+html body main:has(.trust-page-hero) .trust-page-boundaries > .card { display: flex !important; flex-direction: column !important; justify-content: flex-start !important; min-width: 0 !important; min-height: 0 !important; padding: 24px !important; gap: 12px !important; background: #353535 !important; border: 1px solid #555 !important; border-radius: 10px !important; }
+html body main:has(.trust-page-hero) .trust-page-boundaries > .card h3 { margin: 0 !important; color: #fff !important; -webkit-text-fill-color: #fff !important; font-size: 1.05rem !important; }
+html body main:has(.trust-page-hero) .trust-page-boundaries > .card p { margin: 0 !important; color: #e0e0e0 !important; -webkit-text-fill-color: #e0e0e0 !important; font-size: .92rem !important; line-height: 1.55 !important; }
+html body main:has(.trust-page-hero) .trust-page-callout { align-items: start !important; gap: 24px !important; }
+html body main:has(.trust-page-hero) .trust-page-callout .actions { display: flex !important; flex-wrap: wrap !important; gap: 10px !important; }
+@media (max-width: 850px) { html body main:has(.trust-page-hero) .trust-page-boundaries { grid-template-columns: minmax(0, 1fr) !important; } }
+@media (max-width: 650px) { html body main:has(.trust-page-hero) .trust-page-controls { grid-template-columns: minmax(0, 1fr) !important; } }
+
+/* Privacy notice only: use the website's heading hierarchy and readable body type. */
+html body main .privacy-page-copy { width: min(100% - 40px, 900px) !important; max-width: 900px !important; padding-top: 64px !important; padding-bottom: 72px !important; font-family: "Sora", "Segoe UI Variable", "Segoe UI", Arial, sans-serif !important; }
+html body main .privacy-page-copy > h1 { font-family: "Sora", "Segoe UI Variable", "Segoe UI", Arial, sans-serif !important; font-size: clamp(1.9rem, 3vw, 2.7rem) !important; font-weight: 650 !important; line-height: 1.12 !important; letter-spacing: -.035em !important; margin: 12px 0 24px !important; }
+html body main .privacy-page-copy > h2 { font-family: "Sora", "Segoe UI Variable", "Segoe UI", Arial, sans-serif !important; font-size: clamp(1.4rem, 2.4vw, 1.8rem) !important; font-weight: 620 !important; line-height: 1.2 !important; letter-spacing: -.025em !important; margin: 34px 0 12px !important; }
+html body main .privacy-page-copy > p { font-family: inherit !important; font-size: clamp(1rem, 1.2vw, 1.075rem) !important; font-weight: 400 !important; line-height: 1.72 !important; margin: 0 !important; max-width: 75ch !important; }
+html body main .privacy-page-copy > .eyebrow { font-family: inherit !important; font-size: .78rem !important; }
+@media (max-width: 600px) { html body main .privacy-page-copy { width: min(100% - 32px, 900px) !important; padding-top: 38px !important; padding-bottom: 48px !important; } html body main .privacy-page-copy > h2 { margin-top: 28px !important; } }
+
+/* About, Contact and Terms only: align typography with the homepage Sora family. */
+html body main .about-intro, html body main .about-editorial-grid, html body main .founder-row, html body main .about-truth, html body main .contact-intro, html body main .contact-directory, html body main .terms-page-copy { font-family: "Sora", "Segoe UI Variable", "Segoe UI", Arial, sans-serif !important; }
+html body main .about-intro h1, html body main .contact-intro h1 { font-family: "Sora", "Segoe UI Variable", "Segoe UI", Arial, sans-serif !important; font-size: clamp(1.9rem, 3vw, 2.7rem) !important; font-weight: 650 !important; line-height: 1.13 !important; letter-spacing: -.035em !important; }
+html body main .about-intro .lead, html body main .contact-intro .lead { font-family: inherit !important; font-size: clamp(1rem, 1.3vw, 1.12rem) !important; line-height: 1.6 !important; }
+html body main .about-editorial-grid h2 { font-family: inherit !important; font-size: clamp(1.45rem, 2.2vw, 2rem) !important; line-height: 1.2 !important; }
+html body main .founder-row h2 { font-family: inherit !important; font-size: clamp(1.2rem, 1.6vw, 1.5rem) !important; line-height: 1.2 !important; }
+html body main .about-editorial-grid strong, html body main .contact-directory strong { font-family: inherit !important; font-size: clamp(1rem, 1.2vw, 1.1rem) !important; line-height: 1.4 !important; }
+html body main .about-editorial-grid p, html body main .founder-row p, html body main .about-truth p, html body main .contact-directory p, html body main .contact-directory a { font-family: inherit !important; font-size: clamp(.94rem, 1.1vw, 1rem) !important; line-height: 1.6 !important; }
+html body main .terms-page-copy { width: min(100% - 40px, 900px) !important; max-width: 900px !important; padding-top: 64px !important; padding-bottom: 72px !important; }
+html body main .terms-page-copy > h1 { font-family: inherit !important; font-size: clamp(1.9rem, 3vw, 2.7rem) !important; font-weight: 650 !important; line-height: 1.12 !important; letter-spacing: -.035em !important; margin: 12px 0 24px !important; }
+html[data-theme="light"] body main .terms-page-copy > h1 { color: #0a0a0a !important; -webkit-text-fill-color: #0a0a0a !important; }
+html body main .terms-page-copy > h2 { font-family: inherit !important; font-size: clamp(1.4rem, 2.4vw, 1.8rem) !important; font-weight: 620 !important; line-height: 1.2 !important; letter-spacing: -.025em !important; margin: 34px 0 12px !important; }
+html body main .terms-page-copy > p { font-family: inherit !important; font-size: clamp(1rem, 1.2vw, 1.075rem) !important; font-weight: 400 !important; line-height: 1.72 !important; margin: 0 !important; max-width: 75ch !important; }
+@media (max-width: 600px) { html body main .terms-page-copy { width: min(100% - 32px, 900px) !important; padding-top: 38px !important; padding-bottom: 48px !important; } html body main .terms-page-copy > h2 { margin-top: 28px !important; } }
+
+/* Security page trust-boundary diagram: neutral selected state, no blue menu highlight. */
+html body main .security-page-visual [data-visual-role="trust-boundary-diagram"] .trust-node.system-visual-control { background: #353535 !important; background-image: none !important; border: 1px solid #555 !important; box-shadow: none !important; color: #fff !important; }
+html body main .security-page-visual [data-visual-role="trust-boundary-diagram"] .trust-node.system-visual-control.is-active, html body main .security-page-visual [data-visual-role="trust-boundary-diagram"] .trust-node.system-visual-control:hover { background: #444 !important; background-image: none !important; border-color: #aaa !important; box-shadow: none !important; color: #fff !important; }
+html body main .security-page-visual [data-visual-role="trust-boundary-diagram"] .trust-node.system-visual-control:focus-visible { outline: 2px solid #fff !important; outline-offset: 3px !important; }
+html body main .security-page-visual [data-visual-role="trust-boundary-diagram"] .trust-node.system-visual-control :is(strong,small) { color: #fff !important; -webkit-text-fill-color: #fff !important; }
+html body main .security-page-visual [data-visual-role="trust-boundary-diagram"] .trust-node.system-visual-control small { color: #ddd !important; -webkit-text-fill-color: #ddd !important; }
+html body main .security-page-visual [data-visual-role="trust-boundary-diagram"] .system-inline-detail { background: transparent !important; background-image: none !important; border: 0 !important; box-shadow: none !important; }
+html body main .security-page-visual [data-visual-role="trust-boundary-diagram"] .system-inline-detail :is(span,strong,p) { color: inherit !important; -webkit-text-fill-color: currentColor !important; }
+html body main .security-page-visual [data-visual-role="trust-boundary-diagram"] .system-inline-detail p { color: #666 !important; -webkit-text-fill-color: #666 !important; }
+
+/* Security-only hover/focus override: remove inherited blue glow from trust menu. */
+html body main .security-page-visual [data-visual-role="trust-boundary-diagram"] .trust-visual .trust-node.system-visual-control:is(:hover,:focus,:focus-visible,.is-active) { background-color: #444 !important; background-image: none !important; border-color: #aaa !important; color: #fff !important; box-shadow: none !important; filter: none !important; }
+html body main .security-page-visual [data-visual-role="trust-boundary-diagram"] .trust-visual .trust-node.system-visual-control:is(:hover,:focus,:focus-visible,.is-active) :is(strong,small) { color: #fff !important; -webkit-text-fill-color: #fff !important; }
+html body main .security-page-visual [data-visual-role="trust-boundary-diagram"] .trust-visual .trust-node.system-visual-control:is(:hover,:focus,:focus-visible,.is-active)::before, html body main .security-page-visual [data-visual-role="trust-boundary-diagram"] .trust-visual .trust-node.system-visual-control:is(:hover,:focus,:focus-visible,.is-active)::after { background: transparent !important; background-image: none !important; box-shadow: none !important; }
+
+/* Security trust-gate: a black outer frame around both cards and connector. */
+html body main .security-page-gate { border: 2px solid #000 !important; border-radius: 12px !important; padding: 20px !important; box-sizing: border-box !important; }
+@media (max-width: 760px) { html body main .security-page-gate { padding: 14px !important; } }
+
+/* Security trust-flow: replace thick black card surrounds with a thin neutral outline. */
+html body main .security-page-visual [data-visual-role="trust-boundary-diagram"] .trust-visual > .trust-node-wrap { background: transparent !important; background-image: none !important; border: 1px solid #777 !important; border-radius: 4px !important; padding: 3px !important; box-shadow: none !important; }
+html body main .security-page-visual [data-visual-role="trust-boundary-diagram"] .trust-visual > .trust-node-wrap > .trust-node { border-radius: 3px !important; }
+
+/* Security gate: keep the right-hand control label and action on one line, matching the client card. */
+@media (min-width: 761px) { html body main .security-page-gate > .is-authority.dark-surface { padding-inline: 14px !important; } html body main .security-page-gate > .is-authority.dark-surface > strong { font-size: clamp(.76rem, 1.05vw, 1rem) !important; line-height: 1.35 !important; letter-spacing: -.02em !important; white-space: nowrap !important; } }
+@media (max-width: 760px) { html body main .security-page-gate > .is-authority.dark-surface > strong { font-size: clamp(.85rem, 3.4vw, 1rem) !important; line-height: 1.4 !important; } }
+
+/* Desktop landing only: homepage Sora typography with a balanced heading hierarchy. */
+html body main:has(> .desktop-page-hero) > .desktop-page-hero, html body main .desktop-page-content { font-family: "Sora", "Segoe UI Variable", "Segoe UI", Arial, sans-serif !important; }
+html body main > .desktop-page-hero h1 { font-family: inherit !important; font-size: clamp(2rem, 3.2vw, 3rem) !important; font-weight: 650 !important; line-height: 1.16 !important; letter-spacing: -.035em !important; max-width: 25ch !important; }
+html body main > .desktop-page-hero .lead { font-family: inherit !important; font-size: clamp(1rem, 1.3vw, 1.125rem) !important; line-height: 1.65 !important; max-width: 72ch !important; }
+html body main .desktop-page-content .card h2 { font-family: inherit !important; font-size: clamp(1.3rem, 2vw, 1.8rem) !important; font-weight: 620 !important; line-height: 1.25 !important; letter-spacing: -.025em !important; }
+html body main .desktop-page-content .card p, html body main .desktop-page-content > .shell > .muted { font-family: inherit !important; font-size: clamp(.95rem, 1.1vw, 1rem) !important; line-height: 1.65 !important; }
+
+/* App Factory only: darken low-contrast gray supporting text by one step. */
+html body main .app-factory-copy .factory-availability-banner p,
+html body main .app-factory-visual-copy .section-heading > p,
+html body main .app-factory-visual-copy figure figcaption,
+html body main .app-factory-visual-copy .diagram-caption { color: #666 !important; -webkit-text-fill-color: #666 !important; }
+
+/* App Factory publication boundary: complete the callout outline on every side. */
+html body main .app-factory-publish-callout { border: 1px solid var(--line) !important; border-radius: 14px !important; padding: 24px !important; box-sizing: border-box !important; }
+@media (max-width: 600px) { html body main .app-factory-publish-callout { padding: 18px !important; } }
+
+/* Video Factory: complete both callout borders and balance the long headings. */
+html body main .video-governed-chain, html body main .video-factory-final-callout { border: 1px solid #b7b7b7 !important; border-radius: 14px !important; box-sizing: border-box !important; padding: 28px 30px !important; }
+html body main .video-governed-chain h2, html body main .video-factory-final-callout h2 { font-family: "Sora", "Segoe UI Variable", "Segoe UI", Arial, sans-serif !important; font-size: clamp(1.3rem, 1.65vw, 1.7rem) !important; line-height: 1.38 !important; letter-spacing: -.025em !important; overflow-wrap: break-word !important; }
+html body main .video-governed-chain p, html body main .video-factory-final-callout p { font-size: clamp(.95rem, 1.05vw, 1rem) !important; line-height: 1.65 !important; }
+@media (max-width: 700px) { html body main .video-governed-chain, html body main .video-factory-final-callout { padding: 20px !important; } }
+
+/* Turkish Video Factory diagram caption: one shade darker gray. */
+html body main .video-factory-caption-section .diagram-caption { color: #666 !important; -webkit-text-fill-color: #666 !important; }
+
+/* Homepage only: match black accents to the approved charcoal reference. */
+html[data-theme="light"] body main .homepage-v2 .product-mode-tabs button.is-active,
+html[data-theme="light"] body main .homepage-v2 .output-card { background: #222 !important; background-color: #222 !important; color: #fff !important; }
+html[data-theme="light"] body main .homepage-v2 .output-card :is(strong,span) { color: #fff !important; -webkit-text-fill-color: #fff !important; }
+/* Homepage hero primary action: approved black, not charcoal. */
+html[data-theme="light"] body main .home-hero-copy .button:not(.secondary) { background: #0a0a0a !important; background-color: #0a0a0a !important; border-color: #0a0a0a !important; color: #fff !important; -webkit-text-fill-color: #fff !important; }
+/* The homepage delivery-result box is result-preview, not output-card. */
+html[data-theme="light"] body main .homepage-v2 .result-preview { background: #222 !important; background-color: #222 !important; color: #fff !important; }
+html[data-theme="light"] body main .homepage-v2 .result-preview :is(strong,span) { color: #fff !important; -webkit-text-fill-color: #fff !important; }

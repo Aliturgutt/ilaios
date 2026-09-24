@@ -17,5 +17,5 @@ export default defineConfig([
       ],
     },
   },
-  globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts"]),
+  globalIgnores([".next/**", ".chrome-qa/**", "out/**", "build/**", "next-env.d.ts"]),
 ]);
