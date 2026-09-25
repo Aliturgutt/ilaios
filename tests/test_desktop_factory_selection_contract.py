@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from typing import cast
+from typing import Any, Callable, TypeVar, cast
 from unittest.mock import Mock
 
 import pytest
@@ -12,6 +12,11 @@ from services.desktop_identity_server import DesktopIdentityRequestHandler
 from services.execution_coordinator import ExecutionCoordinatorError, _ADAPTER_DESCRIPTORS
 
 FACTORIES = tuple(item for item in CAPABILITIES if item.domain == "factory")
+F = TypeVar("F", bound=Callable[..., Any])
+
+
+def factory_cases(function: F) -> F:
+    return cast(F, pytest.mark.parametrize("factory", FACTORIES, ids=lambda x: x.capability_id)(function))
 
 
 def _handler(*, actual_id: str | None = None, status: str = "BLOCKED") -> tuple[DesktopIdentityRequestHandler, Mock]:
@@ -29,7 +34,7 @@ def _handler(*, actual_id: str | None = None, status: str = "BLOCKED") -> tuple[
     return handler, coordinator
 
 
-@pytest.mark.parametrize("factory", FACTORIES, ids=lambda x: x.capability_id)
+@factory_cases
 def test_each_canonical_factory_returns_actual_route_and_does_not_start_blocked_work(factory: CapabilityDefinition) -> None:
     handler, coordinator = _handler(actual_id=factory.capability_id)
     handler._submit_authenticated_intent({"objective": factory.display_name, "selected_factory_id": factory.capability_id})
@@ -41,7 +46,7 @@ def test_each_canonical_factory_returns_actual_route_and_does_not_start_blocked_
     coordinator.prepare.assert_called_once()
 
 
-@pytest.mark.parametrize("factory", FACTORIES, ids=lambda x: x.capability_id)
+@factory_cases
 def test_each_factory_rejects_conflicting_objective_before_prepare(factory: CapabilityDefinition) -> None:
     other = next(x for x in FACTORIES if x.capability_id != factory.capability_id)
     handler, coordinator = _handler(actual_id=factory.capability_id)
@@ -51,7 +56,7 @@ def test_each_factory_rejects_conflicting_objective_before_prepare(factory: Capa
     cast(Mock, handler._start_execution).assert_not_called()
 
 
-@pytest.mark.parametrize("factory", FACTORIES, ids=lambda x: x.capability_id)
+@factory_cases
 def test_each_factory_rejects_wrong_actual_route_before_start(factory: CapabilityDefinition) -> None:
     other = next(x for x in FACTORIES if x.capability_id != factory.capability_id)
     handler, _ = _handler(actual_id=other.capability_id, status="ADMITTED")
@@ -61,7 +66,7 @@ def test_each_factory_rejects_wrong_actual_route_before_start(factory: Capabilit
     cast(Mock, handler._send_json).assert_not_called()
 
 
-@pytest.mark.parametrize("factory", FACTORIES, ids=lambda x: x.capability_id)
+@factory_cases
 def test_each_factory_rejects_unauthenticated_session_before_prepare(factory: CapabilityDefinition) -> None:
     handler, coordinator = _handler(actual_id=factory.capability_id)
     cast(Mock, handler._authenticated_session).side_effect = PermissionError("session denied")
@@ -71,7 +76,7 @@ def test_each_factory_rejects_unauthenticated_session_before_prepare(factory: Ca
     cast(Mock, handler._start_execution).assert_not_called()
 
 
-@pytest.mark.parametrize("factory", FACTORIES, ids=lambda x: x.capability_id)
+@factory_cases
 def test_each_factory_adapter_maturity_is_reported_not_assumed(factory: CapabilityDefinition) -> None:
     descriptor = _ADAPTER_DESCRIPTORS[factory.capability_id]
     assert descriptor.maturity.value in {"VERIFIED_FINISHED_PRODUCT_ADAPTER", "IMPLEMENTED_NOT_EXECUTABLE", "REVIEW_ONLY"}
@@ -86,7 +91,7 @@ def test_rejects_noncanonical_factory_before_prepare() -> None:
     coordinator.prepare.assert_not_called()
 
 
-@pytest.mark.parametrize("factory", FACTORIES, ids=lambda x: x.capability_id)
+@factory_cases
 def test_each_factory_rejects_multi_factory_objective_before_prepare(factory: CapabilityDefinition) -> None:
     other = next(x for x in FACTORIES if x.capability_id != factory.capability_id)
     handler, coordinator = _handler(actual_id=factory.capability_id)
@@ -95,7 +100,7 @@ def test_each_factory_rejects_multi_factory_objective_before_prepare(factory: Ca
     coordinator.prepare.assert_not_called()
 
 
-@pytest.mark.parametrize("factory", FACTORIES, ids=lambda x: x.capability_id)
+@factory_cases
 def test_each_factory_returns_blocker_from_coordinator(factory: CapabilityDefinition) -> None:
     descriptor = _ADAPTER_DESCRIPTORS[factory.capability_id]
     if descriptor.maturity.value == "VERIFIED_FINISHED_PRODUCT_ADAPTER":

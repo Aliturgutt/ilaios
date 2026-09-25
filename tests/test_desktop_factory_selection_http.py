@@ -6,6 +6,7 @@ from collections.abc import Iterator
 from pathlib import Path
 from threading import Thread
 from types import SimpleNamespace
+from typing import Any, Callable, TypeVar, cast
 from unittest.mock import Mock
 
 import pytest
@@ -16,6 +17,11 @@ from services.desktop_identity_server import DesktopIdentityHTTPServer
 from services.desktop_oidc import DesktopIdentityError
 
 FACTORIES = tuple(item for item in CAPABILITIES if item.domain == "factory")
+F = TypeVar("F", bound=Callable[..., Any])
+
+
+def factory_cases(function: F) -> F:
+    return cast(F, pytest.mark.parametrize("factory", FACTORIES, ids=lambda x: x.capability_id)(function))
 
 
 @contextmanager
@@ -48,7 +54,7 @@ def _post(url: str, factory: CapabilityDefinition, *, bearer: str = "transport-s
     return requests.post(url, json={"objective": objective or factory.display_name, "selected_factory_id": factory.capability_id}, headers={"Authorization": f"Bearer {bearer}", "X-ILAIOS-Session": session}, timeout=3)
 
 
-@pytest.mark.parametrize("factory", FACTORIES, ids=lambda x: x.capability_id)
+@factory_cases
 def test_http_each_factory_returns_actual_blocked_route(factory: CapabilityDefinition) -> None:
     with _server(actual_id=factory.capability_id) as (url, identity, coordinator, start):
         response = _post(url, factory)
@@ -62,7 +68,7 @@ def test_http_each_factory_returns_actual_blocked_route(factory: CapabilityDefin
         start.assert_not_called()
 
 
-@pytest.mark.parametrize("factory", FACTORIES, ids=lambda x: x.capability_id)
+@factory_cases
 def test_http_each_factory_rejects_conflicting_text_without_prepare(factory: CapabilityDefinition) -> None:
     other = next(x for x in FACTORIES if x.capability_id != factory.capability_id)
     with _server(actual_id=factory.capability_id) as (url, _identity, coordinator, start):
@@ -72,7 +78,7 @@ def test_http_each_factory_rejects_conflicting_text_without_prepare(factory: Cap
         start.assert_not_called()
 
 
-@pytest.mark.parametrize("factory", FACTORIES, ids=lambda x: x.capability_id)
+@factory_cases
 def test_http_each_factory_rejects_wrong_actual_route_before_execution(factory: CapabilityDefinition) -> None:
     other = next(x for x in FACTORIES if x.capability_id != factory.capability_id)
     with _server(actual_id=other.capability_id, status="ADMITTED") as (url, _identity, coordinator, start):
@@ -82,7 +88,7 @@ def test_http_each_factory_rejects_wrong_actual_route_before_execution(factory: 
         start.assert_not_called()
 
 
-@pytest.mark.parametrize("factory", FACTORIES, ids=lambda x: x.capability_id)
+@factory_cases
 def test_http_each_factory_requires_transport_auth(factory: CapabilityDefinition) -> None:
     with _server(actual_id=factory.capability_id) as (url, identity, coordinator, start):
         response = _post(url, factory, bearer="wrong")
@@ -92,7 +98,7 @@ def test_http_each_factory_requires_transport_auth(factory: CapabilityDefinition
         start.assert_not_called()
 
 
-@pytest.mark.parametrize("factory", FACTORIES, ids=lambda x: x.capability_id)
+@factory_cases
 def test_http_each_factory_rejects_invalid_session(factory: CapabilityDefinition) -> None:
     with _server(actual_id=factory.capability_id) as (url, identity, coordinator, start):
         identity.validate_session.side_effect = DesktopIdentityError("invalid session")
