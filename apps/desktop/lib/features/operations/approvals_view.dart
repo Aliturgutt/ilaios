@@ -1,3 +1,4 @@
+import '../../app/desktop_page_heading.dart';
 import 'package:flutter/material.dart';
 
 import '../../app/ilaios_locale.dart';
@@ -18,7 +19,7 @@ class ApprovalsView extends StatefulWidget {
   final String status;
   final String? approverId;
   final Future<void> Function(String requestId, GovernanceDecision decision)?
-      onDecision;
+  onDecision;
 
   @override
   State<ApprovalsView> createState() => _ApprovalsViewState();
@@ -67,10 +68,12 @@ class _ApprovalsViewState extends State<ApprovalsView> {
     if (work == null) return const <Map<String, Object?>>[];
     final required = _approvalRequiredIds;
     if (required == null) return work;
-    return work.where((item) {
-      final id = _requestId(item);
-      return id != null && required.contains(id);
-    }).toList(growable: false);
+    return work
+        .where((item) {
+          final id = _requestId(item);
+          return id != null && required.contains(id);
+        })
+        .toList(growable: false);
   }
 
   List<Map<String, Object?>> get _visibleRequests {
@@ -103,7 +106,12 @@ class _ApprovalsViewState extends State<ApprovalsView> {
           _requestId(item),
           _string(item, const ['request_type', 'type', 'category']),
           _string(item, const ['requester_name', 'requester_id', 'requester']),
-          _string(item, const ['reason', 'justification', 'summary', 'objective']),
+          _string(item, const [
+            'reason',
+            'justification',
+            'summary',
+            'objective',
+          ]),
         ].whereType<String>().join(' ').toLowerCase();
         return haystack.contains(query);
       });
@@ -195,7 +203,8 @@ class _ApprovalsViewState extends State<ApprovalsView> {
           _TabsAndActions(
             counts: counts,
             activeTab: _activeTab,
-            hasFilters: _activeTab != 'all' ||
+            hasFilters:
+                _activeTab != 'all' ||
                 _riskFilter != 'all' ||
                 _searchController.text.trim().isNotEmpty,
             onTabChanged: (value) => setState(() => _activeTab = value),
@@ -226,8 +235,11 @@ class _ApprovalsViewState extends State<ApprovalsView> {
                 final detail = _RightRail(
                   request: selected,
                   snapshot: widget.snapshot,
-                  decisionAllowed: selected != null && _decisionAllowed(selected),
-                  busy: selected != null && _busyRequestId == _requestId(selected),
+                  decisionAllowed:
+                      selected != null && _decisionAllowed(selected),
+                  busy:
+                      selected != null &&
+                      _busyRequestId == _requestId(selected),
                   message: _message,
                   onApprove: () => _decide(GovernanceDecision.approved),
                   onDeny: () => _decide(GovernanceDecision.denied),
@@ -242,9 +254,12 @@ class _ApprovalsViewState extends State<ApprovalsView> {
                         child: TextButton.icon(
                           key: const Key('approvals-back-to-queue'),
                           autofocus: true,
-                          onPressed: () => setState(() => _selectedRequestId = null),
+                          onPressed: () =>
+                              setState(() => _selectedRequestId = null),
                           icon: const Icon(Icons.arrow_back),
-                          label: Text(_copy(context, 'Karar Kuyruğu', 'Decision Queue')),
+                          label: Text(
+                            _copy(context, 'Karar Kuyruğu', 'Decision Queue'),
+                          ),
                         ),
                       ),
                       Expanded(child: detail),
@@ -257,10 +272,7 @@ class _ApprovalsViewState extends State<ApprovalsView> {
                   children: [
                     Expanded(child: table),
                     const SizedBox(width: 16),
-                    SizedBox(
-                      width: 390,
-                      child: detail,
-                    ),
+                    SizedBox(width: 390, child: detail),
                   ],
                 );
               },
@@ -279,41 +291,37 @@ class _PageHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
-        key: const Key('approvals-header'),
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _copy(context, 'Onaylar', 'Approvals'),
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w700,
-                        height: 1.15,
-                      ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  _copy(
-                    context,
-                    'Bekleyen kararları inceleyin; sonuçlanan talepleri ve kanıt bağlamını takip edin.',
-                    'Review pending decisions and track completed requests with their evidence context.',
-                  ),
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontSize: 14,
-                        height: 1.4,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                ),
-              ],
+    key: const Key('approvals-header'),
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _copy(context, 'Onaylar', 'Approvals'),
+              style: DesktopPageHeading.style(context),
             ),
-          ),
-          const SizedBox(width: 16),
-          _StatusBadge(status: status),
-        ],
-      );
+            const SizedBox(height: 6),
+            Text(
+              _copy(
+                context,
+                'Bekleyen kararları inceleyin; sonuçlanan talepleri ve kanıt bağlamını takip edin.',
+                'Review pending decisions and track completed requests with their evidence context.',
+              ),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                fontSize: 14,
+                height: 1.4,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(width: 16),
+      _StatusBadge(status: status),
+    ],
+  );
 }
 
 class _StatusBadge extends StatelessWidget {
@@ -447,35 +455,37 @@ class _TabButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Semantics(
-        button: true,
-        selected: selected,
-        child: InkWell(
-          onTap: onPressed,
+    button: true,
+    selected: selected,
+    child: InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: selected
+              ? Theme.of(context).colorScheme.onSurface.withValues(alpha: .06)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
-            decoration: BoxDecoration(
-              color: selected
-                  ? IlaiosTheme.enterpriseCyan.withValues(alpha: .10)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: selected
-                    ? IlaiosTheme.enterpriseCyan
-                    : Theme.of(context).colorScheme.outlineVariant,
-              ),
-            ),
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 13.5,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                color: selected ? IlaiosTheme.enterpriseCyan : null,
-              ),
-            ),
+          border: Border.all(
+            color: selected
+                ? Theme.of(context).colorScheme.onSurface.withValues(alpha: .35)
+                : Theme.of(context).colorScheme.outlineVariant,
           ),
         ),
-      );
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13.5,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            color: selected
+                ? Theme.of(context).colorScheme.onSurface
+                : Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 class _Filters extends StatelessWidget {
@@ -493,37 +503,37 @@ class _Filters extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        key: const Key('approvals-filters'),
-        padding: const EdgeInsets.all(12),
-        decoration: _cardDecoration(context),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final stacked = constraints.maxWidth < 760;
-            final search = TextField(
-              controller: controller,
-              onChanged: onSearch,
-              style: const TextStyle(fontSize: 14),
-              decoration: InputDecoration(
-                hintText: _copy(context, 'Talep ara', 'Search requests'),
-                prefixIcon: const Icon(Icons.search, size: 20),
-              ),
-            );
-            final risk = DropdownButtonFormField<String>(
-              value: riskFilter,
-              decoration: InputDecoration(
-                labelText: _copy(context, 'Risk', 'Risk'),
-              ),
-              style: TextStyle(
-                fontSize: 14,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-              items: <String, String>{
-                'all': _copy(context, 'Tümü', 'All'),
-                'high': _copy(context, 'Yüksek', 'High'),
-                'medium': _copy(context, 'Orta', 'Medium'),
-                'low': _copy(context, 'Düşük', 'Low'),
-              }
-                  .entries
+    key: const Key('approvals-filters'),
+    padding: const EdgeInsets.all(12),
+    decoration: _cardDecoration(context),
+    child: LayoutBuilder(
+      builder: (context, constraints) {
+        final stacked = constraints.maxWidth < 760;
+        final search = TextField(
+          controller: controller,
+          onChanged: onSearch,
+          style: const TextStyle(fontSize: 14),
+          decoration: InputDecoration(
+            hintText: _copy(context, 'Talep ara', 'Search requests'),
+            prefixIcon: const Icon(Icons.search, size: 20),
+          ),
+        );
+        final risk = DropdownButtonFormField<String>(
+          value: riskFilter,
+          decoration: InputDecoration(
+            labelText: _copy(context, 'Risk', 'Risk'),
+          ),
+          style: TextStyle(
+            fontSize: 14,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+          items:
+              <String, String>{
+                    'all': _copy(context, 'Tümü', 'All'),
+                    'high': _copy(context, 'Yüksek', 'High'),
+                    'medium': _copy(context, 'Orta', 'Medium'),
+                    'low': _copy(context, 'Düşük', 'Low'),
+                  }.entries
                   .map(
                     (entry) => DropdownMenuItem(
                       value: entry.key,
@@ -531,29 +541,23 @@ class _Filters extends StatelessWidget {
                     ),
                   )
                   .toList(growable: false),
-              onChanged: onRiskChanged,
-            );
+          onChanged: onRiskChanged,
+        );
 
-            if (stacked) {
-              return Column(
-                children: [
-                  search,
-                  const SizedBox(height: 10),
-                  risk,
-                ],
-              );
-            }
+        if (stacked) {
+          return Column(children: [search, const SizedBox(height: 10), risk]);
+        }
 
-            return Row(
-              children: [
-                Expanded(flex: 3, child: search),
-                const SizedBox(width: 12),
-                Expanded(child: risk),
-              ],
-            );
-          },
-        ),
-      );
+        return Row(
+          children: [
+            Expanded(flex: 3, child: search),
+            const SizedBox(width: 12),
+            Expanded(child: risk),
+          ],
+        );
+      },
+    ),
+  );
 }
 
 class _RequestTable extends StatelessWidget {
@@ -571,73 +575,64 @@ class _RequestTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        key: const Key('approvals-table'),
-        decoration: _cardDecoration(context),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-              child: Text(
-                _copy(context, 'Karar Kuyruğu', 'Decision Queue'),
-                style: const TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-            Divider(
-              height: 1,
-              color: Theme.of(context).colorScheme.outlineVariant,
-            ),
-            Expanded(
-              child: requests.isEmpty
-                  ? _TableEmpty(
-                      authoritativeAvailable: authoritativeAvailable,
-                    )
-                  : ListView.separated(
-                      itemCount: requests.length,
-                      separatorBuilder: (_, _) => Divider(
-                        height: 1,
-                        color: Theme.of(context)
-                            .colorScheme
-                            .outlineVariant
-                            .withValues(alpha: .7),
-                      ),
-                      itemBuilder: (context, index) {
-                        final request = requests[index];
-                        return _RequestRow(
-                          request: request,
-                          selected: _requestId(request) == selectedRequestId,
-                          onTap: () => onSelect(request),
-                        );
-                      },
-                    ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerLow,
-                border: Border(
-                  top: BorderSide(
-                    color: Theme.of(context).colorScheme.outlineVariant,
-                  ),
-                ),
-              ),
-              child: Text(
-                requests.isEmpty
-                    ? _copy(context, '0 sonuç', '0 results')
-                    : '${requests.length} ${_copy(context, 'sonuç', 'results')}',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ),
-          ],
+    key: const Key('approvals-table'),
+    decoration: _cardDecoration(context),
+    clipBehavior: Clip.antiAlias,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+          child: Text(
+            _copy(context, 'Karar Kuyruğu', 'Decision Queue'),
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+          ),
         ),
-      );
+        Divider(height: 1, color: Theme.of(context).colorScheme.outlineVariant),
+        Expanded(
+          child: requests.isEmpty
+              ? _TableEmpty(authoritativeAvailable: authoritativeAvailable)
+              : ListView.separated(
+                  itemCount: requests.length,
+                  separatorBuilder: (_, _) => Divider(
+                    height: 1,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.outlineVariant.withValues(alpha: .7),
+                  ),
+                  itemBuilder: (context, index) {
+                    final request = requests[index];
+                    return _RequestRow(
+                      request: request,
+                      selected: _requestId(request) == selectedRequestId,
+                      onTap: () => onSelect(request),
+                    );
+                  },
+                ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerLow,
+            border: Border(
+              top: BorderSide(
+                color: Theme.of(context).colorScheme.outlineVariant,
+              ),
+            ),
+          ),
+          child: Text(
+            requests.isEmpty
+                ? _copy(context, '0 sonuç', '0 results')
+                : '${requests.length} ${_copy(context, 'sonuç', 'results')}',
+            style: TextStyle(
+              fontSize: 14,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _RequestRow extends StatelessWidget {
@@ -655,12 +650,17 @@ class _RequestRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final risk = _normalizedRisk(request);
     final status = _normalizedStatus(request);
-    final requester =
-        _string(request, const ['requester_name', 'requester_id', 'requester']);
-    final reason = _string(
-      request,
-      const ['reason', 'justification', 'summary', 'objective'],
-    );
+    final requester = _string(request, const [
+      'requester_name',
+      'requester_id',
+      'requester',
+    ]);
+    final reason = _string(request, const [
+      'reason',
+      'justification',
+      'summary',
+      'objective',
+    ]);
 
     return Material(
       color: selected
@@ -702,7 +702,7 @@ class _RequestRow extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 14,
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
@@ -741,41 +741,42 @@ class _TableEmpty extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                authoritativeAvailable
-                    ? Icons.task_alt_outlined
-                    : Icons.cloud_off_outlined,
-                size: 36,
-                color: Theme.of(context).colorScheme.outline,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                authoritativeAvailable
-                    ? _copy(
-                        context,
-                        'Şu anda eşleşen bir onay talebi yok.',
-                        'There are no matching approval requests right now.',
-                      )
-                    : _copy(
-                        context,
-                        'Yönetişim verisi şu anda kullanılamıyor.',
-                        'Governance data is currently unavailable.',
-                      ),
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
+    child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            authoritativeAvailable
+                ? Icons.task_alt_outlined
+                : Icons.cloud_off_outlined,
+            size: 36,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
-        ),
-      );
+          const SizedBox(height: 12),
+          Text(
+            authoritativeAvailable
+                ? _copy(
+                    context,
+                    'Şu anda eşleşen bir onay talebi yok.',
+                    'There are no matching approval requests right now.',
+                  )
+                : _copy(
+                    context,
+                    'Yönetişim verisi şu anda kullanılamıyor.',
+                    'Governance data is currently unavailable.',
+                  ),
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 class _RightRail extends StatelessWidget {
@@ -799,22 +800,22 @@ class _RightRail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        key: const Key('approvals-right-rail'),
-        decoration: _cardDecoration(context),
-        padding: const EdgeInsets.all(16),
-        child: SingleChildScrollView(
-          primary: false,
-          child: _SelectedRequestCard(
-            request: request,
-            snapshot: snapshot,
-            decisionAllowed: decisionAllowed,
-            busy: busy,
-            message: message,
-            onApprove: onApprove,
-            onDeny: onDeny,
-          ),
-        ),
-      );
+    key: const Key('approvals-right-rail'),
+    decoration: _cardDecoration(context),
+    padding: const EdgeInsets.all(16),
+    child: SingleChildScrollView(
+      primary: false,
+      child: _SelectedRequestCard(
+        request: request,
+        snapshot: snapshot,
+        decisionAllowed: decisionAllowed,
+        busy: busy,
+        message: message,
+        onApprove: onApprove,
+        onDeny: onDeny,
+      ),
+    ),
+  );
 }
 
 class _SelectedRequestCard extends StatelessWidget {
@@ -861,11 +862,14 @@ class _SelectedRequestCard extends StatelessWidget {
     final status = _normalizedStatus(item);
     final requester =
         _string(item, const ['requester_name', 'requester_id', 'requester']) ??
-            '—';
-    final reason = _string(
-          item,
-          const ['reason', 'justification', 'summary', 'objective'],
-        ) ??
+        '—';
+    final reason =
+        _string(item, const [
+          'reason',
+          'justification',
+          'summary',
+          'objective',
+        ]) ??
         '—';
     final matchingEvidence = snapshot.evidenceRecords
         .where((record) => record.executionId == id)
@@ -930,8 +934,8 @@ class _SelectedRequestCard extends StatelessWidget {
               'No matching evidence record is available for this request.',
             ),
             style: TextStyle(
-              fontSize: 13,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontSize: 14,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           )
         else
@@ -1029,33 +1033,30 @@ class _DetailRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              width: 92,
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 92,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
-      );
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _Pill extends StatelessWidget {
@@ -1066,23 +1067,23 @@ class _Pill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: .12),
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: color.withValues(alpha: .28)),
-        ),
-        child: Text(
-          text,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontSize: 12.5,
-            fontWeight: FontWeight.w700,
-            color: color,
-          ),
-        ),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: .12),
+      borderRadius: BorderRadius.circular(999),
+      border: Border.all(color: color.withValues(alpha: .28)),
+    ),
+    child: Text(
+      text,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        fontSize: 12.5,
+        fontWeight: FontWeight.w700,
+        color: color,
+      ),
+    ),
+  );
 }
 
 class _Counts {
@@ -1135,10 +1136,10 @@ class _Counts {
 }
 
 BoxDecoration _cardDecoration(BuildContext context) => BoxDecoration(
-      color: Theme.of(context).colorScheme.surfaceContainerLowest,
-      borderRadius: BorderRadius.circular(10),
-      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-    );
+  color: Theme.of(context).colorScheme.surfaceContainerLowest,
+  borderRadius: BorderRadius.circular(10),
+  border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+);
 
 String _copy(BuildContext context, String tr, String en) =>
     IlaiosLocaleScope.of(context).locale == IlaiosLocale.turkish ? tr : en;
@@ -1177,14 +1178,18 @@ String? _requestId(Map<String, Object?>? request) =>
     _string(request, const ['request_id', 'id']);
 
 String _requestTitle(Map<String, Object?> request) =>
-    _string(
-      request,
-      const ['title', 'request_name', 'name', 'action', 'operation'],
-    ) ??
+    _string(request, const [
+      'title',
+      'request_name',
+      'name',
+      'action',
+      'operation',
+    ]) ??
     _copyFallbackId(_requestId(request));
 
-String _copyFallbackId(String? id) =>
-    id == null || id.isEmpty ? '—' : 'Request ${id.length > 8 ? id.substring(0, 8) : id}';
+String _copyFallbackId(String? id) => id == null || id.isEmpty
+    ? '—'
+    : 'Request ${id.length > 8 ? id.substring(0, 8) : id}';
 
 String _normalizedStatus(Map<String, Object?> request) {
   final raw = (_string(request, const ['status', 'decision', 'state']) ?? '')
@@ -1219,32 +1224,32 @@ String _normalizedRisk(Map<String, Object?> request) {
 }
 
 String _statusLabel(BuildContext context, String status) => switch (status) {
-      'pending' => _copy(context, 'Bekliyor', 'Pending'),
-      'approved' => _copy(context, 'Onaylandı', 'Approved'),
-      'denied' => _copy(context, 'Reddedildi', 'Denied'),
-      _ => _copy(context, 'Bilinmiyor', 'Unknown'),
-    };
+  'pending' => _copy(context, 'Bekliyor', 'Pending'),
+  'approved' => _copy(context, 'Onaylandı', 'Approved'),
+  'denied' => _copy(context, 'Reddedildi', 'Denied'),
+  _ => _copy(context, 'Bilinmiyor', 'Unknown'),
+};
 
 Color _statusColor(String status) => switch (status) {
-      'pending' => IlaiosTheme.warning,
-      'approved' => IlaiosTheme.success,
-      'denied' => IlaiosTheme.danger,
-      _ => IlaiosTheme.enterpriseCyan,
-    };
+  'pending' => IlaiosTheme.warning,
+  'approved' => IlaiosTheme.success,
+  'denied' => IlaiosTheme.danger,
+  _ => IlaiosTheme.enterpriseCyan,
+};
 
 String _riskLabel(BuildContext context, String risk) => switch (risk) {
-      'high' => _copy(context, 'Yüksek', 'High'),
-      'medium' => _copy(context, 'Orta', 'Medium'),
-      'low' => _copy(context, 'Düşük', 'Low'),
-      _ => _copy(context, 'Belirsiz', 'Unknown'),
-    };
+  'high' => _copy(context, 'Yüksek', 'High'),
+  'medium' => _copy(context, 'Orta', 'Medium'),
+  'low' => _copy(context, 'Düşük', 'Low'),
+  _ => _copy(context, 'Belirsiz', 'Unknown'),
+};
 
 Color _riskColor(String risk) => switch (risk) {
-      'high' => IlaiosTheme.danger,
-      'medium' => IlaiosTheme.warning,
-      'low' => IlaiosTheme.success,
-      _ => ThemeData.fallback().colorScheme.outline,
-    };
+  'high' => IlaiosTheme.danger,
+  'medium' => IlaiosTheme.warning,
+  'low' => IlaiosTheme.success,
+  _ => ThemeData.fallback().colorScheme.outline,
+};
 
 IconData _requestIcon(Map<String, Object?> request) {
   final text =
@@ -1277,7 +1282,9 @@ String _dateText(Object? value) {
   final text = value.toString().trim();
   if (text.isEmpty) return '—';
   final parsed = DateTime.tryParse(text);
-  if (parsed == null) return text.length <= 22 ? text : '${text.substring(0, 22)}…';
+  if (parsed == null) {
+    return text.length <= 22 ? text : '${text.substring(0, 22)}…';
+  }
   final local = parsed.toLocal();
   return '${local.day.toString().padLeft(2, '0')}.${local.month.toString().padLeft(2, '0')}.${local.year} ${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
 }

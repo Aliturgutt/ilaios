@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../app/ilaios_locale.dart';
+
 import '../../control_plane/operational_snapshot.dart';
 import '../../control_plane/projection.dart';
 import '../deliveries/delivery_identity_scope.dart';
@@ -55,7 +57,20 @@ class ReferenceAgentsSummaryView extends StatelessWidget {
             status: status,
             onNavigate: onNavigate,
             onRefreshRequested: onRefreshRequested,
-            workspace: const _PixelWorkspacePanel(),
+            workspace: Builder(
+              builder: (context) => Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    IlaiosLocaleScope.of(context).locale == IlaiosLocale.turkish
+                        ? 'Ajanların çalışma durumu yalnızca doğrulanmış canlı verilerden gösterilir. Güncel durum için yukarıdaki sayaçları ve aşağıdaki ajan listesini inceleyin.'
+                        : 'Agent activity is shown only from verified live data. See the counters above and the agent list below for current status.',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ),
+              ),
+            ),
           ),
         ),
         Positioned(
@@ -67,6 +82,7 @@ class ReferenceAgentsSummaryView extends StatelessWidget {
             child: _AgentSummaryCards(
               snapshot: presentationSnapshot,
               states: states,
+              runtimeConnected: projection.connected,
             ),
           ),
         ),
@@ -104,16 +120,16 @@ class _PixelWorkspacePanelState extends State<_PixelWorkspacePanel> {
   }
 
   Widget _error(BuildContext context) => Center(
-        child: Text(
-          Localizations.localeOf(context).languageCode == 'tr'
-              ? 'Pixel çalışma alanı yüklenemedi.'
-              : 'Pixel workspace could not be loaded.',
-          style: TextStyle(
-            fontSize: 12.5,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-        ),
-      );
+    child: Text(
+      IlaiosLocaleScope.of(context).locale == IlaiosLocale.turkish
+          ? 'Pixel çalışma alanı yüklenemedi.'
+          : 'Pixel workspace could not be loaded.',
+      style: TextStyle(
+        fontSize: 13,
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
+      ),
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -149,36 +165,59 @@ class _PixelWorkspacePanelState extends State<_PixelWorkspacePanel> {
 }
 
 class _AgentSummaryCards extends StatelessWidget {
-  const _AgentSummaryCards({required this.snapshot, required this.states});
+  const _AgentSummaryCards({
+    required this.snapshot,
+    required this.states,
+    required this.runtimeConnected,
+  });
 
   final OperationalSnapshot snapshot;
   final Map<String, AgentRuntimeDisplayState> states;
+  final bool runtimeConnected;
 
   @override
   Widget build(BuildContext context) {
-    final tr = Localizations.localeOf(context).languageCode == 'tr';
-    final total = _int(snapshot.agentState, const ['canonical_count']) ??
-        (states.isEmpty ? null : states.length);
-    final active = states.isEmpty
+    final tr = IlaiosLocaleScope.of(context).locale == IlaiosLocale.turkish;
+    final total = runtimeConnected
+        ? (_int(snapshot.agentState, const ['canonical_count']) ??
+              (states.isEmpty ? null : states.length))
+        : null;
+    final active = !runtimeConnected || states.isEmpty
         ? null
         : states.values
-            .where((item) => item == AgentRuntimeDisplayState.active)
-            .length;
-    final busy = states.isEmpty
+              .where((item) => item == AgentRuntimeDisplayState.active)
+              .length;
+    final busy = !runtimeConnected || states.isEmpty
         ? null
         : states.values
-            .where((item) => item == AgentRuntimeDisplayState.working)
-            .length;
-    final idle = states.isEmpty
+              .where((item) => item == AgentRuntimeDisplayState.working)
+              .length;
+    final idle = !runtimeConnected || states.isEmpty
         ? null
         : states.values
-            .where((item) => item == AgentRuntimeDisplayState.idle)
-            .length;
+              .where((item) => item == AgentRuntimeDisplayState.idle)
+              .length;
     final items = <({String id, String label, String value})>[
-      (id: 'total', label: tr ? 'Toplam' : 'Total', value: total?.toString() ?? '—'),
-      (id: 'active', label: tr ? 'Aktif' : 'Active', value: active?.toString() ?? '—'),
-      (id: 'busy', label: tr ? 'Meşgul' : 'Busy', value: busy?.toString() ?? '—'),
-      (id: 'idle', label: tr ? 'Boşta' : 'Idle', value: idle?.toString() ?? '—'),
+      (
+        id: 'total',
+        label: tr ? 'Toplam' : 'Total',
+        value: total?.toString() ?? '—',
+      ),
+      (
+        id: 'active',
+        label: tr ? 'Aktif' : 'Active',
+        value: active?.toString() ?? '—',
+      ),
+      (
+        id: 'busy',
+        label: tr ? 'Meşgul' : 'Busy',
+        value: busy?.toString() ?? '—',
+      ),
+      (
+        id: 'idle',
+        label: tr ? 'Boşta' : 'Idle',
+        value: idle?.toString() ?? '—',
+      ),
     ];
 
     return Container(
@@ -190,7 +229,10 @@ class _AgentSummaryCards extends StatelessWidget {
             Expanded(
               child: Container(
                 key: ValueKey('agents-summary-${items[index].id}'),
-                padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 11,
+                  vertical: 7,
+                ),
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.surfaceContainerLowest,
                   border: Border.all(
@@ -206,7 +248,7 @@ class _AgentSummaryCards extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: 12.5,
+                          fontSize: 13,
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),

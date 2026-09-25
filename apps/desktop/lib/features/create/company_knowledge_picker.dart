@@ -95,7 +95,8 @@ class _CompanyKnowledgePickerState extends State<CompanyKnowledgePicker> {
         'Select company PDF, DOCX, or ZIP files',
         'Şirket PDF, DOCX veya ZIP dosyalarını seç',
       ).replaceAll("'", "''");
-      final script = '''
+      final script =
+          '''
 Add-Type -AssemblyName System.Windows.Forms
 \$dialog = New-Object System.Windows.Forms.OpenFileDialog
 \$dialog.Filter = 'Company documents (*.pdf;*.docx;*.zip)|*.pdf;*.docx;*.zip'
@@ -107,18 +108,14 @@ if (\$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
   foreach (\$path in \$dialog.FileNames) { [Console]::WriteLine(\$path) }
 }
 ''';
-      final result = await Process.run(
-        'powershell.exe',
-        <String>[
-          '-NoLogo',
-          '-NoProfile',
-          '-NonInteractive',
-          '-STA',
-          '-Command',
-          script,
-        ],
-        runInShell: false,
-      );
+      final result = await Process.run('powershell.exe', <String>[
+        '-NoLogo',
+        '-NoProfile',
+        '-NonInteractive',
+        '-STA',
+        '-Command',
+        script,
+      ], runInShell: false);
       if (result.exitCode != 0) {
         throw _CompanyKnowledgePickerError(
           _text(
@@ -216,7 +213,8 @@ if (\$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
           ),
         );
       }
-      if ((extension == 'docx' || extension == 'zip') && !_hasZipSignature(bytes)) {
+      if ((extension == 'docx' || extension == 'zip') &&
+          !_hasZipSignature(bytes)) {
         throw _CompanyKnowledgePickerError(
           _text(
             '$filename does not contain a ZIP signature.',
@@ -266,7 +264,11 @@ if (\$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
         children: [
           Row(
             children: [
-              const Icon(Icons.description_outlined, size: 16),
+              const Icon(
+                Icons.description_outlined,
+                size: 16,
+                color: Color(0xFF4C9AFF),
+              ),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
@@ -281,7 +283,10 @@ if (\$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
               if (documents.isNotEmpty)
                 IconButton(
                   key: const Key('company-knowledge-clear'),
-                  tooltip: _text('Remove staged documents', 'Hazır belgeleri kaldır'),
+                  tooltip: _text(
+                    'Remove staged documents',
+                    'Hazır belgeleri kaldır',
+                  ),
                   onPressed: widget.enabled ? widget.controller.clear : null,
                   visualDensity: VisualDensity.compact,
                   icon: const Icon(Icons.close_rounded, size: 16),
@@ -297,7 +302,11 @@ if (\$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
                           height: 12,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Icon(Icons.upload_file_outlined, size: 14),
+                      : const Icon(
+                          Icons.upload_file_outlined,
+                          size: 14,
+                          color: Color(0xFF4C9AFF),
+                        ),
                   label: Text(
                     _reading
                         ? _text('Reading…', 'Okunuyor…')

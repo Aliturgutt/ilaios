@@ -12,6 +12,7 @@ import '../features/dashboard/reference_desktop_shell_v11.dart';
 import '../identity/identity_client.dart';
 import 'ilaios_locale.dart';
 import 'ilaios_theme.dart';
+import 'desktop_text_scale.dart';
 import 'ilaios_theme_mode.dart';
 
 class IlaiosDesktopApp extends StatefulWidget {
@@ -59,18 +60,19 @@ class IlaiosDesktopApp extends StatefulWidget {
   final Future<PromptRefinementPreview> Function(
     String prompt,
     PromptRefinementMode mode,
-  )? onPromptRefine;
+  )?
+  onPromptRefine;
   final Future<String> Function(EvidenceRecord record)? onSaveArtifact;
   final Future<DesktopLiState> Function()? onFetchLiState;
   final Future<List<DesktopLiMemory>> Function()? onFetchLiMemories;
   final Future<DesktopLiMemory> Function(String kind, String content)?
-      onRememberLiMemory;
+  onRememberLiMemory;
   final VoidCallback? onRefreshRequested;
   final Future<Map<String, dynamic>> Function(Map<String, Object?> request)?
-      onAssistantRequest;
+  onAssistantRequest;
   final Future<void> Function(String agentId)? onProvisionAgent;
   final Future<void> Function(String requestId, GovernanceDecision decision)?
-      onGovernanceDecision;
+  onGovernanceDecision;
 
   @override
   State<IlaiosDesktopApp> createState() => _IlaiosDesktopAppState();
@@ -96,6 +98,7 @@ class _IlaiosDesktopAppState extends State<IlaiosDesktopApp>
     if (kReleaseMode && widget.onThemeModeChanged == null) {
       unawaited(_loadTheme());
     }
+    if (kReleaseMode) unawaited(_loadTextScale());
   }
 
   @override
@@ -132,21 +135,28 @@ class _IlaiosDesktopAppState extends State<IlaiosDesktopApp>
   void _restartOperationalRefresh() {
     _operationalRefreshTimer?.cancel();
     if (widget.onRefreshRequested == null) return;
-    _operationalRefreshTimer = Timer.periodic(
-      _operationalRefreshInterval,
-      (_) {
-        if (!mounted || _lifecycleState != AppLifecycleState.resumed) return;
-        widget.onRefreshRequested?.call();
-      },
-    );
+    _operationalRefreshTimer = Timer.periodic(_operationalRefreshInterval, (_) {
+      if (!mounted || _lifecycleState != AppLifecycleState.resumed) return;
+      widget.onRefreshRequested?.call();
+    });
   }
 
   Future<void> _loadTheme() async {
     final mode = await IlaiosThemeModeStore.load();
-    if (!mounted || widget.onThemeModeChanged != null || mode == _localThemeMode) {
+    if (!mounted ||
+        widget.onThemeModeChanged != null ||
+        mode == _localThemeMode) {
       return;
     }
     setState(() => _localThemeMode = mode);
+  }
+
+  Future<void> _loadTextScale() async {
+    final original = desktopTextScale.value;
+    final saved = await DesktopTextScaleStore.load();
+    if (mounted && desktopTextScale.value == original) {
+      desktopTextScale.value = saved;
+    }
   }
 
   void _changeTheme(ThemeMode mode) {
@@ -217,8 +227,9 @@ class _IlaiosDesktopAppState extends State<IlaiosDesktopApp>
 
   @override
   Widget build(BuildContext context) {
-    final effectiveTheme =
-        widget.onThemeModeChanged == null ? _localThemeMode : widget.themeMode;
+    final effectiveTheme = widget.onThemeModeChanged == null
+        ? _localThemeMode
+        : widget.themeMode;
     final darkDesktopTheme = IlaiosTheme.dark;
     return MaterialApp(
       title: 'ILAIOS Desktop',
@@ -226,6 +237,15 @@ class _IlaiosDesktopAppState extends State<IlaiosDesktopApp>
       theme: IlaiosTheme.light,
       darkTheme: darkDesktopTheme,
       themeMode: effectiveTheme,
+      builder: (context, child) => ValueListenableBuilder<double>(
+        valueListenable: desktopTextScale,
+        builder: (context, scale, _) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: TextScaler.linear(scale)),
+          child: child!,
+        ),
+      ),
       home: IlaiosLocaleScope(
         locale: widget.locale,
         onChanged: (value) => widget.onLocaleChanged?.call(value),
@@ -243,8 +263,9 @@ class _IlaiosDesktopAppState extends State<IlaiosDesktopApp>
             onThemeModeChanged: _changeTheme,
             onSignIn: widget.onSignIn,
             onLogout: widget.onLogout,
-            onPromptSubmit:
-                widget.onPromptSubmit == null ? null : _submitPrompt,
+            onPromptSubmit: widget.onPromptSubmit == null
+                ? null
+                : _submitPrompt,
             onPromptRefine: widget.onPromptRefine,
             onSaveArtifact: widget.onSaveArtifact,
             onFetchLiState: widget.onFetchLiState,

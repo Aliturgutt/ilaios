@@ -101,7 +101,8 @@ class _WorkflowSummaryCards extends StatelessWidget {
       (
         id: 'active',
         label: tr ? 'Aktif' : 'Active',
-        value: _authoritativeInt(snapshot.schedulerState, const [
+        value:
+            _authoritativeInt(snapshot.schedulerState, const [
               'active_count',
               'active_jobs',
               'running_count',
@@ -111,14 +112,18 @@ class _WorkflowSummaryCards extends StatelessWidget {
       (
         id: 'approval',
         label: tr ? 'Onay Bekleyen' : 'Awaiting Approval',
-        value: _authoritativeListCount(snapshot.governanceState, 'work')
-                ?.toString() ??
+        value:
+            _authoritativeListCount(
+              snapshot.governanceState,
+              'work',
+            )?.toString() ??
             '—',
       ),
       (
         id: 'overdue',
         label: tr ? 'Geciken' : 'Overdue',
-        value: _authoritativeInt(snapshot.schedulerState, const [
+        value:
+            _authoritativeInt(snapshot.schedulerState, const [
               'overdue_count',
               'late_count',
             ])?.toString() ??
@@ -127,7 +132,8 @@ class _WorkflowSummaryCards extends StatelessWidget {
       (
         id: 'completed',
         label: tr ? 'Tamamlanan' : 'Completed',
-        value: _authoritativeInt(snapshot.schedulerState, const [
+        value:
+            _authoritativeInt(snapshot.schedulerState, const [
               'completed_count',
               'completed_jobs',
               'done_count',
@@ -145,7 +151,10 @@ class _WorkflowSummaryCards extends StatelessWidget {
             Expanded(
               child: Container(
                 key: ValueKey('workflows-summary-${items[index].id}'),
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 7,
+                ),
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.surfaceContainerLowest,
                   border: Border.all(
@@ -161,7 +170,7 @@ class _WorkflowSummaryCards extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: 8.4,
+                          fontSize: 11,
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),

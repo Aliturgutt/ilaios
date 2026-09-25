@@ -37,65 +37,65 @@ void main() {
 
     expect(find.byKey(const Key('home-command-prompt')), findsOneWidget);
     expect(find.byKey(const Key('home-new-work')), findsOneWidget);
-    expect(find.text('View all agents'), findsOneWidget);
+    expect(find.text('View all agents'), findsNothing);
     expect(find.byKey(const Key('home-templates')), findsNothing);
     expect(find.byKey(const Key('home-last-session')), findsNothing);
     expect(find.byKey(const Key('home-assign-agent')), findsNothing);
     expect(find.byKey(const Key('home-factory-video')), findsNothing);
 
-    final viewAll = find.text('View all agents');
-    await tester.ensureVisible(viewAll);
-    await tester.tap(viewAll);
+    // Agent navigation belongs to the sidebar, not the Home content.
+    await tester.tap(find.byKey(const Key('nav-agents')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('reference-agents-page')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Home prompt is submitted through the authenticated execution callback', (
-    WidgetTester tester,
-  ) async {
-    await tester.binding.setSurfaceSize(const Size(1536, 1024));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
+  testWidgets(
+    'Home prompt is submitted through the authenticated execution callback',
+    (WidgetTester tester) async {
+      await tester.binding.setSurfaceSize(const Size(1536, 1024));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    String? submittedObjective;
-    await tester.pumpWidget(
-      IlaiosDesktopApp(
-        projection: const ControlPlaneProjection(
-          connected: true,
-          status: 'Connected',
-          goalCount: 0,
-          jobCount: 0,
-          lastEvent: null,
+      String? submittedObjective;
+      await tester.pumpWidget(
+        IlaiosDesktopApp(
+          projection: const ControlPlaneProjection(
+            connected: true,
+            status: 'Connected',
+            goalCount: 0,
+            jobCount: 0,
+            lastEvent: null,
+          ),
+          onPromptSubmit: (objective) async {
+            submittedObjective = objective;
+            return const PromptSubmission(
+              goalId: 'goal-home-1',
+              jobId: 'job-home-1',
+              state: 'created',
+            );
+          },
         ),
-        onPromptSubmit: (objective) async {
-          submittedObjective = objective;
-          return const PromptSubmission(
-            goalId: 'goal-home-1',
-            jobId: 'job-home-1',
-            state: 'created',
-          );
-        },
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
 
-    await tester.enterText(
-      find.byKey(const Key('home-command-prompt')),
-      'Build a verified website from the Home command center.',
-    );
-    await tester.pump();
-    final submit = find.byKey(const Key('home-new-work'));
-    await tester.ensureVisible(submit);
-    final button = tester.widget<FilledButton>(submit);
-    expect(button.onPressed, isNotNull);
-    await tester.tap(submit);
-    await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const Key('home-command-prompt')),
+        'Build a verified website from the Home command center.',
+      );
+      await tester.pump();
+      final submit = find.byKey(const Key('home-new-work'));
+      await tester.ensureVisible(submit);
+      final button = tester.widget<FilledButton>(submit);
+      expect(button.onPressed, isNotNull);
+      await tester.tap(submit);
+      await tester.pumpAndSettle();
 
-    expect(
-      submittedObjective,
-      'Build a verified website from the Home command center.',
-    );
-    expect(find.byKey(const Key('command-center-home')), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
+      expect(
+        submittedObjective,
+        'Build a verified website from the Home command center.',
+      );
+      expect(find.byKey(const Key('command-center-home')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
 }

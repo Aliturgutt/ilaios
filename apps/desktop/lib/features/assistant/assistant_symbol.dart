@@ -9,13 +9,18 @@ class AssistantSymbol extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Image.asset(
-        Theme.of(context).brightness == Brightness.dark
-            ? '../../brand/assets/05-ilaios-app-icon.jpg'
-            : '../../brand/assets/04-ilaios-symbol-light.jpg',
-        width: size,
-        height: size,
-        fit: BoxFit.contain,
-        filterQuality: FilterQuality.high,
-        excludeFromSemantics: true,
-      );
+    Theme.of(context).brightness == Brightness.dark
+        ? '../../brand/assets/05-ilaios-app-icon.jpg'
+        : '../../brand/assets/04-ilaios-symbol-light.jpg',
+    width: size,
+    height: size,
+    fit: BoxFit.contain,
+    filterQuality: FilterQuality.high,
+    excludeFromSemantics: true,
+    errorBuilder: (context, error, stackTrace) => Icon(
+      Icons.auto_awesome_rounded,
+      size: size,
+      color: Theme.of(context).colorScheme.onSurface,
+    ),
+  );
 }

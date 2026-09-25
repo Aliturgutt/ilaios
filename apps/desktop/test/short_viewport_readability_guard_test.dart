@@ -25,7 +25,7 @@ void main() {
         );
         final input = find.byKey(const Key('home-command-prompt'));
         expect(input, findsOneWidget);
-        expect(tester.getSize(input).height, 60);
+        expect(tester.getSize(input).height, 48);
         final field = tester.widget<TextField>(input);
         expect(field.decoration?.hintStyle?.fontSize, 14);
         final status = tester.getRect(

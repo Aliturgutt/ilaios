@@ -7,68 +7,87 @@ import 'package:ilaios_desktop/main.dart';
 const _verified = EvidenceRecord(
   sequence: 1,
   executionId: 'exec-verified',
-  artifactDigest: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+  artifactDigest:
+      'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
   action: 'web.finished_product',
   previousHash: '',
-  recordHash: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+  recordHash:
+      'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+);
+
+const _connected = ControlPlaneProjection(
+  connected: true,
+  status: 'Connected',
+  goalCount: 0,
+  jobCount: 0,
+  lastEvent: null,
 );
 
 void main() {
-  testWidgets('Deliveries ignores finished-product claims that exist only in live telemetry', (
-    WidgetTester tester,
-  ) async {
-    await tester.binding.setSurfaceSize(const Size(1600, 900));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
+  testWidgets(
+    'Deliveries ignores finished-product claims that exist only in live telemetry',
+    (WidgetTester tester) async {
+      await tester.binding.setSurfaceSize(const Size(1600, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    const unverifiedTelemetry = OperationalSnapshot(
-      runtimeRoutes: <Map<String, Object?>>[],
-      schedulerState: <String, Object?>{},
-      grantsState: <String, Object?>{},
-      governanceState: <String, Object?>{},
-      evidenceRecords: <EvidenceRecord>[],
-      liveEvents: <Map<String, Object?>>[
-        <String, Object?>{
-          'sequence': 1,
-          'execution_id': 'exec-telemetry-only',
-          'action': 'web.finished_product',
-          'artifact_digest': 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
-        },
-      ],
-    );
+      const unverifiedTelemetry = OperationalSnapshot(
+        runtimeRoutes: <Map<String, Object?>>[],
+        schedulerState: <String, Object?>{},
+        grantsState: <String, Object?>{},
+        governanceState: <String, Object?>{},
+        evidenceRecords: <EvidenceRecord>[],
+        liveEvents: <Map<String, Object?>>[
+          <String, Object?>{
+            'sequence': 1,
+            'execution_id': 'exec-telemetry-only',
+            'action': 'web.finished_product',
+            'artifact_digest':
+                'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+          },
+        ],
+      );
 
-    await tester.pumpWidget(
-      const IlaiosDesktopApp(operationalSnapshot: unverifiedTelemetry),
-    );
-    await tester.tap(find.byKey(const ValueKey('nav-artifacts')));
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        const IlaiosDesktopApp(
+          projection: _connected,
+          operationalSnapshot: unverifiedTelemetry,
+        ),
+      );
+      await tester.tap(find.byKey(const ValueKey('nav-artifacts')));
+      await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('outputs-table')), findsOneWidget);
-    expect(find.textContaining('exec-telemetry-only'), findsNothing);
-    expect(tester.takeException(), isNull);
-  });
+      expect(find.byKey(const Key('outputs-table')), findsOneWidget);
+      expect(find.textContaining('exec-telemetry-only'), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
-  testWidgets('Deliveries accepts finished products only from verified evidence records', (
-    WidgetTester tester,
-  ) async {
-    await tester.binding.setSurfaceSize(const Size(1600, 900));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
+  testWidgets(
+    'Deliveries accepts finished products only from verified evidence records',
+    (WidgetTester tester) async {
+      await tester.binding.setSurfaceSize(const Size(1600, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    const snapshot = OperationalSnapshot(
-      runtimeRoutes: <Map<String, Object?>>[],
-      schedulerState: <String, Object?>{},
-      grantsState: <String, Object?>{},
-      governanceState: <String, Object?>{},
-      evidenceRecords: <EvidenceRecord>[_verified],
-      liveEvents: <Map<String, Object?>>[],
-    );
+      const snapshot = OperationalSnapshot(
+        runtimeRoutes: <Map<String, Object?>>[],
+        schedulerState: <String, Object?>{},
+        grantsState: <String, Object?>{},
+        governanceState: <String, Object?>{},
+        evidenceRecords: <EvidenceRecord>[_verified],
+        liveEvents: <Map<String, Object?>>[],
+      );
 
-    await tester.pumpWidget(
-      const IlaiosDesktopApp(operationalSnapshot: snapshot),
-    );
-    await tester.tap(find.byKey(const ValueKey('nav-artifacts')));
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        const IlaiosDesktopApp(
+          projection: _connected,
+          operationalSnapshot: snapshot,
+        ),
+      );
+      await tester.tap(find.byKey(const ValueKey('nav-artifacts')));
+      await tester.pumpAndSettle();
 
-    expect(find.textContaining('exec-verified'), findsWidgets);
-    expect(tester.takeException(), isNull);
-  });
+      expect(find.textContaining('exec-verified'), findsWidgets);
+      expect(tester.takeException(), isNull);
+    },
+  );
 }

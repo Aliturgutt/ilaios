@@ -1,3 +1,4 @@
+import '../../app/desktop_page_heading.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -221,7 +222,10 @@ class _ReferenceAgentsViewState extends State<ReferenceAgentsView> {
 
   @override
   Widget build(BuildContext context) {
-    final allAgents = _agentRecords(widget.snapshot);
+    final allAgents = _agentRecords(
+      widget.snapshot,
+      runtimeConnected: widget.projection.connected,
+    );
     final filtered = _filtered(allAgents);
     final pageCount = math.max(1, (filtered.length / _pageSize).ceil());
     final effectivePage = _page.clamp(0, pageCount - 1);
@@ -364,7 +368,7 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) => SizedBox(
-      height: constraints.maxWidth < 760 ? 59 : 43,
+      height: constraints.maxWidth < 760 ? 66 : 50,
       child: Row(
         children: [
           Expanded(
@@ -374,17 +378,13 @@ class _Header extends StatelessWidget {
               children: [
                 Text(
                   _tr(context, 'Ajanlar', 'Agents'),
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w700,
-                    height: 1,
-                  ),
+                  style: DesktopPageHeading.style(context),
                 ),
                 const SizedBox(height: 5),
                 Text(
                   _tr(
                     context,
-                    'Canonical ajan durumunu, kapasiteyi ve gerçek runtime telemetrisini izleyin.',
+                    'Ajanların durumunu, kapasitesini ve doğrulanmış canlı çalışma verilerini izleyin.',
                     'Monitor canonical agent state, capacity and real runtime telemetry.',
                   ),
                   style: TextStyle(
@@ -738,7 +738,7 @@ class _TablePanel extends StatelessWidget {
                   ),
           ),
           SizedBox(
-            height: 29,
+            height: 28,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Row(
@@ -747,7 +747,7 @@ class _TablePanel extends StatelessWidget {
                     totalFiltered == 0
                         ? _tr(context, '0 ajan', '0 agents')
                         : '$first-$last / $totalFiltered ${_tr(context, 'ajan', 'agents')} · $totalAgents ${_tr(context, 'toplam', 'total')}',
-                    style: const TextStyle(fontSize: 11),
+                    style: const TextStyle(fontSize: 12),
                   ),
                   const Spacer(),
                   IconButton(
@@ -761,7 +761,7 @@ class _TablePanel extends StatelessWidget {
                     constraints: const BoxConstraints(minWidth: 34),
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      border: Border.all(color: IlaiosTheme.enterpriseCyan),
+                      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
@@ -853,49 +853,49 @@ class _AgentHeader extends StatelessWidget {
             flex: 24,
             child: Text(
               _tr(context, 'Ajan', 'Agent'),
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
             ),
           ),
           Expanded(
             flex: 17,
             child: Text(
               _tr(context, 'Uzmanlık', 'Specialty'),
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
             ),
           ),
           Expanded(
             flex: 12,
             child: Text(
               _tr(context, 'Durum', 'Status'),
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
             ),
           ),
           Expanded(
             flex: 20,
             child: Text(
               _tr(context, 'Mevcut Görev', 'Current Task'),
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
             ),
           ),
           Expanded(
             flex: 14,
             child: Text(
               _tr(context, 'Kapasite', 'Capacity'),
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
             ),
           ),
           Expanded(
             flex: 13,
             child: Text(
               _tr(context, 'Başarı Oranı', 'Success Rate'),
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
             ),
           ),
           Expanded(
             flex: 13,
             child: Text(
               _tr(context, 'Son Etkinlik', 'Last Activity'),
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -916,7 +916,9 @@ class _AgentRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = _stateColor(record.state);
+    final color = record.state == _AgentState.offline
+        ? Theme.of(context).colorScheme.onSurfaceVariant
+        : _stateColor(record.state);
     return InkWell(
       key: ValueKey('agent-row-${record.id}'),
       onTap: onTap,
@@ -925,11 +927,11 @@ class _AgentRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 6),
         decoration: BoxDecoration(
           color: selected
-              ? IlaiosTheme.enterpriseCyan.withValues(alpha: .06)
+              ? Theme.of(context).colorScheme.onSurface.withValues(alpha: .035)
               : null,
           border: selected
               ? Border.all(
-                  color: IlaiosTheme.enterpriseCyan.withValues(alpha: .75),
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .42),
                 )
               : null,
           borderRadius: BorderRadius.circular(6),
@@ -946,7 +948,7 @@ class _AgentRow extends StatelessWidget {
                       record.role,
                     ).withValues(alpha: .12),
                     child: Icon(
-                      Icons.smart_toy_outlined,
+                      Icons.smart_toy_rounded,
                       size: 14,
                       color: _roleColor(record.role),
                     ),
@@ -999,7 +1001,7 @@ class _AgentRow extends StatelessWidget {
                       _stateLabel(context, record.state),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 11, color: color),
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface),
                     ),
                   ),
                 ],
@@ -1119,7 +1121,7 @@ class _SelectedPanel extends StatelessWidget {
                         agent!.role,
                       ).withValues(alpha: .12),
                       child: Icon(
-                        Icons.smart_toy_outlined,
+                        Icons.smart_toy_rounded,
                         color: _roleColor(agent!.role),
                       ),
                     ),
@@ -1159,11 +1161,11 @@ class _SelectedPanel extends StatelessWidget {
                 _Info(label: _tr(context, 'Rol', 'Role'), value: agent!.role),
                 _Info(label: _tr(context, 'Takım', 'Team'), value: agent!.team),
                 _Info(
-                  label: _tr(context, 'Readiness', 'Readiness'),
+                  label: _tr(context, 'Hazırlık', 'Readiness'),
                   value: agent!.readiness,
                 ),
                 _Info(
-                  label: _tr(context, 'Provision', 'Provisioned'),
+                  label: _tr(context, 'Kaydedildi', 'Provisioned'),
                   value: agent!.registered
                       ? _tr(context, 'Evet', 'Yes')
                       : _tr(context, 'Hayır', 'No'),
@@ -1194,7 +1196,7 @@ class _SelectedPanel extends StatelessWidget {
                     for (final capability in agent!.capabilities.take(8))
                       _Chip(
                         text: capability,
-                        color: IlaiosTheme.enterpriseCyan,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                   ],
                 ),
@@ -1441,7 +1443,7 @@ class _Tab extends StatelessWidget {
       decoration: BoxDecoration(
         border: selected
             ? const Border(
-                bottom: BorderSide(color: IlaiosTheme.enterpriseCyan, width: 2),
+                bottom: BorderSide(color: Colors.black87, width: 2),
               )
             : null,
       ),
@@ -1532,14 +1534,14 @@ class _Chip extends StatelessWidget {
     constraints: const BoxConstraints(maxWidth: 140),
     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
     decoration: BoxDecoration(
-      color: color.withValues(alpha: .10),
+      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .065),
       borderRadius: BorderRadius.circular(4),
     ),
     child: Text(
       text,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: TextStyle(fontSize: 11, color: color),
+      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface),
     ),
   );
 }
@@ -1679,7 +1681,10 @@ const _agentTelemetryKeys = <String>[
   'system_health',
 ];
 
-List<_AgentRecord> _agentRecords(OperationalSnapshot snapshot) {
+List<_AgentRecord> _agentRecords(
+  OperationalSnapshot snapshot, {
+  bool runtimeConnected = true,
+}) {
   final merged = <String, Map<String, Object?>>{};
 
   // The server-projected canonical registry is the only identity/governance
@@ -1690,10 +1695,21 @@ List<_AgentRecord> _agentRecords(OperationalSnapshot snapshot) {
     if (id == null || !id.startsWith('ilaios.agent.')) {
       continue;
     }
-    merged[id] = Map<String, Object?>.of(item);
+    merged[id] = runtimeConnected
+        ? Map<String, Object?>.of(item)
+        : <String, Object?>{
+            ...item,
+            for (final key in _agentTelemetryKeys) key: null,
+            'status': 'offline',
+            'agent_status': 'offline',
+            'worker_status': 'offline',
+            'state': 'offline',
+            'lease_state': 'offline',
+          };
   }
 
   void mergeTelemetry(Map<String, Object?> item) {
+    if (!runtimeConnected) return;
     String? canonicalId;
     for (final key in const [
       'agent_id',
@@ -2022,7 +2038,7 @@ Color _stateColor(_AgentState state) => switch (state) {
   _AgentState.busy => IlaiosTheme.warning,
   _AgentState.idle => IlaiosTheme.coreBlue,
   _AgentState.review => IlaiosTheme.violet,
-  _AgentState.offline => IlaiosTheme.danger,
+  _AgentState.offline => const Color(0xFF626B75),
 };
 
 Color _roleColor(String role) {
@@ -2039,7 +2055,7 @@ Color _roleColor(String role) {
   if (value.contains('release') || value.contains('deploy')) {
     return IlaiosTheme.violet;
   }
-  return IlaiosTheme.enterpriseCyan;
+  return const Color(0xFF30343A);
 }
 
 String _filterLabel(BuildContext context, String id, String value) {
@@ -2074,10 +2090,10 @@ void _showAgentDetail(BuildContext context, _AgentRecord agent) {
               '${_tr(context, 'Durum', 'Status')}: ${_stateLabel(context, agent.state)}',
             ),
             Text(
-              '${_tr(context, 'Readiness', 'Readiness')}: ${agent.readiness}',
+              '${_tr(context, 'Hazırlık', 'Readiness')}: ${agent.readiness}',
             ),
             Text(
-              '${_tr(context, 'Provision', 'Provisioned')}: ${agent.registered}',
+              '${_tr(context, 'Kaydedildi', 'Provisioned')}: ${agent.registered}',
             ),
             Text(
               '${_tr(context, 'Mevcut Görev', 'Current Task')}: ${agent.currentTask}',

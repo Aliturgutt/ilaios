@@ -3,6 +3,8 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  multiview_desktop
+  webview_windows
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST

@@ -139,6 +139,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.18.0"
+  multiview_desktop:
+    dependency: "direct main"
+    description:
+      name: multiview_desktop
+      sha256: ea65edd2cf7c071cdb27eb0f38e5cddf7983d2098b8f475d05f321284392c148
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.2.2"
   path:
     dependency: transitive
     description:
@@ -224,6 +232,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "15.2.0"
+  webview_windows:
+    dependency: "direct main"
+    description:
+      name: webview_windows
+      sha256: "47fcad5875a45db29dbb5c9e6709bf5c88dcc429049872701343f91ed7255730"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.4.0"
 sdks:
   dart: ">=3.12.2 <4.0.0"
-  flutter: ">=3.18.0-18.0.pre.54"
+  flutter: ">=3.38.2"

@@ -20,9 +20,8 @@ void main() {
     expect(find.byKey(const Key('home-assign-agent')), findsNothing);
     expect(find.byKey(const Key('home-factory-web')), findsNothing);
 
-    final viewAgents = find.text('View all agents');
-    expect(viewAgents, findsOneWidget);
-    await tester.tap(viewAgents);
+    expect(find.text('View all agents'), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('nav-agents')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('reference-agents-page')), findsOneWidget);
     expect(tester.takeException(), isNull);
@@ -66,52 +65,53 @@ void main() {
     expect(find.byKey(const Key('command-center-home')), findsOneWidget);
   });
 
-  testWidgets('every canonical Desktop destination renders in real light theme', (
-    WidgetTester tester,
-  ) async {
-    await tester.binding.setSurfaceSize(const Size(1600, 900));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
+  testWidgets(
+    'every canonical Desktop destination renders in real light theme',
+    (WidgetTester tester) async {
+      await tester.binding.setSurfaceSize(const Size(1600, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    await tester.pumpWidget(
-      const IlaiosDesktopApp(themeMode: ThemeMode.light),
-    );
-    await tester.pumpAndSettle();
-
-    expect(
-      Theme.of(tester.element(find.byType(Scaffold).first)).brightness,
-      Brightness.light,
-    );
-
-    for (final destination in <DesktopSection>[
-      DesktopSection.home,
-      DesktopSection.workflows,
-      DesktopSection.agents,
-      DesktopSection.artifacts,
-      DesktopSection.approvals,
-      DesktopSection.evidence,
-      DesktopSection.settings,
-    ]) {
-      final navigation = find.byKey(ValueKey('nav-${destination.name}'));
-      expect(navigation, findsOneWidget);
-      await tester.tap(navigation);
-      await tester.pumpAndSettle();
-      expect(
-        tester.takeException(),
-        isNull,
-        reason: '${destination.name} failed to render in light mode',
+      await tester.pumpWidget(
+        const IlaiosDesktopApp(themeMode: ThemeMode.light),
       );
+      await tester.pumpAndSettle();
+
       expect(
         Theme.of(tester.element(find.byType(Scaffold).first)).brightness,
         Brightness.light,
       );
-    }
 
-    for (final destination in <DesktopSection>[
-      DesktopSection.goals,
-      DesktopSection.liveWorkspace,
-      DesktopSection.costs,
-    ]) {
-      expect(find.byKey(ValueKey('nav-${destination.name}')), findsNothing);
-    }
-  });
+      for (final destination in <DesktopSection>[
+        DesktopSection.home,
+        DesktopSection.workflows,
+        DesktopSection.agents,
+        DesktopSection.artifacts,
+        DesktopSection.approvals,
+        DesktopSection.evidence,
+        DesktopSection.settings,
+      ]) {
+        final navigation = find.byKey(ValueKey('nav-${destination.name}'));
+        expect(navigation, findsOneWidget);
+        await tester.tap(navigation);
+        await tester.pumpAndSettle();
+        expect(
+          tester.takeException(),
+          isNull,
+          reason: '${destination.name} failed to render in light mode',
+        );
+        expect(
+          Theme.of(tester.element(find.byType(Scaffold).first)).brightness,
+          Brightness.light,
+        );
+      }
+
+      for (final destination in <DesktopSection>[
+        DesktopSection.goals,
+        DesktopSection.liveWorkspace,
+        DesktopSection.costs,
+      ]) {
+        expect(find.byKey(ValueKey('nav-${destination.name}')), findsNothing);
+      }
+    },
+  );
 }
