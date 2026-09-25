@@ -120,7 +120,7 @@ class DurableVideoProductRuntime:
         cost_estimate: dict[str, object] | None = None
         if callable(preflight):
             probe_minor = max(1, execution_budget.max_external_spend_minor)
-            while True:
+            for attempt in range(8):
                 try:
                     value = preflight(
                         objective=objective,
@@ -132,6 +132,10 @@ class DurableVideoProductRuntime:
                     if "exceeds the user-approved job budget" not in message:
                         raise ProductRuntimeError(
                             f"paid Seedance preflight failed closed: {error}"
+                        ) from error
+                    if attempt == 7:
+                        raise ProductRuntimeError(
+                            "paid Seedance preflight exceeded the bounded quote probe limit"
                         ) from error
                     probe_minor *= 2
             if not isinstance(value, dict):

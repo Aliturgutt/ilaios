@@ -187,3 +187,63 @@ def test_paid_video_quotes_before_approval_without_user_spend_limit(tmp_path: Pa
     assert prepared["status"] == "pending_approval"
     assert governance.approval_proven("paid-quote-1") is False
     assert scheduler.state()["leases"] == []
+
+
+def test_paid_video_quote_probe_is_bounded_when_provider_never_accepts(tmp_path: Path) -> None:
+    class PaidQuoteVideo:
+        def __init__(self) -> None:
+            self.probes: list[int] = []
+
+        def preflight_cost_estimate(
+            self,
+            *,
+            objective: str,
+            max_external_spend_minor: int,
+        ) -> dict[str, object]:
+            assert objective == "Create a paid launch video"
+            self.probes.append(max_external_spend_minor)
+            if max_external_spend_minor >= 0:
+                raise RuntimeError(
+                    "estimated paid Seedance spend exceeds the user-approved job budget; reapproval required"
+                )
+            return {
+                "provider": "openrouter-managed",
+                "model": "bytedance/seedance-2.0-fast",
+                "resolution": "480p",
+                "planned_generation_count": 1,
+                "estimated_cost_usd": "0.161406",
+                "reserved_provider_ceiling_usd": "0.167",
+                "maximum_approved_spend_usd": str(max_external_spend_minor / 100),
+                "estimate_is_actual_cost": False,
+                "paid_provider": True,
+            }
+
+    state = tmp_path / "state.sqlite3"
+    control = ControlPlane(ControlPlaneConfig(state, "token"))
+    workflows = WorkflowStore(WorkflowStoreConfig(state))
+    scheduler = DurableWorkerScheduler(state, lease_duration=timedelta(seconds=30))
+    grants = DurableGrantPolicy(state)
+    governance = GovernedRuntimeGateway(
+        tmp_path / "governance.sqlite3",
+        GovernedRuntime(state),
+        hard_cap_minor=100,
+    )
+    paid_video = PaidQuoteVideo()
+    runtime = DurableVideoProductRuntime(
+        tmp_path / "product.sqlite3",
+        control,
+        workflows,
+        scheduler,
+        grants,
+        governance,
+        cast(DeterministicLocalVideoRuntime, paid_video),
+    )
+
+    with pytest.raises(ProductRuntimeError, match="bounded quote probe limit"):
+        runtime.prepare(
+            "paid-quote-bounded-1", "Create a paid launch video", token="token",
+            now=datetime(2026, 9, 9, 9, 30, tzinfo=timezone.utc),
+            requester_id="oidc|user@example.test", tenant_id="tenant/example",
+            defer_lease=True,
+        )
+    assert paid_video.probes == [10, 20, 40, 80, 160, 320, 640, 1280]
