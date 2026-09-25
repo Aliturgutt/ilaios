@@ -24,6 +24,7 @@ flutter:
   assets:
     - assets/assistant_design_reference.html
     - assets/assistant_production.js
+    - assets/li_production.js
     - assets/li_design_reference.html
     - ../../brand/assets/02-ilaios-primary-horizontal-dark-transparent.png
     - ../../brand/assets/04-ilaios-symbol-light.jpg
