@@ -24,11 +24,11 @@ flutter:
   assets:
     - assets/assistant_design_reference.html
     - assets/li_design_reference.html
-    - brand/assets/02-ilaios-primary-horizontal-dark-transparent.png
+    - ../../brand/assets/02-ilaios-primary-horizontal-dark-transparent.png
     - ../../brand/assets/04-ilaios-symbol-light.jpg
     - ../../brand/assets/05-ilaios-app-icon.jpg
     - ../../brand/assets/13-ilaios-primary-horizontal-light.jpg
-    - brand/assets/13-ilaios-primary-horizontal-light-transparent.png
+    - ../../brand/assets/13-ilaios-primary-horizontal-light-transparent.png
     - assets/pixel_agents/
     - assets/pixel_agents/workspace/
     - assets/pixel_agents/core/front/idle/
