@@ -348,6 +348,7 @@ class _ReferenceDesktopShellV11State extends State<ReferenceDesktopShellV11> {
         status.contains('access denied') ||
         status.contains('forbidden') ||
         status.contains('unauthorized') ||
+        status.contains('authentication failed') ||
         status.contains('yetki reddedildi');
   }
 
