@@ -1,3 +1,4 @@
+import '../../app/desktop_page_heading.dart';
 import 'dart:async';
 import 'dart:io';
 
@@ -15,6 +16,8 @@ class DeliveriesView extends StatefulWidget {
   const DeliveriesView({
     required this.snapshot,
     required this.status,
+    this.dataAvailable = true,
+    this.accessDenied = false,
     this.onSaveArtifact,
     this.localStorage,
     this.archiveStoreFactory,
@@ -23,10 +26,12 @@ class DeliveriesView extends StatefulWidget {
 
   final OperationalSnapshot snapshot;
   final String status;
+  final bool dataAvailable;
+  final bool accessDenied;
   final Future<String> Function(EvidenceRecord record)? onSaveArtifact;
   final DeliveryLocalStorage? localStorage;
   final DeliveryArchiveStore Function(DesktopUserSession session)?
-      archiveStoreFactory;
+  archiveStoreFactory;
 
   @override
   State<DeliveriesView> createState() => _DeliveriesViewState();
@@ -61,7 +66,8 @@ class _DeliveriesViewState extends State<DeliveriesView> {
     _archiveReady = false;
     _archiveError = null;
     if (session == null) return;
-    final store = widget.archiveStoreFactory?.call(session) ??
+    final store =
+        widget.archiveStoreFactory?.call(session) ??
         DeliveryArchiveStore.forSession(session);
     _archiveStore = store;
     unawaited(_loadArchive(store, nextKey!));
@@ -99,10 +105,13 @@ class _DeliveriesViewState extends State<DeliveriesView> {
     super.dispose();
   }
 
-  List<EvidenceRecord> get _records => widget.snapshot.evidenceRecords.reversed
-      .where(_isFinishedProductEvidence)
-      .take(100)
-      .toList(growable: false);
+  List<EvidenceRecord> get _records =>
+      (widget.dataAvailable && !widget.accessDenied
+              ? widget.snapshot.evidenceRecords.reversed
+              : const <EvidenceRecord>[])
+          .where(_isFinishedProductEvidence)
+          .take(100)
+          .toList(growable: false);
 
   List<EvidenceRecord> get _activeRecords {
     final records = _records;
@@ -173,12 +182,15 @@ class _DeliveriesViewState extends State<DeliveriesView> {
 
   Future<void> _deleteLocalCopy(EvidenceRecord record) async {
     if (_activeDigest != null) return;
-    final confirmed = await showDialog<bool>(
+    final confirmed =
+        await showDialog<bool>(
           context: context,
           builder: (dialogContext) => AlertDialog(
             icon: const Icon(Icons.delete_outline, color: IlaiosTheme.danger),
             title: Text(
-              _isTr(context) ? 'Yerel kopya silinsin mi?' : 'Delete local copy?',
+              _isTr(context)
+                  ? 'Yerel kopya silinsin mi?'
+                  : 'Delete local copy?',
             ),
             content: Text(
               _isTr(context)
@@ -191,7 +203,9 @@ class _DeliveriesViewState extends State<DeliveriesView> {
                 child: Text(_isTr(context) ? 'Vazgeç' : 'Cancel'),
               ),
               FilledButton.icon(
-                style: FilledButton.styleFrom(backgroundColor: IlaiosTheme.danger),
+                style: FilledButton.styleFrom(
+                  backgroundColor: IlaiosTheme.danger,
+                ),
                 onPressed: () => Navigator.of(dialogContext).pop(true),
                 icon: const Icon(Icons.delete_outline),
                 label: Text(
@@ -265,11 +279,11 @@ class _DeliveriesViewState extends State<DeliveriesView> {
         _archivedDigests = next;
         _message = archived
             ? (_isTr(context)
-                ? 'Çıktı aktif listeden kaldırıldı ve Arşiv’e taşındı. Kanıt kaydı korunuyor.'
-                : 'Output removed from the active list and moved to Archive. Evidence is retained.')
+                  ? 'Çıktı aktif listeden kaldırıldı ve Arşiv’e taşındı. Kanıt kaydı korunuyor.'
+                  : 'Output removed from the active list and moved to Archive. Evidence is retained.')
             : (_isTr(context)
-                ? 'Çıktı Arşiv’den geri yüklendi.'
-                : 'Output restored from Archive.');
+                  ? 'Çıktı Arşiv’den geri yüklendi.'
+                  : 'Output restored from Archive.');
       });
     } on DeliveryArchiveStateException catch (error) {
       if (!mounted) return;
@@ -324,6 +338,24 @@ class _DeliveriesViewState extends State<DeliveriesView> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _Header(status: widget.status, total: activeRecords.length),
+                    if (!widget.dataAvailable || widget.accessDenied)
+                      Padding(
+                        key: const Key('outputs-data-unavailable'),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Text(
+                          widget.accessDenied
+                              ? _copy(
+                                  context,
+                                  'Çıktılara erişim yetkisi reddedildi.',
+                                  'Access to outputs was denied.',
+                                )
+                              : _copy(
+                                  context,
+                                  'Bağlantı kesildi; çıktı verileri doğrulanamıyor.',
+                                  'Connection lost; output data cannot be verified.',
+                                ),
+                        ),
+                      ),
                     if (activeRecords.isNotEmpty) ...[
                       const SizedBox(height: 10),
                       _MetricStrip(total: activeRecords.length),
@@ -404,76 +436,79 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-        key: const Key('outputs-header'),
-        height: 54,
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    _copy(context, 'Çıktılar', 'Outputs'),
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w700,
-                        ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    _copy(
-                      context,
-                      'Projede üretilen doğrulanmış çıktıları görüntüleyin, filtreleyin ve yönetin.',
-                      'View, filter and manage verified outputs produced by the project.',
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 10.5),
-                  ),
-                ],
+    key: const Key('outputs-header'),
+    height: 54,
+    child: Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                _copy(context, 'Çıktılar', 'Outputs'),
+                style: DesktopPageHeading.style(context),
               ),
-            ),
-            const SizedBox(width: 10),
-            Container(
-              constraints: const BoxConstraints(maxWidth: 250),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: total > 0
-                    ? IlaiosTheme.success.withValues(alpha: .08)
-                    : Theme.of(context).colorScheme.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: total > 0
-                      ? IlaiosTheme.success.withValues(alpha: .30)
-                      : Theme.of(context).colorScheme.outlineVariant,
+              const SizedBox(height: 2),
+              Text(
+                _copy(
+                  context,
+                  'Projede üretilen doğrulanmış çıktıları görüntüleyin, filtreleyin ve yönetin.',
+                  'View, filter and manage verified outputs produced by the project.',
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.circle,
-                    size: 7,
-                    color: widgetStatusAvailable(status)
-                        ? IlaiosTheme.success
-                        : Theme.of(context).colorScheme.outline,
-                  ),
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: Text(
-                      _localizedStatus(context, status),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
-      );
+        const SizedBox(width: 10),
+        Container(
+          constraints: const BoxConstraints(maxWidth: 250),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: total > 0
+                ? Theme.of(context).colorScheme.onSurface.withValues(alpha: .04)
+                : Theme.of(context).colorScheme.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: total > 0
+                  ? Theme.of(context).colorScheme.outlineVariant
+                  : Theme.of(context).colorScheme.outlineVariant,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.circle,
+                size: 7,
+                color: widgetStatusAvailable(status)
+                    ? IlaiosTheme.success
+                    : Theme.of(context).colorScheme.outline,
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  _localizedStatus(context, status),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _MetricStrip extends StatelessWidget {
@@ -483,62 +518,70 @@ class _MetricStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-        key: const Key('outputs-kpis'),
-        height: 78,
-        child: Row(
-          children: [
-            Expanded(
-              child: _MetricCard(
-                icon: Icons.grid_view_rounded,
-                accent: IlaiosTheme.coreBlue,
-                label: _copy(context, 'Toplam Çıktı', 'Total Outputs'),
-                value: '$total',
-                note: _copy(context, 'Aktif doğrulanmış çıktılar', 'Active verified outputs'),
-              ),
+    key: const Key('outputs-kpis'),
+    height: 78,
+    child: Row(
+      children: [
+        Expanded(
+          child: _MetricCard(
+            icon: Icons.grid_view_rounded,
+            accent: const Color(0xFF1976D2),
+            label: _copy(context, 'Toplam Çıktı', 'Total Outputs'),
+            value: '$total',
+            note: _copy(
+              context,
+              'Aktif doğrulanmış çıktılar',
+              'Active verified outputs',
             ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _MetricCard(
-                icon: Icons.check_circle_outline,
-                accent: IlaiosTheme.success,
-                label: _copy(context, 'Tamamlanan', 'Completed'),
-                value: '$total',
-                note: _copy(context, 'Bitmiş ürün kanıtı', 'Finished-product evidence'),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _MetricCard(
-                icon: Icons.hourglass_empty_rounded,
-                accent: IlaiosTheme.warning,
-                label: _copy(context, 'Taslak', 'Draft'),
-                value: '—',
-                note: _copy(context, 'Yetkili veri yok', 'No authoritative data'),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _MetricCard(
-                icon: Icons.rate_review_outlined,
-                accent: IlaiosTheme.violet,
-                label: _copy(context, 'İncelemede', 'In Review'),
-                value: '—',
-                note: _copy(context, 'Yetkili veri yok', 'No authoritative data'),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _MetricCard(
-                icon: Icons.cancel_outlined,
-                accent: IlaiosTheme.danger,
-                label: _copy(context, 'Reddedilen', 'Rejected'),
-                value: '—',
-                note: _copy(context, 'Yetkili veri yok', 'No authoritative data'),
-              ),
-            ),
-          ],
+          ),
         ),
-      );
+        const SizedBox(width: 8),
+        Expanded(
+          child: _MetricCard(
+            icon: Icons.check_circle_outline_rounded,
+            accent: const Color(0xFF168650),
+            label: _copy(context, 'Tamamlanan', 'Completed'),
+            value: '$total',
+            note: _copy(
+              context,
+              'Bitmiş ürün kanıtı',
+              'Finished-product evidence',
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _MetricCard(
+            icon: Icons.hourglass_empty_rounded,
+            accent: const Color(0xFFAA7400),
+            label: _copy(context, 'Taslak', 'Draft'),
+            value: '—',
+            note: _copy(context, 'Yetkili veri yok', 'No authoritative data'),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _MetricCard(
+            icon: Icons.rate_review_rounded,
+            accent: const Color(0xFF7445CC),
+            label: _copy(context, 'İncelemede', 'In Review'),
+            value: '—',
+            note: _copy(context, 'Yetkili veri yok', 'No authoritative data'),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _MetricCard(
+            icon: Icons.cancel_outlined,
+            accent: const Color(0xFFC43659),
+            label: _copy(context, 'Reddedilen', 'Rejected'),
+            value: '—',
+            note: _copy(context, 'Yetkili veri yok', 'No authoritative data'),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _MetricCard extends StatelessWidget {
@@ -558,50 +601,59 @@ class _MetricCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
-        decoration: _panelDecoration(context, radius: 8),
-        child: Row(
-          children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: accent.withValues(alpha: .10),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(icon, size: 18, color: accent),
-            ),
-            const SizedBox(width: 9),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 9),
-                  ),
-                  Text(
-                    value,
-                    style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700),
-                  ),
-                  Text(
-                    note,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          fontSize: 7.8,
-                          color: accent,
-                        ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+    padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
+    decoration: _panelDecoration(context, radius: 8),
+    child: Row(
+      children: [
+        Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: accent.withValues(alpha: .13),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            icon,
+            size: 21,
+            color: accent,
+          ),
         ),
-      );
+        const SizedBox(width: 9),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(fontSize: 11),
+              ),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 19,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Text(
+                note,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  fontSize: 11,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _Toolbar extends StatelessWidget {
@@ -612,52 +664,52 @@ class _Toolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        key: const Key('outputs-tabs'),
-        height: 44,
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        decoration: _panelDecoration(context, radius: 8),
-        child: Row(
-          children: [
-            _Tab(
-              label: _copy(context, 'Tümü', 'All'),
-              value: 'all',
-              selected: activeTab == 'all',
-              onTap: onTabChanged,
-            ),
-            _Tab(
-              label: _copy(context, 'Tamamlanan', 'Completed'),
-              value: 'completed',
-              selected: activeTab == 'completed',
-              onTap: onTabChanged,
-            ),
-            _Tab(
-              label: _copy(context, 'Taslak', 'Draft'),
-              value: 'draft',
-              selected: activeTab == 'draft',
-              onTap: onTabChanged,
-            ),
-            _Tab(
-              label: _copy(context, 'İncelemede', 'In Review'),
-              value: 'review',
-              selected: activeTab == 'review',
-              onTap: onTabChanged,
-            ),
-            _Tab(
-              label: _copy(context, 'Reddedilen', 'Rejected'),
-              value: 'rejected',
-              selected: activeTab == 'rejected',
-              onTap: onTabChanged,
-            ),
-            _Tab(
-              label: _copy(context, 'Arşiv', 'Archive'),
-              value: 'archive',
-              selected: activeTab == 'archive',
-              onTap: onTabChanged,
-            ),
-            const Spacer(),
-          ],
+    key: const Key('outputs-tabs'),
+    height: 44,
+    padding: const EdgeInsets.symmetric(horizontal: 8),
+    decoration: _panelDecoration(context, radius: 8),
+    child: Row(
+      children: [
+        _Tab(
+          label: _copy(context, 'Tümü', 'All'),
+          value: 'all',
+          selected: activeTab == 'all',
+          onTap: onTabChanged,
         ),
-      );
+        _Tab(
+          label: _copy(context, 'Tamamlanan', 'Completed'),
+          value: 'completed',
+          selected: activeTab == 'completed',
+          onTap: onTabChanged,
+        ),
+        _Tab(
+          label: _copy(context, 'Taslak', 'Draft'),
+          value: 'draft',
+          selected: activeTab == 'draft',
+          onTap: onTabChanged,
+        ),
+        _Tab(
+          label: _copy(context, 'İncelemede', 'In Review'),
+          value: 'review',
+          selected: activeTab == 'review',
+          onTap: onTabChanged,
+        ),
+        _Tab(
+          label: _copy(context, 'Reddedilen', 'Rejected'),
+          value: 'rejected',
+          selected: activeTab == 'rejected',
+          onTap: onTabChanged,
+        ),
+        _Tab(
+          label: _copy(context, 'Arşiv', 'Archive'),
+          value: 'archive',
+          selected: activeTab == 'archive',
+          onTap: onTabChanged,
+        ),
+        const Spacer(),
+      ],
+    ),
+  );
 }
 
 class _Tab extends StatelessWidget {
@@ -675,31 +727,33 @@ class _Tab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => InkWell(
-        onTap: () => onTap(value),
-        child: Container(
-          height: 44,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: selected ? IlaiosTheme.enterpriseCyan : Colors.transparent,
-                width: 2,
-              ),
-            ),
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 9.5,
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-              color: selected
-                  ? IlaiosTheme.enterpriseCyan
-                  : Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
+    onTap: () => onTap(value),
+    child: Container(
+      height: 44,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: selected
+                ? Theme.of(context).colorScheme.onSurface
+                : Colors.transparent,
+            width: 2,
           ),
         ),
-      );
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+          color: selected
+              ? Theme.of(context).colorScheme.onSurface
+              : Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+      ),
+    ),
+  );
 }
 
 class _Filters extends StatelessWidget {
@@ -719,50 +773,54 @@ class _Filters extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-        key: const Key('outputs-filters'),
-        height: 38,
-        child: Row(
-          children: [
-            SizedBox(
-              width: 185,
-              child: TextField(
-                controller: controller,
-                onChanged: onSearchChanged,
-                style: const TextStyle(fontSize: 9.5),
-                decoration: InputDecoration(
-                  hintText: _copy(context, 'Çıktı adı, proje veya kayıt ara…', 'Search output, project or record…'),
-                  prefixIcon: const Icon(Icons.search, size: 16),
-                  isDense: true,
-                ),
+    key: const Key('outputs-filters'),
+    height: 38,
+    child: Row(
+      children: [
+        SizedBox(
+          width: 390,
+          child: TextField(
+            controller: controller,
+            onChanged: onSearchChanged,
+            style: const TextStyle(fontSize: 12),
+            decoration: InputDecoration(
+              hintText: _copy(
+                context,
+                'Çıktı adı, proje veya kayıt ara…',
+                'Search output, project or record…',
               ),
+              prefixIcon: const Icon(Icons.search, size: 16),
+              isDense: true,
             ),
-            const SizedBox(width: 7),
-            _FilterDropdown(
-              width: 105,
-              value: typeFilter,
-              onChanged: onTypeChanged,
-              items: <String, String>{
-                'all': _copy(context, 'Tür', 'Type'),
-                'document': _copy(context, 'Doküman', 'Document'),
-                'video': _copy(context, 'Video', 'Video'),
-                'visual': _copy(context, 'Görsel', 'Visual'),
-                'report': _copy(context, 'Rapor', 'Report'),
-                'table': _copy(context, 'Tablo', 'Table'),
-                'other': _copy(context, 'Diğer', 'Other'),
-              },
-            ),
-            const Spacer(),
-            if (controller.text.trim().isNotEmpty || typeFilter != 'all')
-              TextButton(
-                onPressed: onClear,
-                child: Text(
-                  _copy(context, 'Filtreleri Temizle', 'Clear Filters'),
-                  style: const TextStyle(fontSize: 9),
-                ),
-              ),
-          ],
+          ),
         ),
-      );
+        const SizedBox(width: 7),
+        _FilterDropdown(
+          width: 124,
+          value: typeFilter,
+          onChanged: onTypeChanged,
+          items: <String, String>{
+            'all': _copy(context, 'Tür', 'Type'),
+            'document': _copy(context, 'Doküman', 'Document'),
+            'video': _copy(context, 'Video', 'Video'),
+            'visual': _copy(context, 'Görsel', 'Visual'),
+            'report': _copy(context, 'Rapor', 'Report'),
+            'table': _copy(context, 'Tablo', 'Table'),
+            'other': _copy(context, 'Diğer', 'Other'),
+          },
+        ),
+        const Spacer(),
+        if (controller.text.trim().isNotEmpty || typeFilter != 'all')
+          TextButton(
+            onPressed: onClear,
+            child: Text(
+              _copy(context, 'Filtreleri Temizle', 'Clear Filters'),
+              style: const TextStyle(fontSize: 9),
+            ),
+          ),
+      ],
+    ),
+  );
 }
 
 class _FilterDropdown extends StatelessWidget {
@@ -780,31 +838,31 @@ class _FilterDropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        width: width,
-        height: 36,
-        padding: const EdgeInsets.symmetric(horizontal: 9),
-        decoration: _fieldDecoration(context),
-        child: DropdownButtonHideUnderline(
-          child: DropdownButton<String>(
-            value: value,
-            isExpanded: true,
-            iconSize: 16,
-            style: TextStyle(
-              fontSize: 9.5,
-              color: Theme.of(context).colorScheme.onSurface,
-            ),
-            onChanged: onChanged,
-            items: items.entries
-                .map(
-                  (entry) => DropdownMenuItem<String>(
-                    value: entry.key,
-                    child: Text(entry.value, overflow: TextOverflow.ellipsis),
-                  ),
-                )
-                .toList(growable: false),
-          ),
+    width: width,
+    height: 36,
+    padding: const EdgeInsets.symmetric(horizontal: 9),
+    decoration: _fieldDecoration(context),
+    child: DropdownButtonHideUnderline(
+      child: DropdownButton<String>(
+        value: value,
+        isExpanded: true,
+        iconSize: 16,
+        style: TextStyle(
+          fontSize: 11,
+          color: Theme.of(context).colorScheme.onSurface,
         ),
-      );
+        onChanged: onChanged,
+        items: items.entries
+            .map(
+              (entry) => DropdownMenuItem<String>(
+                value: entry.key,
+                child: Text(entry.value, overflow: TextOverflow.ellipsis),
+              ),
+            )
+            .toList(growable: false),
+      ),
+    ),
+  );
 }
 
 class _OutputsTable extends StatelessWidget {
@@ -840,95 +898,98 @@ class _OutputsTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        key: const Key('outputs-table'),
-        decoration: _panelDecoration(context, radius: 8),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          children: [
-            _TableHeader(),
-            Divider(height: 1, color: Theme.of(context).colorScheme.outlineVariant),
-            Expanded(
-              child: records.isEmpty
-                  ? _OutputsEmptyState(totalCount: totalCount)
-                  : Scrollbar(
-                      child: ListView.separated(
-                        padding: EdgeInsets.zero,
-                        itemCount: records.length,
-                        separatorBuilder: (_, _) => Divider(
-                          height: 1,
-                          color: Theme.of(context)
-                              .colorScheme
-                              .outlineVariant
-                              .withValues(alpha: .65),
+    key: const Key('outputs-table'),
+    decoration: _panelDecoration(context, radius: 8),
+    clipBehavior: Clip.antiAlias,
+    child: Column(
+      children: [
+        _TableHeader(),
+        Divider(height: 1, color: Theme.of(context).colorScheme.outlineVariant),
+        Expanded(
+          child: records.isEmpty
+              ? _OutputsEmptyState(totalCount: totalCount)
+              : Scrollbar(
+                  child: ListView.separated(
+                    padding: EdgeInsets.zero,
+                    itemCount: records.length,
+                    separatorBuilder: (_, _) => Divider(
+                      height: 1,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.outlineVariant.withValues(alpha: .65),
+                    ),
+                    itemBuilder: (context, index) {
+                      final record = records[index];
+                      return _OutputRow(
+                        record: record,
+                        saving: activeDigest == record.artifactDigest,
+                        actionsEnabled: activeDigest == null,
+                        saveEnabled: saveEnabled,
+                        archiveEnabled: archiveEnabled,
+                        archived: archivedDigests.contains(
+                          record.artifactDigest,
                         ),
-                        itemBuilder: (context, index) {
-                          final record = records[index];
-                          return _OutputRow(
-                            record: record,
-                            saving: activeDigest == record.artifactDigest,
-                            actionsEnabled: activeDigest == null,
-                            saveEnabled: saveEnabled,
-                            archiveEnabled: archiveEnabled,
-                            archived: archivedDigests.contains(record.artifactDigest),
-                            selected: selectedSequence == record.sequence,
-                            onSelected: () => onSelected(record),
-                            localFile: localFileFor(record),
-                            onSave: () => onSave(record),
-                            onDelete: () => onDelete(record),
-                            onArchive: () => onArchive(record),
-                            onRestore: () => onRestore(record),
-                          );
-                        },
-                      ),
-                    ),
-            ),
-            Divider(height: 1, color: Theme.of(context).colorScheme.outlineVariant),
-            SizedBox(
-              height: 34,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                child: Row(
-                  children: [
-                    Text(
-                      records.isEmpty
-                          ? _copy(context, '0 sonuç', '0 results')
-                          : _copy(
-                              context,
-                              '1–${records.length} / $totalCount sonuç',
-                              '1–${records.length} / $totalCount results',
-                            ),
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 9),
-                    ),
-                    const Spacer(),
-                  ],
+                        selected: selectedSequence == record.sequence,
+                        onSelected: () => onSelected(record),
+                        localFile: localFileFor(record),
+                        onSave: () => onSave(record),
+                        onDelete: () => onDelete(record),
+                        onArchive: () => onArchive(record),
+                        onRestore: () => onRestore(record),
+                      );
+                    },
+                  ),
                 ),
-              ),
-            ),
-          ],
         ),
-      );
+        Divider(height: 1, color: Theme.of(context).colorScheme.outlineVariant),
+        SizedBox(
+          height: 34,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Row(
+              children: [
+                Text(
+                  records.isEmpty
+                      ? _copy(context, '0 sonuç', '0 results')
+                      : _copy(
+                          context,
+                          '1–${records.length} / $totalCount sonuç',
+                          '1–${records.length} / $totalCount results',
+                        ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(fontSize: 11),
+                ),
+                const Spacer(),
+              ],
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _TableHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
-        key: const Key('outputs-table-header'),
-        height: 32,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        color: Theme.of(context).colorScheme.surfaceContainerLow,
-        child: Row(
-          children: [
-            _HeaderCell(_copy(context, 'Çıktı Adı', 'Output'), flex: 28),
-            _HeaderCell(_copy(context, 'Tür', 'Type'), flex: 11),
-            _HeaderCell(_copy(context, 'Ajan', 'Agent'), flex: 14),
-            _HeaderCell(_copy(context, 'Sahip', 'Owner'), flex: 12),
-            _HeaderCell(_copy(context, 'Durum', 'Status'), flex: 13),
-            _HeaderCell(_copy(context, 'Oluşturulma Tarihi', 'Created'), flex: 15),
-            _HeaderCell(_copy(context, 'Boyut', 'Size'), flex: 9),
-            const SizedBox(width: 58),
-          ],
-        ),
-      );
+    key: const Key('outputs-table-header'),
+    height: 32,
+    padding: const EdgeInsets.symmetric(horizontal: 10),
+    color: Theme.of(context).colorScheme.surfaceContainerLow,
+    child: Row(
+      children: [
+        _HeaderCell(_copy(context, 'Çıktı Adı', 'Output'), flex: 28),
+        _HeaderCell(_copy(context, 'Tür', 'Type'), flex: 11),
+        _HeaderCell(_copy(context, 'Ajan', 'Agent'), flex: 14),
+        _HeaderCell(_copy(context, 'Sahip', 'Owner'), flex: 12),
+        _HeaderCell(_copy(context, 'Durum', 'Status'), flex: 13),
+        _HeaderCell(_copy(context, 'Oluşturulma Tarihi', 'Created'), flex: 15),
+        _HeaderCell(_copy(context, 'Boyut', 'Size'), flex: 9),
+        const SizedBox(width: 58),
+      ],
+    ),
+  );
 }
 
 class _HeaderCell extends StatelessWidget {
@@ -939,14 +1000,18 @@ class _HeaderCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Expanded(
-        flex: flex,
-        child: Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 8.5, fontWeight: FontWeight.w600),
-        ),
-      );
+    flex: flex,
+    child: Text(
+      label,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+        color: Theme.of(context).colorScheme.onSurface,
+      ),
+    ),
+  );
 }
 
 class _OutputRow extends StatelessWidget {
@@ -994,191 +1059,251 @@ class _OutputRow extends StatelessWidget {
       child: InkWell(
         onTap: onSelected,
         child: SizedBox(
-          height: 48,
+          height: 60,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10),
             child: Row(
               children: [
-            Expanded(
-              flex: 28,
-              child: Row(
-                children: [
-                  Container(
-                    width: 27,
-                    height: 27,
-                    decoration: BoxDecoration(
-                      color: accent.withValues(alpha: .10),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Icon(_typeIcon(type), size: 15, color: accent),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          _outputName(record),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700),
+                Expanded(
+                  flex: 28,
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 27,
+                        height: 27,
+                        decoration: BoxDecoration(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: .065),
+                          borderRadius: BorderRadius.circular(6),
                         ),
-                        Text(
-                          record.action,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodySmall
-                              ?.copyWith(fontSize: 7.3),
+                        child: Icon(
+                          _typeIcon(type),
+                          size: 20,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
-                        Text(
-                          record.executionId,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodySmall
-                              ?.copyWith(fontSize: 6.6),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              flex: 11,
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: _Pill(text: _typeLabel(context, type), color: accent),
-              ),
-            ),
-            Expanded(flex: 14, child: _UnavailableCell()),
-            Expanded(flex: 12, child: _UnavailableCell()),
-            Expanded(
-              flex: 13,
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: _Pill(
-                  text: archived
-                      ? _copy(context, 'Arşivde', 'Archived')
-                      : _copy(context, 'Tamamlandı', 'Completed'),
-                  color: archived ? IlaiosTheme.violet : IlaiosTheme.success,
-                ),
-              ),
-            ),
-            Expanded(flex: 15, child: _UnavailableCell()),
-            Expanded(
-              flex: 9,
-              child: Text(size, style: const TextStyle(fontSize: 8.5)),
-            ),
-            SizedBox(
-              width: 58,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  SizedBox(
-                    width: 27,
-                    height: 30,
-                    child: IconButton(
-                      key: ValueKey('save-artifact-${record.sequence}'),
-                      tooltip: _surface(context, 'deliveries.save'),
-                      padding: EdgeInsets.zero,
-                      visualDensity: VisualDensity.compact,
-                      iconSize: 15,
-                      onPressed: actionsEnabled && saveEnabled ? onSave : null,
-                      icon: saving
-                          ? const SizedBox(
-                              width: 12,
-                              height: 12,
-                              child: CircularProgressIndicator(strokeWidth: 1.5),
-                            )
-                          : const Icon(Icons.download_outlined),
-                    ),
-                  ),
-                  SizedBox(
-                    width: 27,
-                    height: 30,
-                    child: PopupMenuButton<String>(
-                      key: ValueKey('delete-local-artifact-${record.sequence}'),
-                      tooltip: _copy(context, 'Çıktı işlemleri', 'Output actions'),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(minWidth: 320, maxWidth: 360),
-                      enabled: actionsEnabled,
-                      iconSize: 15,
-                      icon: const Icon(Icons.more_vert),
-                      onSelected: (value) {
-                        switch (value) {
-                          case 'delete-local':
-                            onDelete();
-                          case 'archive':
-                            onArchive();
-                          case 'restore':
-                            onRestore();
-                        }
-                      },
-                      itemBuilder: (context) => <PopupMenuEntry<String>>[
-                        PopupMenuItem<String>(
-                          value: 'delete-local',
-                          child: Row(
-                            children: [
-                              const Icon(Icons.delete_outline, size: 16),
-                              const SizedBox(width: 8),
-                              Text(_copy(context, 'Yerel kopyayı sil', 'Delete local copy')),
-                            ],
-                          ),
-                        ),
-                        PopupMenuItem<String>(
-                          value: archived ? 'restore' : 'archive',
-                          enabled: archiveEnabled,
-                          child: Row(
-                            children: [
-                              Icon(
-                                archived ? Icons.unarchive_outlined : Icons.archive_outlined,
-                                size: 16,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              _outputName(record),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
                               ),
-                              const SizedBox(width: 8),
-                              Text(
-                                archived
-                                    ? _copy(context, 'Geri yükle', 'Restore')
-                                    : _copy(context, 'Listeden kaldır', 'Remove from list'),
-                              ),
-                            ],
-                          ),
-                        ),
-                        PopupMenuItem<String>(
-                          enabled: false,
-                          child: Tooltip(
-                            message: _copy(
-                              context,
-                              'Yetkili remote-delete sözleşmesi yok; kalıcı silme güvenli biçimde devre dışı.',
-                              'No authoritative remote-delete contract exists; permanent purge is safely disabled.',
                             ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.delete_forever_outlined, size: 16),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
+                            Text(
+                              record.action,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    fontSize: 12,
+                                    color:
+                                        Theme.of(context).brightness ==
+                                            Brightness.light
+                                        ? const Color(0xFF424B55)
+                                        : Theme.of(
+                                            context,
+                                          ).colorScheme.onSurfaceVariant,
+                                  ),
+                            ),
+                            Text(
+                              record.executionId,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    fontSize: 12,
+                                    color:
+                                        Theme.of(context).brightness ==
+                                            Brightness.light
+                                        ? const Color(0xFF424B55)
+                                        : Theme.of(
+                                            context,
+                                          ).colorScheme.onSurfaceVariant,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  flex: 11,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: _Pill(
+                      text: _typeLabel(context, type),
+                      color: accent,
+                    ),
+                  ),
+                ),
+                Expanded(flex: 14, child: _UnavailableCell()),
+                Expanded(flex: 12, child: _UnavailableCell()),
+                Expanded(
+                  flex: 13,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: _Pill(
+                      text: archived
+                          ? _copy(context, 'Arşivde', 'Archived')
+                          : _copy(context, 'Tamamlandı', 'Completed'),
+                      color: archived
+                          ? IlaiosTheme.violet
+                          : IlaiosTheme.success,
+                    ),
+                  ),
+                ),
+                Expanded(flex: 15, child: _UnavailableCell()),
+                Expanded(
+                  flex: 9,
+                  child: Text(size, style: const TextStyle(fontSize: 11)),
+                ),
+                SizedBox(
+                  width: 58,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      SizedBox(
+                        width: 27,
+                        height: 30,
+                        child: IconButton(
+                          key: ValueKey('save-artifact-${record.sequence}'),
+                          tooltip: _surface(context, 'deliveries.save'),
+                          padding: EdgeInsets.zero,
+                          visualDensity: VisualDensity.compact,
+                          iconSize: 15,
+                          onPressed: actionsEnabled && saveEnabled
+                              ? onSave
+                              : null,
+                          icon: saving
+                              ? const SizedBox(
+                                  width: 12,
+                                  height: 12,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 1.5,
+                                  ),
+                                )
+                              : const Icon(Icons.download_outlined),
+                        ),
+                      ),
+                      SizedBox(
+                        width: 27,
+                        height: 30,
+                        child: PopupMenuButton<String>(
+                          key: ValueKey(
+                            'delete-local-artifact-${record.sequence}',
+                          ),
+                          tooltip: _copy(
+                            context,
+                            'Çıktı işlemleri',
+                            'Output actions',
+                          ),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 320,
+                            maxWidth: 360,
+                          ),
+                          enabled: actionsEnabled,
+                          iconSize: 15,
+                          icon: const Icon(Icons.more_vert),
+                          onSelected: (value) {
+                            switch (value) {
+                              case 'delete-local':
+                                onDelete();
+                              case 'archive':
+                                onArchive();
+                              case 'restore':
+                                onRestore();
+                            }
+                          },
+                          itemBuilder: (context) => <PopupMenuEntry<String>>[
+                            PopupMenuItem<String>(
+                              value: 'delete-local',
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.delete_outline, size: 16),
+                                  const SizedBox(width: 8),
+                                  Text(
                                     _copy(
                                       context,
-                                      'Kalıcı olarak sil — kullanılamıyor',
-                                      'Permanently delete — unavailable',
+                                      'Yerel kopyayı sil',
+                                      'Delete local copy',
                                     ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
+                            PopupMenuItem<String>(
+                              value: archived ? 'restore' : 'archive',
+                              enabled: archiveEnabled,
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    archived
+                                        ? Icons.unarchive_outlined
+                                        : Icons.archive_outlined,
+                                    size: 16,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    archived
+                                        ? _copy(
+                                            context,
+                                            'Geri yükle',
+                                            'Restore',
+                                          )
+                                        : _copy(
+                                            context,
+                                            'Listeden kaldır',
+                                            'Remove from list',
+                                          ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            PopupMenuItem<String>(
+                              enabled: false,
+                              child: Tooltip(
+                                message: _copy(
+                                  context,
+                                  'Yetkili remote-delete sözleşmesi yok; kalıcı silme güvenli biçimde devre dışı.',
+                                  'No authoritative remote-delete contract exists; permanent purge is safely disabled.',
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.delete_forever_outlined,
+                                      size: 16,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        _copy(
+                                          context,
+                                          'Kalıcı olarak sil — kullanılamıyor',
+                                          'Permanently delete — unavailable',
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
+                ),
               ],
             ),
           ),
@@ -1191,9 +1316,9 @@ class _OutputRow extends StatelessWidget {
 class _UnavailableCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Text(
-        '—',
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 9),
-      );
+    '—',
+    style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11),
+  );
 }
 
 class _Pill extends StatelessWidget {
@@ -1204,19 +1329,25 @@ class _Pill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: .10),
-          borderRadius: BorderRadius.circular(5),
-          border: Border.all(color: color.withValues(alpha: .18)),
-        ),
-        child: Text(
-          text,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(fontSize: 7.8, fontWeight: FontWeight.w600, color: color),
-        ),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+    decoration: BoxDecoration(
+      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .04),
+      borderRadius: BorderRadius.circular(5),
+      border: Border.all(
+        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .28),
+      ),
+    ),
+    child: Text(
+      text,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w700,
+        color: Theme.of(context).colorScheme.onSurface,
+      ),
+    ),
+  );
 }
 
 class _OutputsEmptyState extends StatelessWidget {
@@ -1226,42 +1357,46 @@ class _OutputsEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 480),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                totalCount == 0 ? Icons.inventory_2_outlined : Icons.filter_alt_off_outlined,
-                size: 32,
-                color: IlaiosTheme.enterpriseCyan,
-              ),
-              const SizedBox(height: 9),
-              Text(
-                totalCount == 0
-                    ? _surface(context, 'deliveries.empty')
-                    : _copy(
-                        context,
-                        'Seçili filtrelerle eşleşen doğrulanmış çıktı yok.',
-                        'No verified outputs match the selected filters.',
-                      ),
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 5),
-              Text(
-                _copy(
-                  context,
-                  'Tamamlanan ve doğrulanan işler burada çıktı olarak görünür. İlk çıktıyı almak için yeni bir iş başlat.',
-                  'Completed and verified work appears here as output. Start a new task to create the first output.',
-                ),
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 9),
-              ),
-            ],
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 480),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            totalCount == 0
+                ? Icons.inventory_2_outlined
+                : Icons.filter_alt_off_outlined,
+            size: 32,
+            color: IlaiosTheme.enterpriseCyan,
           ),
-        ),
-      );
+          const SizedBox(height: 9),
+          Text(
+            totalCount == 0
+                ? _surface(context, 'deliveries.empty')
+                : _copy(
+                    context,
+                    'Seçili filtrelerle eşleşen doğrulanmış çıktı yok.',
+                    'No verified outputs match the selected filters.',
+                  ),
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            _copy(
+              context,
+              'Tamamlanan ve doğrulanan işler burada çıktı olarak görünür. İlk çıktıyı almak için yeni bir iş başlat.',
+              'Completed and verified work appears here as output. Start a new task to create the first output.',
+            ),
+            textAlign: TextAlign.center,
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(fontSize: 11),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 class _RightRail extends StatelessWidget {
@@ -1334,7 +1469,7 @@ class _RightRail extends StatelessWidget {
           Text(
             _copy(context, 'Kanıt özeti', 'Evidence digest'),
             style: TextStyle(
-              fontSize: 8,
+              fontSize: 11,
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
@@ -1343,9 +1478,9 @@ class _RightRail extends StatelessWidget {
             record.artifactDigest,
             maxLines: 4,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  fontSize: 8,
-                  fontFamily: 'monospace',
-                ),
+              fontSize: 11,
+              fontFamily: 'monospace',
+            ),
           ),
           const Spacer(),
           Text(
@@ -1368,34 +1503,35 @@ class _OutputDetailRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 9),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              width: 82,
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: 8,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
+    padding: const EdgeInsets.only(bottom: 9),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 82,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: SelectableText(
-                value,
-                maxLines: 3,
-                style: const TextStyle(
-                  fontSize: 8.5,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
-      );
+        const SizedBox(width: 8),
+        Expanded(
+          child: SelectableText(
+            value,
+            maxLines: 3,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _InlineMessage extends StatelessWidget {
@@ -1405,23 +1541,28 @@ class _InlineMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        key: const Key('delivery-message'),
-        height: 30,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        alignment: Alignment.centerLeft,
-        decoration: BoxDecoration(
-          color: IlaiosTheme.enterpriseCyan.withValues(alpha: .07),
-          borderRadius: BorderRadius.circular(7),
-          border: Border.all(
-            color: IlaiosTheme.enterpriseCyan.withValues(alpha: .28),
-          ),
-        ),
-        child: SelectableText(
-          message,
-          maxLines: 1,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 8.5),
-        ),
-      );
+    key: const Key('delivery-message'),
+    height: 30,
+    padding: const EdgeInsets.symmetric(horizontal: 10),
+    alignment: Alignment.centerLeft,
+    decoration: BoxDecoration(
+      color: IlaiosTheme.enterpriseCyan.withValues(alpha: .07),
+      borderRadius: BorderRadius.circular(7),
+      border: Border.all(
+        color: IlaiosTheme.enterpriseCyan.withValues(alpha: .28),
+      ),
+    ),
+    child: SelectableText(
+      message,
+      maxLines: 1,
+      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+        fontSize: 12,
+        color: Theme.of(context).brightness == Brightness.light
+            ? const Color(0xFF424B55)
+            : Theme.of(context).colorScheme.onSurfaceVariant,
+      ),
+    ),
+  );
 }
 
 bool _safeExists(File file) {
@@ -1473,31 +1614,31 @@ String _deliveryTypeCode(EvidenceRecord record) {
 }
 
 String _typeLabel(BuildContext context, String code) => switch (code) {
-      'document' => _copy(context, 'Doküman', 'Document'),
-      'video' => _copy(context, 'Video', 'Video'),
-      'visual' => _copy(context, 'Görsel', 'Visual'),
-      'report' => _copy(context, 'Rapor', 'Report'),
-      'table' => _copy(context, 'Tablo', 'Table'),
-      _ => _copy(context, 'Diğer', 'Other'),
-    };
+  'document' => _copy(context, 'Doküman', 'Document'),
+  'video' => _copy(context, 'Video', 'Video'),
+  'visual' => _copy(context, 'Görsel', 'Visual'),
+  'report' => _copy(context, 'Rapor', 'Report'),
+  'table' => _copy(context, 'Tablo', 'Table'),
+  _ => _copy(context, 'Diğer', 'Other'),
+};
 
 Color _typeColor(String code) => switch (code) {
-      'document' => IlaiosTheme.coreBlue,
-      'video' => IlaiosTheme.violet,
-      'visual' => const Color(0xFFEB5D91),
-      'report' => IlaiosTheme.warning,
-      'table' => IlaiosTheme.success,
-      _ => const Color(0xFF91A7C0),
-    };
+  'document' => const Color(0xFF343A40),
+  'video' => const Color(0xFF343A40),
+  'visual' => const Color(0xFF343A40),
+  'report' => const Color(0xFF343A40),
+  'table' => const Color(0xFF343A40),
+  _ => const Color(0xFF626B75),
+};
 
 IconData _typeIcon(String code) => switch (code) {
-      'document' => Icons.description_outlined,
-      'video' => Icons.videocam_outlined,
-      'visual' => Icons.image_outlined,
-      'report' => Icons.analytics_outlined,
-      'table' => Icons.table_chart_outlined,
-      _ => Icons.inventory_2_outlined,
-    };
+  'document' => Icons.description_outlined,
+  'video' => Icons.videocam_outlined,
+  'visual' => Icons.image_outlined,
+  'report' => Icons.analytics_outlined,
+  'table' => Icons.table_chart_outlined,
+  _ => Icons.inventory_2_outlined,
+};
 
 String _outputName(EvidenceRecord record) {
   var value = record.action;
@@ -1514,18 +1655,20 @@ String _outputName(EvidenceRecord record) {
       .join(' ');
 }
 
-BoxDecoration _panelDecoration(BuildContext context, {required double radius}) =>
-    BoxDecoration(
-      color: Theme.of(context).colorScheme.surfaceContainerLowest,
-      borderRadius: BorderRadius.circular(radius),
-      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-    );
+BoxDecoration _panelDecoration(
+  BuildContext context, {
+  required double radius,
+}) => BoxDecoration(
+  color: Theme.of(context).colorScheme.surfaceContainerLowest,
+  borderRadius: BorderRadius.circular(radius),
+  border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+);
 
 BoxDecoration _fieldDecoration(BuildContext context) => BoxDecoration(
-      color: Theme.of(context).colorScheme.surfaceContainerLowest,
-      borderRadius: BorderRadius.circular(7),
-      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-    );
+  color: Theme.of(context).colorScheme.surfaceContainerLowest,
+  borderRadius: BorderRadius.circular(7),
+  border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+);
 
 bool _isFinishedProductEvidence(EvidenceRecord record) =>
     record.action.endsWith('.finished_product');
@@ -1541,7 +1684,8 @@ String _localizedStatus(BuildContext context, String value) {
   if (!_isTr(context)) return value;
   return switch (value) {
     'Operational APIs connected' => 'Operasyon API’leri bağlı',
-    'Connected to authoritative control plane' => 'Yetkili kontrol düzlemine bağlı',
+    'Connected to authoritative control plane' =>
+      'Yetkili kontrol düzlemine bağlı',
     'Operational APIs not connected' => 'Operasyon API’leri bağlı değil',
     _ => value,
   };

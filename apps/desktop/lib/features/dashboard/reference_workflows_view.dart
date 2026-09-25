@@ -1,7 +1,9 @@
+import '../../app/desktop_page_heading.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../app/ilaios_icon_palette.dart';
 import '../../app/ilaios_locale.dart';
 import '../../app/ilaios_theme.dart';
 import '../../control_plane/operational_snapshot.dart';
@@ -75,7 +77,9 @@ class _ReferenceWorkflowsViewState extends State<ReferenceWorkflowsView> {
 
   @override
   Widget build(BuildContext context) {
-    final workflows = _workflowRecords(widget.snapshot);
+    final workflows = widget.projection.connected
+        ? _workflowRecords(widget.snapshot)
+        : const <_WorkflowRecord>[];
     final filtered = _filtered(workflows);
     final pageCount = math.max(1, (filtered.length / _pageSize).ceil());
     final effectivePage = _page.clamp(0, pageCount - 1);
@@ -87,8 +91,12 @@ class _ReferenceWorkflowsViewState extends State<ReferenceWorkflowsView> {
     final selected = pageRows.isEmpty || _selected < 0
         ? null
         : pageRows[_selected.clamp(0, pageRows.length - 1)];
-    final approvals = _approvalItems(widget.snapshot);
-    final templates = _templateItems(widget.snapshot);
+    final approvals = widget.projection.connected
+        ? _approvalItems(widget.snapshot)
+        : const <Map<String, Object?>>[];
+    final templates = widget.projection.connected
+        ? _templateItems(widget.snapshot)
+        : const <Map<String, Object?>>[];
 
     return Container(
       key: const Key('reference-workflows-page'),
@@ -162,15 +170,15 @@ class _ReferenceWorkflowsViewState extends State<ReferenceWorkflowsView> {
                         onPrevious: effectivePage <= 0
                             ? null
                             : () => setState(() {
-                                  _page = effectivePage - 1;
-                                  _selected = -1;
-                                }),
+                                _page = effectivePage - 1;
+                                _selected = -1;
+                              }),
                         onNext: effectivePage >= pageCount - 1
                             ? null
                             : () => setState(() {
-                                  _page = effectivePage + 1;
-                                  _selected = -1;
-                                }),
+                                _page = effectivePage + 1;
+                                _selected = -1;
+                              }),
                         onClear: _clearFilters,
                         onRefresh: widget.onRefreshRequested,
                         onApprovals: () =>
@@ -179,10 +187,11 @@ class _ReferenceWorkflowsViewState extends State<ReferenceWorkflowsView> {
                             widget.onNavigate(DesktopSection.liveWorkspace),
                       ),
                     ),
-                    if (widget.snapshot.liveEvents.isNotEmpty ||
-                        widget.snapshot.evidenceRecords.isNotEmpty ||
-                        approvals.isNotEmpty ||
-                        templates.isNotEmpty) ...[
+                    if (widget.projection.connected &&
+                        (widget.snapshot.liveEvents.isNotEmpty ||
+                            widget.snapshot.evidenceRecords.isNotEmpty ||
+                            approvals.isNotEmpty ||
+                            templates.isNotEmpty)) ...[
                       const SizedBox(height: 8),
                       SizedBox(
                         height: 145,
@@ -201,10 +210,10 @@ class _ReferenceWorkflowsViewState extends State<ReferenceWorkflowsView> {
                 SizedBox(
                   width: rightWidth,
                   child: _SelectedWorkflowPanel(
-                  workflow: selected,
-                  approvals: approvals,
-                  connected: widget.projection.connected,
-                  onRefresh: widget.onRefreshRequested,
+                    workflow: selected,
+                    approvals: approvals,
+                    connected: widget.projection.connected,
+                    onRefresh: widget.onRefreshRequested,
                     onNavigate: widget.onNavigate,
                   ),
                 ),
@@ -255,46 +264,42 @@ class _PageHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-        height: 43,
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    _tr(context, 'İş Akışları', 'Workflows'),
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                      height: 1,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    _tr(
-                      context,
-                      'İş akışlarını orkestre edin ve teslimat süreçlerini takip edin.',
-                      'Orchestrate workflows and track delivery processes.',
-                    ),
-                    style: TextStyle(
-                      fontSize: 9.2,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
+    height: 50,
+    child: Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                _tr(context, 'İş Akışları', 'Workflows'),
+                style: DesktopPageHeading.style(context),
               ),
-            ),
-            IconButton(
-              key: const Key('workflows-refresh'),
-              tooltip: _tr(context, 'Yenile', 'Refresh'),
-              onPressed: connected ? onRefresh : null,
-              icon: const Icon(Icons.refresh_rounded, size: 18),
-            ),
-          ],
+              const SizedBox(height: 5),
+              Text(
+                _tr(
+                  context,
+                  'İş akışlarını orkestre edin ve teslimat süreçlerini takip edin.',
+                  'Orchestrate workflows and track delivery processes.',
+                ),
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
         ),
-      );
+        IconButton(
+          key: const Key('workflows-refresh'),
+          tooltip: _tr(context, 'Yenile', 'Refresh'),
+          onPressed: connected ? onRefresh : null,
+          icon: const Icon(Icons.refresh_rounded, size: 18),
+        ),
+      ],
+    ),
+  );
 }
 
 class _MetricsRow extends StatelessWidget {
@@ -312,61 +317,63 @@ class _MetricsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activeCount = _authoritativeInt(snapshot.schedulerState, const [
-          'active_count',
-          'active_jobs',
-          'running_count',
-        ]) ??
-        (workflows.isEmpty ? null : workflows.where((item) => item.active).length);
-    final completedCount = _authoritativeInt(snapshot.schedulerState, const [
-          'completed_count',
-          'completed_jobs',
-          'done_count',
-        ]) ??
-        (workflows.isEmpty
-            ? null
-            : workflows.where((item) => item.completed).length);
-    final overdue = _authoritativeInt(snapshot.schedulerState, const [
-      'overdue_count',
-      'late_count',
-    ]);
+    final activeCount = projection.connected
+        ? (_authoritativeInt(snapshot.schedulerState, const [
+                'active_count',
+                'active_jobs',
+                'running_count',
+              ]) ??
+              (workflows.isEmpty
+                  ? null
+                  : workflows.where((item) => item.active).length))
+        : null;
+    final completedCount = projection.connected
+        ? (_authoritativeInt(snapshot.schedulerState, const [
+                'completed_count',
+                'completed_jobs',
+                'done_count',
+              ]) ??
+              (workflows.isEmpty
+                  ? null
+                  : workflows.where((item) => item.completed).length))
+        : null;
+    final overdue = projection.connected
+        ? _authoritativeInt(snapshot.schedulerState, const [
+            'overdue_count',
+            'late_count',
+          ])
+        : null;
 
     final summary = <(IconData, String, String, Color)>[
       (
         Icons.account_tree_outlined,
         _tr(context, 'Toplam', 'Total'),
-        projection.jobCount?.toString() ?? '—',
-        Theme.of(context).colorScheme.onSurfaceVariant,
+        projection.connected ? (projection.jobCount?.toString() ?? '—') : '—',
+        IlaiosIconPalette.web,
       ),
       (
         Icons.play_arrow_rounded,
         _tr(context, 'Aktif', 'Active'),
         activeCount?.toString() ?? '—',
-        Theme.of(context).colorScheme.onSurfaceVariant,
+        const Color(0xFF38C6A0),
       ),
       (
         Icons.hourglass_bottom_rounded,
         _tr(context, 'Onay Bekleyen', 'Awaiting Approval'),
-        approvals.length.toString(),
-        approvals.isEmpty
-            ? Theme.of(context).colorScheme.onSurfaceVariant
-            : IlaiosTheme.warning,
+        projection.connected ? approvals.length.toString() : '—',
+        IlaiosTheme.warning,
       ),
       (
         Icons.schedule_rounded,
         _tr(context, 'Geciken', 'Overdue'),
         overdue?.toString() ?? '—',
-        overdue != null && overdue > 0
-            ? IlaiosTheme.danger
-            : Theme.of(context).colorScheme.onSurfaceVariant,
+        IlaiosIconPalette.security,
       ),
       (
         Icons.check_circle_outline_rounded,
         _tr(context, 'Tamamlanan', 'Completed'),
         completedCount?.toString() ?? '—',
-        completedCount != null && completedCount > 0
-            ? IlaiosTheme.success
-            : Theme.of(context).colorScheme.onSurfaceVariant,
+        const Color(0xFF38C6A0),
       ),
     ];
 
@@ -382,10 +389,14 @@ class _MetricsRow extends StatelessWidget {
                 Container(
                   width: 1,
                   height: 24,
-                  margin: const EdgeInsets.symmetric(horizontal: 12),
+                  margin: const EdgeInsets.symmetric(horizontal: 14),
                   color: Theme.of(context).colorScheme.outlineVariant,
                 ),
-              Icon(summary[index].$1, size: 14, color: summary[index].$4),
+              Icon(
+                summary[index].$1,
+                size: 16,
+                color: IlaiosIconPalette.factory(context, summary[index].$4),
+              ),
               const SizedBox(width: 5),
               Flexible(
                 child: Text(
@@ -393,16 +404,16 @@ class _MetricsRow extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 8.2,
+                    fontSize: 12,
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ),
-              const SizedBox(width: 5),
+              const SizedBox(width: 7),
               Text(
                 summary[index].$3,
                 style: const TextStyle(
-                  fontSize: 12.5,
+                  fontSize: 13.5,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -415,6 +426,7 @@ class _MetricsRow extends StatelessWidget {
 }
 
 enum _WorkflowMenuAction { refresh }
+
 enum _WorkflowRowAction { approvals, workspace }
 
 class _WorkflowTablePanel extends StatelessWidget {
@@ -483,8 +495,9 @@ class _WorkflowTablePanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final typeOptions = _filterValues(allWorkflows.map((item) => item.kind));
-    final priorityOptions =
-        _filterValues(allWorkflows.map((item) => item.priority));
+    final priorityOptions = _filterValues(
+      allWorkflows.map((item) => item.priority),
+    );
     final ownerOptions = _filterValues(allWorkflows.map((item) => item.owner));
     final stageOptions = _filterValues(allWorkflows.map((item) => item.phase));
     final first = filteredCount == 0 ? 0 : page * pageSize + 1;
@@ -497,7 +510,7 @@ class _WorkflowTablePanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SizedBox(
-            height: 38,
+            height: 42,
             child: Row(
               children: [
                 for (final entry in <(String, String)>[
@@ -529,7 +542,6 @@ class _WorkflowTablePanel extends StatelessWidget {
                       enabled: connected && onRefresh != null,
                       child: Text(_tr(context, 'Yenile', 'Refresh')),
                     ),
-
                   ],
                   icon: const Icon(Icons.more_vert, size: 16),
                 ),
@@ -547,9 +559,12 @@ class _WorkflowTablePanel extends StatelessWidget {
               child: _StageDistribution(workflows: allWorkflows),
             ),
           ],
-          Divider(height: 1, color: Theme.of(context).colorScheme.outlineVariant),
+          Divider(
+            height: 1,
+            color: Theme.of(context).colorScheme.outlineVariant,
+          ),
           SizedBox(
-            height: 39,
+            height: 45,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
               child: Row(
@@ -570,7 +585,7 @@ class _WorkflowTablePanel extends StatelessWidget {
                         prefixIcon: const Icon(Icons.search, size: 15),
                         contentPadding: const EdgeInsets.symmetric(vertical: 5),
                       ),
-                      style: const TextStyle(fontSize: 9.2),
+                      style: const TextStyle(fontSize: 12),
                     ),
                   ),
                   const SizedBox(width: 7),
@@ -618,17 +633,26 @@ class _WorkflowTablePanel extends StatelessWidget {
                     key: const Key('workflow-clear-filters'),
                     onPressed: hasFilters ? onClear : null,
                     style: OutlinedButton.styleFrom(
-                      minimumSize: const Size(105, 28),
+                      minimumSize: const Size(112, 34),
+                      fixedSize: const Size.fromHeight(34),
                       padding: const EdgeInsets.symmetric(horizontal: 8),
-                      textStyle: const TextStyle(fontSize: 8.3),
+                      textStyle: const TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                    child: Text(_tr(context, 'Filtreleri Temizle', 'Clear Filters')),
+                    child: Text(
+                      _tr(context, 'Filtreleri Temizle', 'Clear Filters'),
+                    ),
                   ),
                 ],
               ),
             ),
           ),
-          Divider(height: 1, color: Theme.of(context).colorScheme.outlineVariant),
+          Divider(
+            height: 1,
+            color: Theme.of(context).colorScheme.outlineVariant,
+          ),
           const _WorkflowHeader(),
           Expanded(
             child: workflows.isEmpty
@@ -649,7 +673,7 @@ class _WorkflowTablePanel extends StatelessWidget {
                   ),
           ),
           SizedBox(
-            height: 29,
+            height: 34,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 7),
               child: Row(
@@ -658,9 +682,10 @@ class _WorkflowTablePanel extends StatelessWidget {
                     filteredCount == 0
                         ? _tr(context, '0 sonuç', '0 results')
                         : '$first-$last / $filteredCount ${_tr(context, 'sonuç', 'results')}',
-                    style: const TextStyle(fontSize: 8.2),
+                    style: const TextStyle(fontSize: 12),
                   ),
                   const Spacer(),
+                  const SizedBox(width: 8),
                   IconButton(
                     key: const Key('workflow-page-previous'),
                     onPressed: onPrevious,
@@ -672,7 +697,7 @@ class _WorkflowTablePanel extends StatelessWidget {
                   Container(
                     key: const Key('workflow-page-indicator'),
                     constraints: const BoxConstraints(minWidth: 26),
-                    height: 21,
+                    height: 25,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       border: Border.all(
@@ -682,9 +707,13 @@ class _WorkflowTablePanel extends StatelessWidget {
                     ),
                     child: Text(
                       '${page + 1}/$pageCount',
-                      style: const TextStyle(fontSize: 8),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
+                  const SizedBox(width: 4),
                   IconButton(
                     key: const Key('workflow-page-next'),
                     onPressed: onNext,
@@ -693,10 +722,14 @@ class _WorkflowTablePanel extends StatelessWidget {
                     tooltip: _tr(context, 'Sonraki sayfa', 'Next page'),
                     icon: const Icon(Icons.chevron_right),
                   ),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: 10),
                   Text(
-                    _tr(context, 'Sayfa başına $pageSize', '$pageSize per page'),
-                    style: const TextStyle(fontSize: 8.2),
+                    _tr(
+                      context,
+                      'Sayfa başına $pageSize',
+                      '$pageSize per page',
+                    ),
+                    style: const TextStyle(fontSize: 12),
                   ),
                 ],
               ),
@@ -721,32 +754,29 @@ class _TabButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => InkWell(
-        onTap: onTap,
-        child: Container(
-          alignment: Alignment.center,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            border: selected
-                ? const Border(
-                    bottom: BorderSide(
-                      color: IlaiosTheme.enterpriseCyan,
-                      width: 2,
-                    ),
-                  )
-                : null,
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 9.2,
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-              color: selected
-                  ? Theme.of(context).colorScheme.onSurface
-                  : Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
+    onTap: onTap,
+    child: Container(
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        border: selected
+            ? const Border(
+                bottom: BorderSide(color: IlaiosTheme.enterpriseCyan, width: 2),
+              )
+            : null,
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12.5,
+          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+          color: selected
+              ? Theme.of(context).colorScheme.onSurface
+              : Theme.of(context).colorScheme.onSurfaceVariant,
         ),
-      );
+      ),
+    ),
+  );
 }
 
 class _StageDistribution extends StatelessWidget {
@@ -790,7 +820,7 @@ class _StageDistribution extends StatelessWidget {
     ];
     final total = stages.fold<int>(0, (sum, item) => sum + item.count);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(10, 7, 10, 5),
+      padding: const EdgeInsets.fromLTRB(10, 4, 10, 3),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -800,9 +830,9 @@ class _StageDistribution extends StatelessWidget {
               'Aşama Dağılımı (Tüm İş Akışları)',
               'Stage Distribution (All Workflows)',
             ),
-            style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w600),
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
           ),
-          const SizedBox(height: 7),
+          const SizedBox(height: 2),
           Row(
             children: [
               for (var index = 0; index < stages.length; index++) ...[
@@ -832,7 +862,7 @@ class _StageDistribution extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 7.2,
+                      fontSize: 11,
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
@@ -871,43 +901,47 @@ class _FilterBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => PopupMenuButton<String>(
-        key: ValueKey('workflow-filter-$id'),
-        initialValue: value,
-        tooltip: label,
-        onSelected: onChanged,
-        itemBuilder: (context) => [
-          PopupMenuItem(
-            value: _allFilter,
-            child: Text(_tr(context, 'Tümü', 'All')),
+    key: ValueKey('workflow-filter-$id'),
+    initialValue: value,
+    tooltip: label,
+    onSelected: onChanged,
+    itemBuilder: (context) => [
+      PopupMenuItem(
+        value: _allFilter,
+        child: Text(_tr(context, 'Tümü', 'All')),
+      ),
+      for (final option in options)
+        PopupMenuItem(value: option, child: Text(option)),
+    ],
+    child: Container(
+      height: 34,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(5),
+        color: Theme.of(context).colorScheme.surfaceContainerLowest,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              value == _allFilter
+                  ? '$label: ${_tr(context, 'Tümü', 'All')}'
+                  : value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12),
+            ),
           ),
-          for (final option in options)
-            PopupMenuItem(value: option, child: Text(option)),
+          Icon(
+            Icons.keyboard_arrow_down,
+            size: 16,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ],
-        child: Container(
-          height: 28,
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          decoration: BoxDecoration(
-            border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-            borderRadius: BorderRadius.circular(5),
-            color: Theme.of(context).colorScheme.surfaceContainerLowest,
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  value == _allFilter
-                      ? '$label: ${_tr(context, 'Tümü', 'All')}'
-                      : value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 8.2),
-                ),
-              ),
-              const Icon(Icons.keyboard_arrow_down, size: 13),
-            ],
-          ),
-        ),
-      );
+      ),
+    ),
+  );
 }
 
 class _WorkflowHeader extends StatelessWidget {
@@ -915,25 +949,24 @@ class _WorkflowHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        height: 26,
-        padding: const EdgeInsets.symmetric(horizontal: 9),
-        color: Theme.of(context)
-            .colorScheme
-            .surfaceContainerLowest
-            .withValues(alpha: .35),
-        child: Row(
-          children: [
-            _HeaderCell(_tr(context, 'İş Akışı', 'Workflow'), flex: 31),
-            _HeaderCell(_tr(context, 'Tür', 'Type'), flex: 9),
-            _HeaderCell(_tr(context, 'Aşama', 'Stage'), flex: 13),
-            _HeaderCell(_tr(context, 'İlerleme', 'Progress'), flex: 13),
-            _HeaderCell(_tr(context, 'Sahip', 'Owner'), flex: 13),
-            _HeaderCell(_tr(context, 'Öncelik', 'Priority'), flex: 10),
-            _HeaderCell(_tr(context, 'ETA / Son Tarih', 'ETA / Due'), flex: 14),
-            const SizedBox(width: 22),
-          ],
-        ),
-      );
+    height: 26,
+    padding: const EdgeInsets.symmetric(horizontal: 9),
+    color: Theme.of(
+      context,
+    ).colorScheme.surfaceContainerLowest.withValues(alpha: .35),
+    child: Row(
+      children: [
+        _HeaderCell(_tr(context, 'İş Akışı', 'Workflow'), flex: 31),
+        _HeaderCell(_tr(context, 'Tür', 'Type'), flex: 9),
+        _HeaderCell(_tr(context, 'Aşama', 'Stage'), flex: 13),
+        _HeaderCell(_tr(context, 'İlerleme', 'Progress'), flex: 13),
+        _HeaderCell(_tr(context, 'Sahip', 'Owner'), flex: 13),
+        _HeaderCell(_tr(context, 'Öncelik', 'Priority'), flex: 10),
+        _HeaderCell(_tr(context, 'ETA / Son Tarih', 'ETA / Due'), flex: 14),
+        const SizedBox(width: 22),
+      ],
+    ),
+  );
 }
 
 class _HeaderCell extends StatelessWidget {
@@ -944,17 +977,18 @@ class _HeaderCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Expanded(
-        flex: flex,
-        child: Text(
-          text,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontSize: 7.8,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-        ),
-      );
+    flex: flex,
+    child: Text(
+      text,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
+      ),
+    ),
+  );
 }
 
 class _WorkflowRow extends StatelessWidget {
@@ -974,205 +1008,191 @@ class _WorkflowRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => InkWell(
-        key: ValueKey('workflow-row-${record.id}'),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          decoration: BoxDecoration(
-            color: selected
-                ? IlaiosTheme.enterpriseCyan.withValues(alpha: .06)
-                : null,
-            border: Border(
-              bottom: BorderSide(
-                color: Theme.of(context)
-                    .colorScheme
-                    .outlineVariant
-                    .withValues(alpha: .65),
-              ),
-              left: BorderSide(
-                color: selected
-                    ? IlaiosTheme.enterpriseCyan
-                    : Colors.transparent,
-              ),
-              right: BorderSide(
-                color: selected
-                    ? IlaiosTheme.enterpriseCyan
-                    : Colors.transparent,
-              ),
-            ),
+    key: ValueKey('workflow-row-${record.id}'),
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        color: selected
+            ? IlaiosTheme.enterpriseCyan.withValues(alpha: .06)
+            : null,
+        border: Border(
+          bottom: BorderSide(
+            color: Theme.of(
+              context,
+            ).colorScheme.outlineVariant.withValues(alpha: .65),
           ),
-          child: Row(
-            children: [
-              Expanded(
-                flex: 31,
-                child: Row(
-                  children: [
-                    _RoundIcon(
-                      icon: _workflowIcon(record.kind),
-                      accent: _phaseColor(record.phase),
-                    ),
-                    const SizedBox(width: 7),
-                    Expanded(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            record.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 8.4,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          Text(
-                            record.subtitle,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 6.9,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                flex: 9,
-                child: _Tag(
-                  text: record.kind,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-              Expanded(
-                flex: 13,
-                child: _Tag(
-                  text: record.phase,
-                  color: _phaseColor(record.phase),
-                ),
-              ),
-              Expanded(
-                flex: 13,
-                child: record.progress == null
-                    ? const Text('—', style: TextStyle(fontSize: 8.2))
-                    : Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${(record.progress! * 100).round()}%',
-                            style: const TextStyle(
-                              fontSize: 8.3,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(2),
-                            child: LinearProgressIndicator(
-                              value: record.progress,
-                              minHeight: 3,
-                            ),
-                          ),
-                        ],
-                      ),
-              ),
-              Expanded(
-                flex: 13,
-                child: Text(
-                  record.owner,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 8.1),
-                ),
-              ),
-              Expanded(
-                flex: 10,
-                child: _Tag(
-                  text: record.priority,
-                  color: _priorityColor(record.priority),
-                ),
-              ),
-              Expanded(
-                flex: 14,
-                child: Text(
-                  record.eta,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 7.7),
-                ),
-              ),
-              SizedBox(
-                width: 22,
-                child: PopupMenuButton<_WorkflowRowAction>(
-                  key: ValueKey('workflow-row-menu-${record.id}'),
-                  padding: EdgeInsets.zero,
-                  tooltip: _tr(context, 'İş akışı eylemleri', 'Workflow actions'),
-                  onSelected: (action) {
-                    switch (action) {
-                      case _WorkflowRowAction.approvals:
-                        onApprovals();
-                      case _WorkflowRowAction.workspace:
-                        onWorkspace();
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    PopupMenuItem(
-                      value: _WorkflowRowAction.approvals,
-                      child: Text(_tr(context, 'Onayları Gör', 'View Approvals')),
-                    ),
-                    PopupMenuItem(
-                      value: _WorkflowRowAction.workspace,
-                      child: Text(
-                        _tr(
-                          context,
-                          'Canlı Çalışma Alanı',
-                          'Live Workspace',
-                        ),
-                      ),
-                    ),
-                  ],
-                  icon: const Icon(Icons.more_vert, size: 13),
-                ),
-              ),
-            ],
+          left: BorderSide(
+            color: selected ? IlaiosTheme.enterpriseCyan : Colors.transparent,
+          ),
+          right: BorderSide(
+            color: selected ? IlaiosTheme.enterpriseCyan : Colors.transparent,
           ),
         ),
-      );
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 31,
+            child: Row(
+              children: [
+                _RoundIcon(
+                  icon: _workflowIcon(record.kind),
+                  accent: _phaseColor(record.phase),
+                ),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        record.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        record.subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            flex: 9,
+            child: _Tag(
+              text: record.kind,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          Expanded(
+            flex: 13,
+            child: _Tag(text: record.phase, color: _phaseColor(record.phase)),
+          ),
+          Expanded(
+            flex: 13,
+            child: record.progress == null
+                ? const Text('—', style: TextStyle(fontSize: 11))
+                : Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${(record.progress! * 100).round()}%',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(2),
+                        child: LinearProgressIndicator(
+                          value: record.progress,
+                          minHeight: 3,
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+          Expanded(
+            flex: 13,
+            child: Text(
+              record.owner,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 10.5),
+            ),
+          ),
+          Expanded(
+            flex: 10,
+            child: _Tag(
+              text: record.priority,
+              color: _priorityColor(record.priority),
+            ),
+          ),
+          Expanded(
+            flex: 14,
+            child: Text(
+              record.eta,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 10.5),
+            ),
+          ),
+          SizedBox(
+            width: 22,
+            child: PopupMenuButton<_WorkflowRowAction>(
+              key: ValueKey('workflow-row-menu-${record.id}'),
+              padding: EdgeInsets.zero,
+              tooltip: _tr(context, 'İş akışı eylemleri', 'Workflow actions'),
+              onSelected: (action) {
+                switch (action) {
+                  case _WorkflowRowAction.approvals:
+                    onApprovals();
+                  case _WorkflowRowAction.workspace:
+                    onWorkspace();
+                }
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: _WorkflowRowAction.approvals,
+                  child: Text(_tr(context, 'Onayları Gör', 'View Approvals')),
+                ),
+                PopupMenuItem(
+                  value: _WorkflowRowAction.workspace,
+                  child: Text(
+                    _tr(context, 'Canlı Çalışma Alanı', 'Live Workspace'),
+                  ),
+                ),
+              ],
+              icon: const Icon(Icons.more_vert, size: 13),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 class _EmptyWorkflows extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.account_tree_outlined,
-              size: 26,
-              color: Theme.of(context).colorScheme.outline,
-            ),
-            const SizedBox(height: 5),
-            Text(
-              _tr(
-                context,
-                'Yetkili iş akışı kaydı yok.',
-                'No authoritative workflow records are available.',
-              ),
-              style: TextStyle(
-                fontSize: 8.5,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          Icons.account_tree_rounded,
+          size: 30,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
         ),
-      );
+        const SizedBox(height: 5),
+        Text(
+          _tr(
+            context,
+            'Yetkili iş akışı kaydı yok.',
+            'No authoritative workflow records are available.',
+          ),
+          style: TextStyle(
+            fontSize: 13,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _BottomPanels extends StatelessWidget {
@@ -1188,14 +1208,18 @@ class _BottomPanels extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final updates = snapshot.liveEvents.reversed.take(3).toList(growable: false);
-    final evidence = snapshot.evidenceRecords.reversed.take(3).toList(growable: false);
+    final updates = snapshot.liveEvents.reversed
+        .take(3)
+        .toList(growable: false);
+    final evidence = snapshot.evidenceRecords.reversed
+        .take(3)
+        .toList(growable: false);
     return Row(
       key: const Key('workflows-bottom-panels'),
       children: [
         Expanded(
           child: _MiniPanel(
-            title: _tr(context, 'SON GÜNCELLEMELER', 'RECENT UPDATES'),
+            title: _tr(context, 'Son Güncellemeler', 'Recent Updates'),
             child: _EventList(items: updates),
           ),
         ),
@@ -1204,8 +1228,8 @@ class _BottomPanels extends StatelessWidget {
           child: _MiniPanel(
             title: _tr(
               context,
-              'ONAY BEKLEYEN ADIMLAR',
-              'PENDING APPROVAL STEPS',
+              'Onay Bekleyen Adımlar',
+              'Pending Approval Steps',
             ),
             child: _ApprovalList(
               items: approvals.take(3).toList(growable: false),
@@ -1215,18 +1239,14 @@ class _BottomPanels extends StatelessWidget {
         const SizedBox(width: 8),
         Expanded(
           child: _MiniPanel(
-            title: _tr(context, 'SON TESLİMATLAR', 'RECENT DELIVERIES'),
+            title: _tr(context, 'Son Teslimatlar', 'Recent Deliveries'),
             child: _EvidenceList(items: evidence),
           ),
         ),
         const SizedBox(width: 8),
         Expanded(
           child: _MiniPanel(
-            title: _tr(
-              context,
-              'İŞ AKIŞI ŞABLONLARI',
-              'WORKFLOW TEMPLATES',
-            ),
+            title: _tr(context, 'İş Akışı Şablonları', 'Workflow Templates'),
             child: _TemplateList(
               items: templates.take(3).toList(growable: false),
             ),
@@ -1245,42 +1265,42 @@ class _MiniPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => _Card(
-        padding: EdgeInsets.zero,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            SizedBox(
-              height: 30,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 9),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        title,
-                        style: const TextStyle(
-                          fontSize: 8.2,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
+    padding: EdgeInsets.zero,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SizedBox(
+          height: 36,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 9),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
                     ),
-                    Text(
-                      _tr(context, 'Tümü', 'All'),
-                      style: TextStyle(
-                        fontSize: 7.3,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const Icon(Icons.chevron_right, size: 12),
-                  ],
+                  ),
                 ),
-              ),
+                Text(
+                  _tr(context, 'Tümü', 'All'),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const Icon(Icons.chevron_right, size: 12),
+              ],
             ),
-            Divider(height: 1, color: Theme.of(context).colorScheme.outlineVariant),
-            Expanded(child: child),
-          ],
+          ),
         ),
-      );
+        Divider(height: 1, color: Theme.of(context).colorScheme.outlineVariant),
+        Expanded(child: child),
+      ],
+    ),
+  );
 }
 
 class _EventList extends StatelessWidget {
@@ -1299,21 +1319,24 @@ class _EventList extends StatelessWidget {
             child: _SmallRow(
               icon: Icons.person_outline,
               color: IlaiosTheme.enterpriseCyan,
-              title: _text(item, const ['event', 'action', 'type', 'status']) ?? '—',
-              subtitle: _text(
-                    item,
-                    const [
-                      'project_name',
-                      'workflow_name',
-                      'job_id',
-                      'execution_id',
-                    ],
-                  ) ??
+              title:
+                  _text(item, const ['event', 'action', 'type', 'status']) ??
                   '—',
-              trailing: _text(
-                    item,
-                    const ['timestamp', 'time', 'created_at', 'updated_at'],
-                  ) ??
+              subtitle:
+                  _text(item, const [
+                    'project_name',
+                    'workflow_name',
+                    'job_id',
+                    'execution_id',
+                  ]) ??
+                  '—',
+              trailing:
+                  _text(item, const [
+                    'timestamp',
+                    'time',
+                    'created_at',
+                    'updated_at',
+                  ]) ??
                   '—',
             ),
           ),
@@ -1340,21 +1363,24 @@ class _ApprovalList extends StatelessWidget {
             child: _SmallRow(
               icon: Icons.error_outline,
               color: IlaiosTheme.warning,
-              title: _text(
-                    item,
-                    const ['title', 'action', 'reason', 'request_type'],
-                  ) ??
+              title:
+                  _text(item, const [
+                    'title',
+                    'action',
+                    'reason',
+                    'request_type',
+                  ]) ??
                   '—',
-              subtitle: _text(
-                    item,
-                    const ['workflow_name', 'job_id', 'execution_id', 'request_id'],
-                  ) ??
+              subtitle:
+                  _text(item, const [
+                    'workflow_name',
+                    'job_id',
+                    'execution_id',
+                    'request_id',
+                  ]) ??
                   '—',
-              trailing: _text(
-                    item,
-                    const ['priority', 'risk', 'severity'],
-                  ) ??
-                  '—',
+              trailing:
+                  _text(item, const ['priority', 'risk', 'severity']) ?? '—',
             ),
           ),
       ],
@@ -1410,8 +1436,10 @@ class _TemplateList extends StatelessWidget {
             child: _SmallRow(
               icon: Icons.content_copy_outlined,
               color: IlaiosTheme.violet,
-              title: _text(item, const ['name', 'title', 'template_name']) ?? '—',
-              subtitle: _text(item, const ['description', 'type', 'category']) ?? '—',
+              title:
+                  _text(item, const ['name', 'title', 'template_name']) ?? '—',
+              subtitle:
+                  _text(item, const ['description', 'type', 'category']) ?? '—',
               trailing: '',
             ),
           ),
@@ -1437,54 +1465,55 @@ class _SmallRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 10,
-              backgroundColor: color.withValues(alpha: .11),
-              child: Icon(icon, size: 11, color: color),
-            ),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 7.5,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  Text(
-                    subtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 6.5,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 4),
-            Text(
-              trailing,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 6.4,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
+    child: Row(
+      children: [
+        CircleAvatar(
+          radius: 10,
+          backgroundColor: color.withValues(alpha: .11),
+          child: Icon(icon, size: 11, color: color),
         ),
-      );
+        const SizedBox(width: 6),
+        Expanded(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
+              Text(
+                subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 10.5,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          trailing,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 11,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _SmallEmpty extends StatelessWidget {
@@ -1493,15 +1522,15 @@ class _SmallEmpty extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Text(
-          text,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 7.4,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-        ),
-      );
+    child: Text(
+      text,
+      textAlign: TextAlign.center,
+      style: TextStyle(
+        fontSize: 11,
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
+      ),
+    ),
+  );
 }
 
 class _SelectedWorkflowPanel extends StatelessWidget {
@@ -1521,37 +1550,37 @@ class _SelectedWorkflowPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => _Card(
-        key: const Key('selected-workflow-panel'),
-        padding: const EdgeInsets.fromLTRB(10, 8, 10, 9),
-        child: workflow == null
-            ? Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _RightHeader(
-                    title: _tr(context, 'Seçili İş Akışı', 'Selected Workflow'),
-                  ),
-                  Expanded(
-                    child: _SmallEmpty(
-                      text: _tr(
-                        context,
-                        'Seçilebilir iş akışı yok.',
-                        'No workflow is available to select.',
-                      ),
-                    ),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: connected ? onRefresh : null,
-                    icon: const Icon(Icons.refresh, size: 14),
-                    label: Text(_tr(context, 'Yenile', 'Refresh')),
-                  ),
-                ],
-              )
-            : _SelectedContent(
-                workflow: workflow!,
-                approvals: approvals,
-                onNavigate: onNavigate,
+    key: const Key('selected-workflow-panel'),
+    padding: const EdgeInsets.fromLTRB(10, 8, 10, 9),
+    child: workflow == null
+        ? Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _RightHeader(
+                title: _tr(context, 'Seçili İş Akışı', 'Selected Workflow'),
               ),
-      );
+              Expanded(
+                child: _SmallEmpty(
+                  text: _tr(
+                    context,
+                    'Seçilebilir iş akışı yok.',
+                    'No workflow is available to select.',
+                  ),
+                ),
+              ),
+              OutlinedButton.icon(
+                onPressed: connected ? onRefresh : null,
+                icon: const Icon(Icons.refresh, size: 14),
+                label: Text(_tr(context, 'Yenile', 'Refresh')),
+              ),
+            ],
+          )
+        : _SelectedContent(
+            workflow: workflow!,
+            approvals: approvals,
+            onNavigate: onNavigate,
+          ),
+  );
 }
 
 class _SelectedContent extends StatelessWidget {
@@ -1567,13 +1596,17 @@ class _SelectedContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final matchingApprovals = approvals.where((item) {
-      final id = _text(
-        item,
-        const ['job_id', 'workflow_id', 'execution_id'],
-      );
-      return id != null && id == workflow.id;
-    }).take(2).toList(growable: false);
+    final matchingApprovals = approvals
+        .where((item) {
+          final id = _text(item, const [
+            'job_id',
+            'workflow_id',
+            'execution_id',
+          ]);
+          return id != null && id == workflow.id;
+        })
+        .take(2)
+        .toList(growable: false);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1602,7 +1635,7 @@ class _SelectedContent extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 10.8,
+                        fontSize: 11,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -1612,7 +1645,7 @@ class _SelectedContent extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 7.2,
+                        fontSize: 11,
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
@@ -1623,10 +1656,11 @@ class _SelectedContent extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                 decoration: BoxDecoration(
-                  color: (workflow.completed
-                          ? IlaiosTheme.success
-                          : IlaiosTheme.enterpriseCyan)
-                      .withValues(alpha: .10),
+                  color:
+                      (workflow.completed
+                              ? IlaiosTheme.success
+                              : IlaiosTheme.enterpriseCyan)
+                          .withValues(alpha: .10),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
@@ -1634,7 +1668,7 @@ class _SelectedContent extends StatelessWidget {
                       ? _tr(context, 'Tamamlandı', 'Completed')
                       : _tr(context, 'Aktif', 'Active'),
                   style: TextStyle(
-                    fontSize: 7,
+                    fontSize: 11,
                     color: workflow.completed
                         ? IlaiosTheme.success
                         : IlaiosTheme.enterpriseCyan,
@@ -1731,20 +1765,27 @@ class _SelectedContent extends StatelessWidget {
                         child: _SmallRow(
                           icon: Icons.schedule,
                           color: IlaiosTheme.warning,
-                          title: _text(
-                                item,
-                                const ['title', 'reason', 'action', 'request_type'],
-                              ) ??
+                          title:
+                              _text(item, const [
+                                'title',
+                                'reason',
+                                'action',
+                                'request_type',
+                              ]) ??
                               '—',
-                          subtitle: _text(
-                                item,
-                                const ['approver', 'owner', 'requested_by'],
-                              ) ??
+                          subtitle:
+                              _text(item, const [
+                                'approver',
+                                'owner',
+                                'requested_by',
+                              ]) ??
                               '—',
-                          trailing: _text(
-                                item,
-                                const ['priority', 'risk', 'severity'],
-                              ) ??
+                          trailing:
+                              _text(item, const [
+                                'priority',
+                                'risk',
+                                'severity',
+                              ]) ??
                               '—',
                         ),
                       ),
@@ -1766,7 +1807,7 @@ class _SelectedContent extends StatelessWidget {
                 icon: const Icon(Icons.open_in_new, size: 13),
                 label: Text(_tr(context, 'Detayı Aç', 'Open Details')),
                 style: FilledButton.styleFrom(
-                  textStyle: const TextStyle(fontSize: 8.3),
+                  textStyle: const TextStyle(fontSize: 11),
                   minimumSize: const Size.fromHeight(34),
                 ),
               ),
@@ -1778,7 +1819,7 @@ class _SelectedContent extends StatelessWidget {
                 icon: const Icon(Icons.task_alt_outlined, size: 13),
                 label: Text(_tr(context, 'Onayları Gör', 'View Approvals')),
                 style: OutlinedButton.styleFrom(
-                  textStyle: const TextStyle(fontSize: 8.3),
+                  textStyle: const TextStyle(fontSize: 11),
                   minimumSize: const Size.fromHeight(34),
                 ),
               ),
@@ -1809,21 +1850,18 @@ class _RightHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-        height: 34,
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 10.4,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ],
+    height: 34,
+    child: Row(
+      children: [
+        Expanded(
+          child: Text(
+            title,
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+          ),
         ),
-      );
+      ],
+    ),
+  );
 }
 
 class _RightSection extends StatelessWidget {
@@ -1841,50 +1879,49 @@ class _RightSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        height: height,
-        decoration: BoxDecoration(
-          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-          borderRadius: BorderRadius.circular(7),
-          color: Theme.of(context)
-              .colorScheme
-              .surfaceContainerLowest
-              .withValues(alpha: .35),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            SizedBox(
-              height: 31,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        title,
-                        style: const TextStyle(
-                          fontSize: 8.6,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+    height: height,
+    decoration: BoxDecoration(
+      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+      borderRadius: BorderRadius.circular(7),
+      color: Theme.of(
+        context,
+      ).colorScheme.surfaceContainerLowest.withValues(alpha: .35),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SizedBox(
+          height: 31,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
                     ),
-                    if (badge != null && badge! > 0)
-                      CircleAvatar(
-                        radius: 8,
-                        backgroundColor: IlaiosTheme.danger,
-                        child: Text(
-                          '$badge',
-                          style: const TextStyle(fontSize: 7, color: Colors.white),
-                        ),
-                      ),
-                  ],
+                  ),
                 ),
-              ),
+                if (badge != null && badge! > 0)
+                  CircleAvatar(
+                    radius: 8,
+                    backgroundColor: IlaiosTheme.danger,
+                    child: Text(
+                      '$badge',
+                      style: const TextStyle(fontSize: 11, color: Colors.white),
+                    ),
+                  ),
+              ],
             ),
-            Expanded(child: child),
-          ],
+          ),
         ),
-      );
+        Expanded(child: child),
+      ],
+    ),
+  );
 }
 
 class _StageFlow extends StatelessWidget {
@@ -1903,7 +1940,9 @@ class _StageFlow extends StatelessWidget {
     final normalized = _normalize(phase);
     var current = stages.indexWhere((stage) => normalized.contains(stage.$1));
     if (normalized.contains('run')) current = 1;
-    if (normalized.contains('accept') || normalized.contains('done')) current = 4;
+    if (normalized.contains('accept') || normalized.contains('done')) {
+      current = 4;
+    }
     if (current < 0) current = 0;
 
     return Padding(
@@ -1920,10 +1959,8 @@ class _StageFlow extends StatelessWidget {
                     backgroundColor: index < current
                         ? IlaiosTheme.success.withValues(alpha: .12)
                         : index == current
-                            ? IlaiosTheme.coreBlue.withValues(alpha: .14)
-                            : Theme.of(context)
-                                .colorScheme
-                                .surfaceContainerHighest,
+                        ? IlaiosTheme.coreBlue.withValues(alpha: .14)
+                        : Theme.of(context).colorScheme.surfaceContainerHighest,
                     child: index < current
                         ? const Icon(
                             Icons.check,
@@ -1933,12 +1970,12 @@ class _StageFlow extends StatelessWidget {
                         : Text(
                             '${index + 1}',
                             style: TextStyle(
-                              fontSize: 7.5,
+                              fontSize: 11,
                               color: index == current
                                   ? IlaiosTheme.coreBlue
-                                  : Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant,
+                                  : Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
                             ),
                           ),
                   ),
@@ -1949,7 +1986,7 @@ class _StageFlow extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 6.5,
+                      fontSize: 11,
                       color: index == current
                           ? IlaiosTheme.coreBlue
                           : Theme.of(context).colorScheme.onSurfaceVariant,
@@ -1981,31 +2018,31 @@ class _InfoLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
-        children: [
-          SizedBox(
-            width: 86,
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 7.3,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
+    children: [
+      SizedBox(
+        width: 86,
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
-          Expanded(
-            child: Text(
-              value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 7.8,
-                fontWeight: FontWeight.w600,
-                color: accent,
-              ),
-            ),
+        ),
+      ),
+      Expanded(
+        child: Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: accent,
           ),
-        ],
-      );
+        ),
+      ),
+    ],
+  );
 }
 
 class _RoundIcon extends StatelessWidget {
@@ -2016,14 +2053,14 @@ class _RoundIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: accent.withValues(alpha: .11),
-          shape: BoxShape.circle,
-        ),
-        child: Icon(icon, size: size * .54, color: accent),
-      );
+    width: size,
+    height: size,
+    decoration: BoxDecoration(
+      color: accent.withValues(alpha: .11),
+      shape: BoxShape.circle,
+    ),
+    child: Icon(icon, size: size * .54, color: accent),
+  );
 }
 
 class _Tag extends StatelessWidget {
@@ -2033,22 +2070,22 @@ class _Tag extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Align(
-        alignment: Alignment.centerLeft,
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 76),
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: .10),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Text(
-            text,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 7.1, color: color),
-          ),
-        ),
-      );
+    alignment: Alignment.centerLeft,
+    child: Container(
+      constraints: const BoxConstraints(maxWidth: 76),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: .10),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(fontSize: 11, color: color),
+      ),
+    ),
+  );
 }
 
 class _Card extends StatelessWidget {
@@ -2064,15 +2101,15 @@ class _Card extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        key: key,
-        padding: padding,
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(7),
-          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-        ),
-        child: child,
-      );
+    key: key,
+    padding: padding,
+    decoration: BoxDecoration(
+      color: Theme.of(context).colorScheme.surfaceContainerLow,
+      borderRadius: BorderRadius.circular(7),
+      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+    ),
+    child: child,
+  );
 }
 
 class _WorkflowRecord {
@@ -2114,81 +2151,118 @@ const String _allFilter = '__all__';
 List<_WorkflowRecord> _workflowRecords(OperationalSnapshot snapshot) {
   final latestById = <String, Map<String, Object?>>{};
   for (final event in snapshot.liveEvents.reversed) {
-    final id = _text(
-      event,
-      const ['workflow_id', 'job_id', 'execution_id', 'request_id', 'id'],
-    );
+    final id = _text(event, const [
+      'workflow_id',
+      'job_id',
+      'execution_id',
+      'request_id',
+      'id',
+    ]);
     if (id == null || latestById.containsKey(id)) continue;
     latestById[id] = event;
   }
-  return latestById.entries.map((entry) {
-    final item = entry.value;
-    final phase =
-        _text(item, const ['phase', 'stage', 'workflow_phase', 'status']) ?? '—';
-    final normalized = _normalize(phase);
-    final eventName = _text(item, const ['event', 'action', 'type']) ?? '';
-    final state = '$normalized ${_normalize(eventName)}';
-    final completed = state.contains('complete') ||
-        state.contains('done') ||
-        state.contains('deliver') ||
-        state.contains('accept');
-    final archived = state.contains('archiv');
-    final awaitingApproval =
-        state.contains('approval') || state.contains('pending');
-    return _WorkflowRecord(
-      id: entry.key,
-      name: _text(
-            item,
-            const ['workflow_name', 'project_name', 'title', 'objective', 'name'],
-          ) ??
-          entry.key,
-      subtitle: _text(
-            item,
-            const ['description', 'summary', 'goal', 'objective', 'event', 'action'],
-          ) ??
-          '—',
-      kind: _text(
-            item,
-            const ['workflow_type', 'factory', 'kind', 'type', 'category'],
-          ) ??
-          '—',
-      phase: phase,
-      progress: _progress(item),
-      owner: _text(
-            item,
-            const ['owner', 'assignee', 'worker', 'agent_name', 'agent'],
-          ) ??
-          '—',
-      priority: _text(item, const ['priority', 'risk', 'severity']) ?? '—',
-      eta: _text(
-            item,
-            const ['eta', 'due_at', 'deadline', 'end_date', 'target_date'],
-          ) ??
-          '—',
-      created: _text(
-            item,
-            const ['created_at', 'created', 'timestamp', 'started_at'],
-          ) ??
-          '—',
-      active: !completed && !archived,
-      awaitingApproval: awaitingApproval,
-      completed: completed,
-      archived: archived,
-    );
-  }).toList(growable: false);
+  return latestById.entries
+      .map((entry) {
+        final item = entry.value;
+        final phase =
+            _text(item, const ['phase', 'stage', 'workflow_phase', 'status']) ??
+            '—';
+        final normalized = _normalize(phase);
+        final eventName = _text(item, const ['event', 'action', 'type']) ?? '';
+        final state = '$normalized ${_normalize(eventName)}';
+        final completed =
+            state.contains('complete') ||
+            state.contains('done') ||
+            state.contains('deliver') ||
+            state.contains('accept');
+        final archived = state.contains('archiv');
+        final awaitingApproval =
+            state.contains('approval') || state.contains('pending');
+        return _WorkflowRecord(
+          id: entry.key,
+          name:
+              _text(item, const [
+                'workflow_name',
+                'project_name',
+                'title',
+                'objective',
+                'name',
+              ]) ??
+              entry.key,
+          subtitle:
+              _text(item, const [
+                'description',
+                'summary',
+                'goal',
+                'objective',
+                'event',
+                'action',
+              ]) ??
+              '—',
+          kind:
+              _text(item, const [
+                'workflow_type',
+                'factory',
+                'kind',
+                'type',
+                'category',
+              ]) ??
+              '—',
+          phase: phase,
+          progress: _progress(item),
+          owner:
+              _text(item, const [
+                'owner',
+                'assignee',
+                'worker',
+                'agent_name',
+                'agent',
+              ]) ??
+              '—',
+          priority: _text(item, const ['priority', 'risk', 'severity']) ?? '—',
+          eta:
+              _text(item, const [
+                'eta',
+                'due_at',
+                'deadline',
+                'end_date',
+                'target_date',
+              ]) ??
+              '—',
+          created:
+              _text(item, const [
+                'created_at',
+                'created',
+                'timestamp',
+                'started_at',
+              ]) ??
+              '—',
+          active: !completed && !archived,
+          awaitingApproval: awaitingApproval,
+          completed: completed,
+          archived: archived,
+        );
+      })
+      .toList(growable: false);
 }
 
 List<String> _filterValues(Iterable<String> values) {
-  final unique = values
-      .where((value) => value.trim().isNotEmpty && value != '—')
-      .toSet()
-      .toList(growable: false)
-    ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+  final unique =
+      values
+          .where((value) => value.trim().isNotEmpty && value != '—')
+          .toSet()
+          .toList(growable: false)
+        ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
   return unique;
 }
 
 List<Map<String, Object?>> _approvalItems(OperationalSnapshot snapshot) {
-  for (final key in const ['pending_approvals', 'approvals', 'requests', 'items']) {
+  for (final key in const [
+    'pending_approvals',
+    'approvals',
+    'requests',
+    'items',
+  ]) {
     final result = _mapList(snapshot.governanceState[key]);
     if (result.isNotEmpty) return result;
   }
@@ -2234,7 +2308,12 @@ int? _authoritativeInt(Map<String, Object?> source, List<String> keys) {
 }
 
 double? _progress(Map<String, Object?> source) {
-  for (final key in const ['progress', 'progress_percent', 'percentage', 'percent']) {
+  for (final key in const [
+    'progress',
+    'progress_percent',
+    'percentage',
+    'percent',
+  ]) {
     final value = source[key];
     if (value is num) {
       final raw = value.toDouble();
@@ -2250,9 +2329,8 @@ double? _progress(Map<String, Object?> source) {
   return null;
 }
 
-int _stageCount(List<_WorkflowRecord> workflows, String token) => workflows
-    .where((item) => _normalize(item.phase).contains(token))
-    .length;
+int _stageCount(List<_WorkflowRecord> workflows, String token) =>
+    workflows.where((item) => _normalize(item.phase).contains(token)).length;
 
 String _normalize(String value) =>
     value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '');
@@ -2325,7 +2403,9 @@ void _showWorkflowDetail(BuildContext context, _WorkflowRecord workflow) {
               '${_tr(context, 'İlerleme', 'Progress')}: '
               '${workflow.progress == null ? '—' : '${(workflow.progress! * 100).round()}%'}',
             ),
-            Text('${_tr(context, 'ETA / Son Tarih', 'ETA / Due')}: ${workflow.eta}'),
+            Text(
+              '${_tr(context, 'ETA / Son Tarih', 'ETA / Due')}: ${workflow.eta}',
+            ),
           ],
         ),
       ),

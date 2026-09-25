@@ -102,7 +102,8 @@ class _ReferenceAssetPickerState extends State<ReferenceAssetPicker> {
         'Select Video Factory reference images',
         'Video Factory referans görsellerini seç',
       ).replaceAll("'", "''");
-      final script = '''
+      final script =
+          '''
 Add-Type -AssemblyName System.Windows.Forms
 \$dialog = New-Object System.Windows.Forms.OpenFileDialog
 \$dialog.Filter = 'Images (*.jpg;*.jpeg;*.png;*.webp)|*.jpg;*.jpeg;*.png;*.webp'
@@ -114,18 +115,14 @@ if (\$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
   \$dialog.FileNames | ForEach-Object { [Console]::WriteLine(\$_) }
 }
 ''';
-      final result = await Process.run(
-        'powershell.exe',
-        <String>[
-          '-NoLogo',
-          '-NoProfile',
-          '-NonInteractive',
-          '-STA',
-          '-Command',
-          script,
-        ],
-        runInShell: false,
-      );
+      final result = await Process.run('powershell.exe', <String>[
+        '-NoLogo',
+        '-NoProfile',
+        '-NonInteractive',
+        '-STA',
+        '-Command',
+        script,
+      ], runInShell: false);
       if (result.exitCode != 0) {
         throw _PickerError(
           _text(
@@ -169,8 +166,10 @@ if (\$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
 
   Future<void> _addPaths(List<String> paths) async {
     final current = widget.controller.assets.toList(growable: true);
-    var totalBytes =
-        current.fold<int>(0, (sum, asset) => sum + asset.sizeBytes);
+    var totalBytes = current.fold<int>(
+      0,
+      (sum, asset) => sum + asset.sizeBytes,
+    );
     final knownDigests = current.map((asset) => asset.sha256Hex).toSet();
 
     for (final path in paths) {
@@ -214,11 +213,11 @@ if (\$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
         'png' => 'image/png',
         'webp' => 'image/webp',
         _ => throw _PickerError(
-            _text(
-              '${_basename(path)} is not JPEG, PNG, or WebP.',
-              '${_basename(path)} JPEG, PNG veya WebP değil.',
-            ),
+          _text(
+            '${_basename(path)} is not JPEG, PNG, or WebP.',
+            '${_basename(path)} JPEG, PNG veya WebP değil.',
           ),
+        ),
       };
       final bytes = await file.readAsBytes();
       if (bytes.length != stat.size) {
@@ -277,7 +276,11 @@ if (\$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(asset.filename, maxLines: 1, overflow: TextOverflow.ellipsis),
+                Text(
+                  asset.filename,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<ReferenceAssetRoleDraft>(
                   initialValue: role,
@@ -317,9 +320,9 @@ if (\$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
             FilledButton(
               onPressed: () {
                 final text = instruction.text.trim();
-                Navigator.of(dialogContext).pop(
-                  (role, text.isEmpty ? null : text),
-                );
+                Navigator.of(
+                  dialogContext,
+                ).pop((role, text.isEmpty ? null : text));
               },
               child: Text(dialogContext.tr('videoReferences.save')),
             ),
@@ -362,7 +365,11 @@ if (\$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.image_outlined, size: 16),
+                    const Icon(
+                      Icons.image_outlined,
+                      size: 16,
+                      color: Color(0xFFAA77FF),
+                    ),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
@@ -389,7 +396,11 @@ if (\$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
                           height: 13,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Icon(Icons.add_photo_alternate_outlined, size: 16),
+                      : const Icon(
+                          Icons.add_photo_alternate_outlined,
+                          size: 16,
+                          color: Color(0xFFAA77FF),
+                        ),
                   label: Text(
                     _reading
                         ? context.tr('videoReferences.loading')
@@ -548,21 +559,17 @@ class _MiniButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Tooltip(
-        message: tooltip,
-        child: Material(
-          color: Theme.of(context).colorScheme.surface.withValues(alpha: .9),
-          borderRadius: BorderRadius.circular(4),
-          child: InkWell(
-            onTap: enabled ? onPressed : null,
-            borderRadius: BorderRadius.circular(4),
-            child: SizedBox(
-              width: 22,
-              height: 22,
-              child: Icon(icon, size: 13),
-            ),
-          ),
-        ),
-      );
+    message: tooltip,
+    child: Material(
+      color: Theme.of(context).colorScheme.surface.withValues(alpha: .9),
+      borderRadius: BorderRadius.circular(4),
+      child: InkWell(
+        onTap: enabled ? onPressed : null,
+        borderRadius: BorderRadius.circular(4),
+        child: SizedBox(width: 22, height: 22, child: Icon(icon, size: 13)),
+      ),
+    ),
+  );
 }
 
 String _extension(String path) {

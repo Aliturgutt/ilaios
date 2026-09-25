@@ -31,12 +31,18 @@ void main() {
         findsOneWidget,
       );
     }
-    expect(find.descendant(of: sidebar, matching: find.text('Hedefler')), findsNothing);
+    expect(
+      find.descendant(of: sidebar, matching: find.text('Hedefler')),
+      findsNothing,
+    );
     expect(
       find.descendant(of: sidebar, matching: find.text('Canlı Çalışma Alanı')),
       findsNothing,
     );
-    expect(find.descendant(of: sidebar, matching: find.text('Maliyetler')), findsNothing);
+    expect(
+      find.descendant(of: sidebar, matching: find.text('Maliyetler')),
+      findsNothing,
+    );
     expect(find.text('Sistem Çevrimdışı'), findsOneWidget);
     expect(find.text('Home'), findsNothing);
   });
@@ -56,10 +62,15 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byTooltip('Dil'));
+    // Language selection lives in the approved Settings appearance panel,
+    // not in the canonical seven-page top bar.
+    await tester.tap(find.byKey(const ValueKey('nav-settings')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('settings-language-action')));
     await tester.pumpAndSettle();
     expect(find.text('English'), findsOneWidget);
-    expect(find.text('Türkçe'), findsOneWidget);
+    // The selected-language field remains visible behind the dialog.
+    expect(find.text('Türkçe'), findsWidgets);
 
     await tester.tap(find.text('English'));
     await tester.pumpAndSettle();

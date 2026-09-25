@@ -1,3 +1,4 @@
+import '../../app/ilaios_icon_palette.dart';
 export 'reference_asset_picker_core.dart'
     hide ReferenceAssetPicker, ReferenceAssetPickerController;
 
@@ -5,6 +6,7 @@ import 'dart:io';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
+import '../../app/desktop_page_heading.dart';
 import 'package:flutter/services.dart';
 
 import '../../app/ilaios_locale.dart';
@@ -17,7 +19,8 @@ const MethodChannel _referenceDropChannel = MethodChannel(
   'ilaios/reference-assets-drop',
 );
 
-class ReferenceAssetPickerController extends core.ReferenceAssetPickerController {
+class ReferenceAssetPickerController
+    extends core.ReferenceAssetPickerController {
   ReferenceAssetPickerController() {
     if (Platform.isWindows) {
       _referenceDropChannel.setMethodCallHandler(_handleNativeDrop);
@@ -43,7 +46,10 @@ class ReferenceAssetPickerController extends core.ReferenceAssetPickerController
 
   Future<void> addDroppedPaths(List<String> paths) async {
     final current = assets.toList(growable: true);
-    var totalBytes = current.fold<int>(0, (sum, asset) => sum + asset.sizeBytes);
+    var totalBytes = current.fold<int>(
+      0,
+      (sum, asset) => sum + asset.sizeBytes,
+    );
     final knownDigests = current.map((asset) => asset.sha256Hex).toSet();
 
     for (final rawPath in paths) {
@@ -116,7 +122,9 @@ class ReferenceAssetPickerScope extends InheritedWidget {
   final ReferenceAssetPickerController? controller;
 
   static ReferenceAssetPickerController? maybeOf(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<ReferenceAssetPickerScope>()?.controller;
+      context
+          .dependOnInheritedWidgetOfExactType<ReferenceAssetPickerScope>()
+          ?.controller;
 
   @override
   bool updateShouldNotify(ReferenceAssetPickerScope oldWidget) =>
@@ -125,99 +133,122 @@ class ReferenceAssetPickerScope extends InheritedWidget {
 
 enum _AttachmentPane { documents, images, video }
 
-const _factoryFamilies = <({
-  String en,
-  String tr,
-  String enDescription,
-  String trDescription,
-  IconData icon,
-  Color color,
-})>[
-  (
-    en: 'Web Factory',
-    tr: 'Web Fabrikası',
-    enDescription: 'Builds websites and web applications.',
-    trDescription: 'Web siteleri ve web uygulamaları üretir.',
-    icon: Icons.language_rounded,
-    color: Color(0xFF1388F2),
-  ),
-  (
-    en: 'Video and Media Factory',
-    tr: 'Video ve Medya Fabrikası',
-    enDescription: 'Produces video, animation and visual media.',
-    trDescription: 'Video, animasyon ve görsel medya üretir.',
-    icon: Icons.smart_display_outlined,
-    color: Color(0xFF7A2CF2),
-  ),
-  (
-    en: 'Software Factory',
-    tr: 'Yazılım Fabrikası',
-    enDescription: 'Builds software, automation and system solutions.',
-    trDescription: 'Yazılım, otomasyon ve sistem çözümleri üretir.',
-    icon: Icons.code_rounded,
-    color: Color(0xFFF06A12),
-  ),
-  (
-    en: 'App Factory',
-    tr: 'Uygulama Fabrikası',
-    enDescription: 'Builds mobile and desktop applications.',
-    trDescription: 'Mobil ve masaüstü uygulamalar üretir.',
-    icon: Icons.smartphone_rounded,
-    color: Color(0xFF21C86B),
-  ),
-  (
-    en: 'Security Factory',
-    tr: 'Güvenlik Fabrikası',
-    enDescription: 'Performs governed security analysis, tests and hardening.',
-    trDescription: 'Güvenlik analizi, test ve sertleştirme sağlar.',
-    icon: Icons.shield_rounded,
-    color: Color(0xFFFF3161),
-  ),
-  (
-    en: 'Research and Data Factory',
-    tr: 'Araştırma ve Veri Fabrikası',
-    enDescription: 'Produces research, data analysis and reports.',
-    trDescription: 'Araştırma, veri analizi ve raporlar üretir.',
-    icon: Icons.search_rounded,
-    color: Color(0xFF10A7C8),
-  ),
-  (
-    en: 'Creative Factory',
-    tr: 'Yaratıcı Fabrika',
-    enDescription: 'Produces design, brand, content and creative work.',
-    trDescription: 'Tasarım, marka, içerik ve yaratıcı işler üretir.',
-    icon: Icons.palette_outlined,
-    color: Color(0xFFFFB000),
-  ),
-  (
-    en: 'Marketing Factory',
-    tr: 'Pazarlama Fabrikası',
-    enDescription: 'Produces marketing content and growth workflows.',
-    trDescription: 'Pazarlama içerikleri ve büyüme çözümleri üretir.',
-    icon: Icons.campaign_rounded,
-    color: Color(0xFF19B947),
-  ),
-  (
-    en: 'Operations Factory',
-    tr: 'Operasyon Fabrikası',
-    enDescription: 'Supports workflows, operations and productivity.',
-    trDescription: 'İş süreçleri, operasyon ve verimlilik çözümleri üretir.',
-    icon: Icons.settings_suggest_rounded,
-    color: Color(0xFF7428E8),
-  ),
-];
+const _factoryFamilies =
+    <
+      ({
+        String en,
+        String tr,
+        String enDescription,
+        String trDescription,
+        IconData icon,
+        Color color,
+      })
+    >[
+      (
+        en: 'Web Factory',
+        tr: 'Web Fabrikası',
+        enDescription:
+            'Creates business sites, landing pages and web apps. Shapes page layouts and web interfaces.',
+        trDescription:
+            'Kurumsal siteler, açılış sayfaları ve web uygulamaları oluşturur. Sayfa düzeni ve web arayüzlerine odaklanır.',
+        icon: Icons.travel_explore_rounded,
+        color: IlaiosIconPalette.web,
+      ),
+      (
+        en: 'Video and Media Factory',
+        tr: 'Video ve Medya Fabrikası',
+        enDescription:
+            'Creates promotional videos, animation and visual content. Develops visual stories for presentations and campaigns.',
+        trDescription:
+            'Tanıtım videoları, animasyonlar ve görsel içerikler hazırlar. Sunum ve kampanyalar için görsel anlatımlar geliştirir.',
+        icon: Icons.movie_creation_rounded,
+        color: IlaiosIconPalette.media,
+      ),
+      (
+        en: 'Software Factory',
+        tr: 'Yazılım Fabrikası',
+        enDescription:
+            'Develops custom software, automation and integrations. Handles service logic and connected systems.',
+        trDescription:
+            'Özel yazılımlar, otomasyonlar ve sistem entegrasyonları geliştirir. Servis mantığı ve bağlı sistemlere odaklanır.',
+        icon: Icons.integration_instructions_rounded,
+        color: IlaiosIconPalette.software,
+      ),
+      (
+        en: 'App Factory',
+        tr: 'Uygulama Fabrikası',
+        enDescription:
+            'Develops user-focused mobile and desktop apps. Designs app screens and interaction flows.',
+        trDescription:
+            'Mobil ve masaüstü için kullanıcı odaklı uygulamalar geliştirir. Uygulama ekranları ve etkileşim akışları tasarlar.',
+        icon: Icons.devices_rounded,
+        color: IlaiosIconPalette.application,
+      ),
+      (
+        en: 'Security Factory',
+        tr: 'Güvenlik Fabrikası',
+        enDescription:
+            'Analyzes systems, tests security and improves resilience. Reviews risks and recommends hardening steps.',
+        trDescription:
+            'Sistemleri analiz eder, güvenlik testleri ve sağlamlaştırma yapar. Riskleri inceler ve koruma adımları önerir.',
+        icon: Icons.verified_user_rounded,
+        color: IlaiosIconPalette.security,
+      ),
+      (
+        en: 'Research and Data Factory',
+        tr: 'Araştırma ve Veri Fabrikası',
+        enDescription:
+            'Researches sources, analyzes data and prepares reports. Turns findings into structured insights.',
+        trDescription:
+            'Kaynakları araştırır, verileri analiz eder ve raporlar hazırlar. Bulguları düzenli içgörülere dönüştürür.',
+        icon: Icons.analytics_rounded,
+        color: IlaiosIconPalette.research,
+      ),
+      (
+        en: 'Creative Factory',
+        tr: 'Yaratıcı Fabrika',
+        enDescription:
+            'Develops brand identity, designs and creative content. Explores visual concepts and brand materials.',
+        trDescription:
+            'Marka kimliği, tasarım ve yaratıcı içerikler geliştirir. Görsel konseptler ve marka materyalleri hazırlar.',
+        icon: Icons.auto_awesome_rounded,
+        color: IlaiosIconPalette.creative,
+      ),
+      (
+        en: 'Marketing Factory',
+        tr: 'Pazarlama Fabrikası',
+        enDescription:
+            'Creates campaign content and marketing workflows. Plans audience messages and promotion materials.',
+        trDescription:
+            'Kampanya içerikleri ve pazarlama iş akışları hazırlar. Hedef kitle mesajları ve tanıtım materyalleri planlar.',
+        icon: Icons.campaign_rounded,
+        color: IlaiosIconPalette.marketing,
+      ),
+      (
+        en: 'Operations Factory',
+        tr: 'Operasyon Fabrikası',
+        enDescription:
+            'Organizes workflows and develops operational automation. Streamlines recurring tasks and handoffs.',
+        trDescription:
+            'İş süreçlerini düzenler ve operasyonel otomasyonlar geliştirir. Tekrarlanan görevleri ve iş devrini kolaylaştırır.',
+        icon: Icons.precision_manufacturing_rounded,
+        color: IlaiosIconPalette.operations,
+      ),
+    ];
 
 class ReferenceAssetPicker extends StatefulWidget {
   const ReferenceAssetPicker({
     required this.controller,
     required this.enabled,
     this.compact = false,
+    this.factoryCardHeight,
     super.key,
   });
 
   final ReferenceAssetPickerController controller;
   final bool enabled;
   final bool compact;
+  final double? factoryCardHeight;
 
   @override
   State<ReferenceAssetPicker> createState() => _ReferenceAssetPickerState();
@@ -275,20 +306,20 @@ class _ReferenceAssetPickerState extends State<ReferenceAssetPicker> {
     };
     final body = switch (pane) {
       _AttachmentPane.documents => CompanyKnowledgePicker(
-          controller: widget.controller.companyKnowledge,
-          enabled: widget.enabled,
-          compact: true,
-        ),
+        controller: widget.controller.companyKnowledge,
+        enabled: widget.enabled,
+        compact: true,
+      ),
       _AttachmentPane.images => core.ReferenceAssetPicker(
-          controller: widget.controller,
-          enabled: widget.enabled,
-          compact: true,
-        ),
+        controller: widget.controller,
+        enabled: widget.enabled,
+        compact: true,
+      ),
       _AttachmentPane.video => SourceVideoPicker(
-          controller: widget.controller.sourceVideo,
-          enabled: widget.enabled,
-          compact: true,
-        ),
+        controller: widget.controller.sourceVideo,
+        enabled: widget.enabled,
+        compact: true,
+      ),
     };
 
     await showDialog<void>(
@@ -311,10 +342,12 @@ class _ReferenceAssetPickerState extends State<ReferenceAssetPicker> {
   }
 
   int _countFor(_AttachmentPane pane) => switch (pane) {
-        _AttachmentPane.documents => widget.controller.companyKnowledge.documents.length,
-        _AttachmentPane.images => widget.controller.assets.length,
-        _AttachmentPane.video => widget.controller.sourceVideo.source == null ? 0 : 1,
-      };
+    _AttachmentPane.documents =>
+      widget.controller.companyKnowledge.documents.length,
+    _AttachmentPane.images => widget.controller.assets.length,
+    _AttachmentPane.video =>
+      widget.controller.sourceVideo.source == null ? 0 : 1,
+  };
 
   Widget _attachmentButton({
     required Key key,
@@ -335,141 +368,172 @@ class _ReferenceAssetPickerState extends State<ReferenceAssetPicker> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
       ),
-      icon: Icon(icon, size: 18),
+      icon: Icon(icon, size: 20, color: IlaiosIconPalette.attachment(context)),
       label: Text(count == 0 ? label : '$label ($count)'),
     );
   }
 
   Widget _attachmentRow() => Wrap(
-        spacing: 10,
-        runSpacing: 6,
-        children: [
-          _attachmentButton(
-            key: const Key('home-add-document'),
-            pane: _AttachmentPane.documents,
-            icon: Icons.file_upload_outlined,
-            label: _t('Add file', 'Dosya ekle'),
-          ),
-          _attachmentButton(
-            key: const Key('home-add-image'),
-            pane: _AttachmentPane.images,
-            icon: Icons.image_outlined,
-            label: _t('Add image', 'Görsel ekle'),
-          ),
-          _attachmentButton(
-            key: const Key('home-add-video'),
-            pane: _AttachmentPane.video,
-            icon: Icons.video_file_outlined,
-            label: _t('Add video', 'Video ekle'),
-          ),
-        ],
-      );
+    spacing: 10,
+    runSpacing: 6,
+    children: [
+      _attachmentButton(
+        key: const Key('home-add-document'),
+        pane: _AttachmentPane.documents,
+        icon: Icons.file_upload_outlined,
+        label: _t('Add file', 'Dosya ekle'),
+      ),
+      _attachmentButton(
+        key: const Key('home-add-image'),
+        pane: _AttachmentPane.images,
+        icon: Icons.image_outlined,
+        label: _t('Add image', 'Görsel ekle'),
+      ),
+      _attachmentButton(
+        key: const Key('home-add-video'),
+        pane: _AttachmentPane.video,
+        icon: Icons.video_file_outlined,
+        label: _t('Add video', 'Video ekle'),
+      ),
+    ],
+  );
 
   Widget _factoryGrid() => Column(
-        key: const Key('home-canonical-factory-grid'),
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            _t('ILAIOS Factories', 'ILAIOS Fabrikaları'),
-            style: const TextStyle(
-              fontSize: 18,
-              height: 1.1,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            _t(
-              'One or more factories can work together depending on the goal.',
-              'Hedefine göre bir veya birden fazla fabrika birlikte çalışabilir.',
-            ),
-            style: TextStyle(
-              fontSize: 12.5,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 8),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final columns = constraints.maxWidth >= 980 ? 3 : 2;
-              const horizontalGap = 12.0;
-              const verticalGap = 8.0;
-              final cardWidth =
-                  ((constraints.maxWidth - horizontalGap * (columns - 1)) / columns)
-                      .floorToDouble();
-              final textScale = MediaQuery.textScalerOf(context)
-                  .scale(1.0)
-                  .clamp(1.0, 1.5)
-                  .toDouble();
-              final cardHeight = 68.0 * textScale;
-              return Wrap(
-                spacing: horizontalGap,
-                runSpacing: verticalGap,
-                children: [
-                  for (var index = 0; index < _factoryFamilies.length; index++)
-                    SizedBox(
-                      width: cardWidth,
-                      height: cardHeight,
-                      child: Container(
-                        key: ValueKey('home-factory-${index + 1}'),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.surfaceContainerLowest,
-                          border: Border.all(
-                            color: Theme.of(context).colorScheme.outlineVariant,
-                          ),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              _factoryFamilies[index].icon,
-                              size: 30,
-                              color: _factoryFamilies[index].color,
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    _isTurkish
-                                        ? _factoryFamilies[index].tr
-                                        : _factoryFamilies[index].en,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      fontSize: 13.5,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 3),
-                                  Text(
-                                    _isTurkish
-                                        ? _factoryFamilies[index].trDescription
-                                        : _factoryFamilies[index].enDescription,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      height: 1.15,
-                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+    key: const Key('home-canonical-factory-grid'),
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Text(
+        _t('ILAIOS Factories', 'ILAIOS Fabrikaları'),
+        style: DesktopPageHeading.style(context).copyWith(fontSize: 19),
+      ),
+      const SizedBox(height: 7),
+      Text(
+        _t(
+          'One or more factories can work together depending on the goal.',
+          'Hedefine göre bir veya birden fazla fabrika birlikte çalışabilir.',
+        ),
+        style: TextStyle(
+          fontSize: 13.5,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+      ),
+      const SizedBox(height: 12),
+      LayoutBuilder(
+        builder: (context, constraints) {
+          final columns = constraints.maxWidth >= 980
+              ? 3
+              : constraints.maxWidth >= 560
+              ? 2
+              : 1;
+          const horizontalGap = 12.0;
+          const verticalGap = 8.0;
+          final cardWidth =
+              ((constraints.maxWidth - horizontalGap * (columns - 1)) / columns)
+                  .floorToDouble();
+          final textScale = MediaQuery.textScalerOf(
+            context,
+          ).scale(1.0).clamp(1.0, 1.5).toDouble();
+          final cardHeight = (widget.factoryCardHeight ?? 82.0) * textScale;
+          return Wrap(
+            spacing: horizontalGap,
+            runSpacing: verticalGap,
+            children: [
+              for (var index = 0; index < _factoryFamilies.length; index++)
+                SizedBox(
+                  width: cardWidth,
+                  height: cardHeight,
+                  child: Container(
+                    key: ValueKey('home-factory-${index + 1}'),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 7,
                     ),
-                ],
-              );
-            },
-          ),
-        ],
-      );
+                    decoration: BoxDecoration(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerLowest,
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.outlineVariant,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 46,
+                          height: 46,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: IlaiosIconPalette.factory(
+                              context,
+                              _factoryFamilies[index].color,
+                            ).withValues(alpha: 0.10),
+                            borderRadius: BorderRadius.circular(13),
+                            border: Border.all(
+                              color: IlaiosIconPalette.factory(
+                                context,
+                                _factoryFamilies[index].color,
+                              ).withValues(alpha: 0.18),
+                            ),
+                          ),
+                          child: Icon(
+                            _factoryFamilies[index].icon,
+                            size: 26,
+                            color: IlaiosIconPalette.factory(
+                              context,
+                              _factoryFamilies[index].color,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _isTurkish
+                                    ? _factoryFamilies[index].tr
+                                    : _factoryFamilies[index].en,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                _isTurkish
+                                    ? _factoryFamilies[index].trDescription
+                                    : _factoryFamilies[index].enDescription,
+                                maxLines: 4,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  height: 1.3,
+                                  fontWeight: FontWeight.w400,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
+    ],
+  );
 
   @override
   Widget build(BuildContext context) {

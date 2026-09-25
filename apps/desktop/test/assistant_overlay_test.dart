@@ -197,14 +197,14 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('opening over Agents preserves page and pixel workspace', (tester) async {
+  testWidgets('opening over Agents preserves page and verified runtime notice', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1536, 1024));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(_ConversationFixture().app());
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('nav-agents')));
     await tester.pumpAndSettle();
-    final workspace = find.byKey(const Key('agents-pixel-workspace'));
+    final workspace = find.textContaining('Agent activity is shown only from verified live data.');
     final element = tester.element(workspace);
     final rect = tester.getRect(workspace);
     await tester.tap(find.byKey(const Key('nav-assistant')));

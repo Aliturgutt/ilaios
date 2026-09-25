@@ -5,9 +5,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ilaios_desktop/app/desktop_app.dart';
 import 'package:ilaios_desktop/control_plane/client.dart';
 import 'package:ilaios_desktop/control_plane/projection.dart';
+import 'package:ilaios_desktop/identity/identity_client.dart';
 
 void main() {
-  testWidgets('prompt editor previews all modes without starting work', (tester) async {
+  testWidgets('prompt editor previews all modes without starting work', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(1600, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     var submitCalls = 0;
@@ -15,6 +18,23 @@ void main() {
 
     await tester.pumpWidget(
       IlaiosDesktopApp(
+        userSession: const DesktopUserSession(
+          sessionId: 'test-session',
+          providerId: 'google',
+          principalId: 'test-user',
+          tenantId: 'test-tenant',
+          liFounder: false,
+        ),
+        onAssistantRequest: (_) async => {
+          'binding': {
+            'user_id': 'test-user',
+            'tenant_id': 'test-tenant',
+            'project_id': null,
+            'workload_id': null,
+            'persona': 'assistant',
+          },
+          'conversations': <Map<String, dynamic>>[],
+        },
         projection: const ControlPlaneProjection(
           connected: true,
           status: 'Connected',
@@ -49,14 +69,21 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('nav-assistant')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('assistant-prompt-tools-toggle')));
+    await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('prompt-editor-panel')), findsOneWidget);
     for (final mode in PromptRefinementMode.values) {
-      expect(find.byKey(ValueKey('prompt-mode-${mode.wireValue}')), findsOneWidget);
+      expect(
+        find.byKey(ValueKey('prompt-mode-${mode.wireValue}')),
+        findsOneWidget,
+      );
     }
 
     await tester.enterText(
-      find.byKey(const Key('home-command-prompt')),
+      find.byKey(const Key('assistant-composer')),
       'Build a website. Never deploy.',
     );
     await tester.tap(find.byKey(const ValueKey('prompt-mode-structure')));
@@ -71,22 +98,43 @@ void main() {
     expect(find.byKey(const Key('prompt-constraint-status')), findsOneWidget);
     expect(find.byKey(const Key('prompt-risk-status')), findsOneWidget);
 
+    await tester.ensureVisible(find.byKey(const Key('prompt-use-refined')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('prompt-use-refined')));
     await tester.pumpAndSettle();
 
     final field = tester.widget<TextField>(
-      find.byKey(const Key('home-command-prompt')),
+      find.byKey(const Key('assistant-composer')),
     );
     expect(field.controller!.text, contains('Objective:'));
     expect(submitCalls, 0);
   });
 
-  testWidgets('unsafe risk preservation keeps refined text non-applicable', (tester) async {
+  testWidgets('unsafe risk preservation keeps refined text non-applicable', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(1600, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     await tester.pumpWidget(
       IlaiosDesktopApp(
+        userSession: const DesktopUserSession(
+          sessionId: 'test-session',
+          providerId: 'google',
+          principalId: 'test-user',
+          tenantId: 'test-tenant',
+          liFounder: false,
+        ),
+        onAssistantRequest: (_) async => {
+          'binding': {
+            'user_id': 'test-user',
+            'tenant_id': 'test-tenant',
+            'project_id': null,
+            'workload_id': null,
+            'persona': 'assistant',
+          },
+          'conversations': <Map<String, dynamic>>[],
+        },
         projection: const ControlPlaneProjection(
           connected: true,
           status: 'Connected',
@@ -110,9 +158,13 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('nav-assistant')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('assistant-prompt-tools-toggle')));
+    await tester.pumpAndSettle();
 
     await tester.enterText(
-      find.byKey(const Key('home-command-prompt')),
+      find.byKey(const Key('assistant-composer')),
       'Build a website. Never deploy to production.',
     );
     await tester.tap(find.byKey(const Key('prompt-refine-action')));
@@ -124,13 +176,32 @@ void main() {
     expect(apply.onPressed, isNull);
   });
 
-  testWidgets('source edits invalidate in-flight and completed previews', (tester) async {
+  testWidgets('source edits invalidate in-flight and completed previews', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(1600, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final pending = Completer<PromptRefinementPreview>();
 
     await tester.pumpWidget(
       IlaiosDesktopApp(
+        userSession: const DesktopUserSession(
+          sessionId: 'test-session',
+          providerId: 'google',
+          principalId: 'test-user',
+          tenantId: 'test-tenant',
+          liFounder: false,
+        ),
+        onAssistantRequest: (_) async => {
+          'binding': {
+            'user_id': 'test-user',
+            'tenant_id': 'test-tenant',
+            'project_id': null,
+            'workload_id': null,
+            'persona': 'assistant',
+          },
+          'conversations': <Map<String, dynamic>>[],
+        },
         projection: const ControlPlaneProjection(
           connected: true,
           status: 'Connected',
@@ -142,15 +213,19 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('nav-assistant')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('assistant-prompt-tools-toggle')));
+    await tester.pumpAndSettle();
 
     await tester.enterText(
-      find.byKey(const Key('home-command-prompt')),
+      find.byKey(const Key('assistant-composer')),
       'Original prompt. Never deploy.',
     );
     await tester.tap(find.byKey(const Key('prompt-refine-action')));
     await tester.pump();
     await tester.enterText(
-      find.byKey(const Key('home-command-prompt')),
+      find.byKey(const Key('assistant-composer')),
       'Changed prompt. Never deploy.',
     );
     await tester.pump();
@@ -174,17 +249,36 @@ void main() {
 
     expect(find.byKey(const Key('prompt-before-after')), findsNothing);
     final field = tester.widget<TextField>(
-      find.byKey(const Key('home-command-prompt')),
+      find.byKey(const Key('assistant-composer')),
     );
     expect(field.controller!.text, 'Changed prompt. Never deploy.');
   });
 
-  testWidgets('refinement failures do not expose raw exception text', (tester) async {
+  testWidgets('refinement failures do not expose raw exception text', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(1600, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     await tester.pumpWidget(
       IlaiosDesktopApp(
+        userSession: const DesktopUserSession(
+          sessionId: 'test-session',
+          providerId: 'google',
+          principalId: 'test-user',
+          tenantId: 'test-tenant',
+          liFounder: false,
+        ),
+        onAssistantRequest: (_) async => {
+          'binding': {
+            'user_id': 'test-user',
+            'tenant_id': 'test-tenant',
+            'project_id': null,
+            'workload_id': null,
+            'persona': 'assistant',
+          },
+          'conversations': <Map<String, dynamic>>[],
+        },
         projection: const ControlPlaneProjection(
           connected: true,
           status: 'Connected',
@@ -198,9 +292,13 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('nav-assistant')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('assistant-prompt-tools-toggle')));
+    await tester.pumpAndSettle();
 
     await tester.enterText(
-      find.byKey(const Key('home-command-prompt')),
+      find.byKey(const Key('assistant-composer')),
       'Build a website.',
     );
     await tester.tap(find.byKey(const Key('prompt-refine-action')));
@@ -208,5 +306,79 @@ void main() {
 
     expect(find.textContaining('secret-token'), findsNothing);
     expect(find.byKey(const Key('prompt-refinement-error')), findsOneWidget);
+  });
+
+  testWidgets('discard keeps original draft and allows a fresh preview', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1600, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    var refineCalls = 0;
+    await tester.pumpWidget(
+      IlaiosDesktopApp(
+        userSession: const DesktopUserSession(
+          sessionId: 'discard-session',
+          providerId: 'google',
+          principalId: 'test-user',
+          tenantId: 'test-tenant',
+          liFounder: false,
+        ),
+        onAssistantRequest: (_) async => {
+          'binding': {
+            'user_id': 'test-user',
+            'tenant_id': 'test-tenant',
+            'project_id': null,
+            'workload_id': null,
+            'persona': 'assistant',
+          },
+          'conversations': <Map<String, dynamic>>[],
+        },
+        onPromptRefine: (prompt, mode) async {
+          refineCalls++;
+          return PromptRefinementPreview(
+            originalPrompt: prompt,
+            refinedPrompt: 'Refined $prompt',
+            mode: mode,
+            transformed: true,
+            detectedIssues: const [],
+            preservedConstraints: const [],
+            unresolvedAmbiguities: const [],
+            warnings: const [],
+            constraintsDetected: false,
+            riskCues: const [],
+            riskCuesPreserved: true,
+          );
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('nav-assistant')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('assistant-prompt-tools-toggle')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('assistant-composer')),
+      'Original draft',
+    );
+    await tester.tap(find.byKey(const Key('prompt-refine-action')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('prompt-before-after')), findsOneWidget);
+    await tester.ensureVisible(find.byKey(const Key('prompt-keep-original')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('prompt-keep-original')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('prompt-before-after')), findsNothing);
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const Key('assistant-composer')))
+          .controller!
+          .text,
+      'Original draft',
+    );
+    await tester.tap(find.byKey(const Key('prompt-refine-action')));
+    await tester.pumpAndSettle();
+    expect(refineCalls, 2);
+    expect(find.byKey(const Key('prompt-before-after')), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }

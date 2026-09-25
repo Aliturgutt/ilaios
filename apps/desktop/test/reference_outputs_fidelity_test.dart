@@ -39,6 +39,14 @@ const _snapshot = OperationalSnapshot(
   liveEvents: <Map<String, Object?>>[],
 );
 
+const _connected = ControlPlaneProjection(
+  connected: true,
+  status: 'Connected',
+  goalCount: 0,
+  jobCount: 0,
+  lastEvent: null,
+);
+
 void main() {
   Future<void> openOutputs(WidgetTester tester) async {
     await tester.tap(find.byKey(const ValueKey('nav-artifacts')));
@@ -53,6 +61,7 @@ void main() {
 
     await tester.pumpWidget(
       const IlaiosDesktopApp(
+        projection: _connected,
         operationalSnapshot: _snapshot,
         operationalStatus: 'Connected to authoritative control plane',
       ),
@@ -85,6 +94,7 @@ void main() {
       const IlaiosDesktopApp(
         locale: IlaiosLocale.turkish,
         themeMode: ThemeMode.light,
+        projection: _connected,
         operationalSnapshot: _snapshot,
         operationalStatus: 'Connected to authoritative control plane',
       ),
@@ -133,6 +143,7 @@ void main() {
     await tester.pumpWidget(
       const IlaiosDesktopApp(
         locale: IlaiosLocale.turkish,
+        projection: _connected,
         operationalSnapshot: _snapshot,
       ),
     );
@@ -142,7 +153,10 @@ void main() {
     expect(find.byKey(const Key('reference-outputs-page')), findsOneWidget);
     expect(find.byKey(const Key('outputs-table')), findsOneWidget);
     expect(find.byKey(const Key('reference-scaled-viewport-v9')), findsNothing);
-    expect(find.byKey(const Key('reference-responsive-viewport-v11')), findsOneWidget);
+    expect(
+      find.byKey(const Key('reference-responsive-viewport-v11')),
+      findsOneWidget,
+    );
     expect(find.text('Çıktılar'), findsWidgets);
     expect(tester.takeException(), isNull);
   });

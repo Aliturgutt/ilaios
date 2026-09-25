@@ -43,20 +43,20 @@ abstract final class IlaiosTheme {
   // values so legacy widgets cannot reintroduce reserved logo colors.
   static const Color enterpriseCyan = textSecondary;
   static const Color coreBlue = textSecondary;
-  static const Color violet = textSecondary;
+  static const Color violet = Color(0xFFA78BFA);
 
   static const Color lightCanvas = Color(0xFFF5F5F5);
   static const Color lightSurface = Color(0xFFFFFFFF);
   static const Color lightSurfaceRaised = Color(0xFFE6E6E6);
   static const Color lightBorder = Color(0xFFB3B3B3);
   static const Color lightText = Color(0xFF0A0A0A);
-  static const Color lightMuted = Color(0xFF555555);
+  static const Color lightMuted = Color(0xFF383838);
   static const Color lightMutedStrong = Color(0xFF2A2A2A);
 
   // Semantic states remain monochrome in the product shell.
-  static const Color success = textSecondary;
-  static const Color warning = textTertiary;
-  static const Color danger = white;
+  static const Color success = Color(0xFF34D399);
+  static const Color warning = Color(0xFFFBBF24);
+  static const Color danger = Color(0xFFEF7070);
 
   static ThemeData get dark => _buildTheme(Brightness.dark);
   static ThemeData get light => _buildTheme(Brightness.light);
@@ -72,29 +72,34 @@ abstract final class IlaiosTheme {
     final strongSecondary = isDark ? mutedStrong : lightMutedStrong;
     final neutralPrimary = isDark ? textSecondary : lightText;
 
-    final scheme = ColorScheme.fromSeed(
-      seedColor: neutralPrimary,
-      brightness: brightness,
-      surface: surfaceColor,
-    ).copyWith(
-      primary: neutralPrimary,
-      onPrimary: isDark ? carbon : white,
-      secondary: strongSecondary,
-      onSecondary: isDark ? carbon : white,
-      tertiary: mutedColor,
-      onTertiary: isDark ? carbon : white,
-      surface: surfaceColor,
-      onSurface: foreground,
-      surfaceContainerLowest: isDark ? carbon : white,
-      surfaceContainerLow: surfaceColor,
-      surfaceContainer: isDark ? graphite : const Color(0xFFF0F0F0),
-      surfaceContainerHigh: isDark ? stone : const Color(0xFFE6E6E6),
-      surfaceContainerHighest: raisedColor,
-      outline: outlineColor,
-      outlineVariant: isDark ? stone : const Color(0xFFCCCCCC),
-      error: danger,
-      onError: carbon,
-    );
+    final scheme =
+        ColorScheme.fromSeed(
+          seedColor: neutralPrimary,
+          brightness: brightness,
+          surface: surfaceColor,
+        ).copyWith(
+          primary: neutralPrimary,
+          onPrimary: isDark ? carbon : white,
+          secondary: strongSecondary,
+          onSecondary: isDark ? carbon : white,
+          tertiary: mutedColor,
+          onTertiary: isDark ? carbon : white,
+          surface: surfaceColor,
+          onSurface: foreground,
+          // Readable secondary copy on every page, in both themes.
+          onSurfaceVariant: isDark
+              ? const Color(0xFFE2E2E2)
+              : const Color(0xFF303030),
+          surfaceContainerLowest: isDark ? carbon : white,
+          surfaceContainerLow: surfaceColor,
+          surfaceContainer: isDark ? graphite : const Color(0xFFF0F0F0),
+          surfaceContainerHigh: isDark ? stone : const Color(0xFFE6E6E6),
+          surfaceContainerHighest: raisedColor,
+          outline: outlineColor,
+          outlineVariant: isDark ? stone : const Color(0xFFCCCCCC),
+          error: danger,
+          onError: carbon,
+        );
 
     return ThemeData(
       brightness: brightness,
@@ -102,14 +107,16 @@ abstract final class IlaiosTheme {
       scaffoldBackgroundColor: canvasColor,
       canvasColor: canvasColor,
       useMaterial3: true,
-      fontFamily: 'Segoe UI',
+      fontFamily: 'Segoe UI Variable Text',
+      iconTheme: IconThemeData(color: foreground, size: 20),
+      primaryIconTheme: IconThemeData(color: foreground, size: 20),
       dividerColor: outlineColor,
       focusColor: isDark ? hover : const Color(0xFFE6E6E6),
       hoverColor: isDark ? hover : const Color(0xFFF0F0F0),
       highlightColor: isDark ? active : const Color(0xFFE6E6E6),
       splashColor: neutralPrimary.withValues(alpha: .12),
       splashFactory: InkSparkle.splashFactory,
-      iconTheme: IconThemeData(color: strongSecondary),
+      // Shared icon sizing is defined above for all Desktop pages.
       progressIndicatorTheme: ProgressIndicatorThemeData(
         color: neutralPrimary,
         linearTrackColor: raisedColor,
@@ -118,7 +125,10 @@ abstract final class IlaiosTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: isDark ? carbon : white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 12,
+        ),
         hintStyle: TextStyle(
           color: mutedColor,
           fontSize: 13.5,
@@ -147,13 +157,21 @@ abstract final class IlaiosTheme {
             TextStyle(fontSize: 14, height: 1.2, fontWeight: FontWeight.w600),
           ),
           foregroundColor: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.disabled)) return mutedColor;
+            if (states.contains(WidgetState.disabled)) {
+              return mutedColor;
+            }
             return isDark ? carbon : white;
           }),
           backgroundColor: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.disabled)) return raisedColor;
-            if (states.contains(WidgetState.pressed)) return isDark ? active : lightMutedStrong;
-            if (states.contains(WidgetState.hovered)) return isDark ? hover : lightMutedStrong;
+            if (states.contains(WidgetState.disabled)) {
+              return raisedColor;
+            }
+            if (states.contains(WidgetState.pressed)) {
+              return isDark ? active : lightMutedStrong;
+            }
+            if (states.contains(WidgetState.hovered)) {
+              return isDark ? hover : lightMutedStrong;
+            }
             return neutralPrimary;
           }),
           overlayColor: const WidgetStatePropertyAll(Colors.transparent),
@@ -168,15 +186,21 @@ abstract final class IlaiosTheme {
             TextStyle(fontSize: 14, height: 1.2, fontWeight: FontWeight.w600),
           ),
           foregroundColor: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.disabled)) return mutedColor;
+            if (states.contains(WidgetState.disabled)) {
+              return mutedColor;
+            }
             return foreground;
           }),
           side: WidgetStateProperty.resolveWith(
             (states) => BorderSide(
-              color: states.contains(WidgetState.disabled) ? outlineColor : outlineColor,
+              color: states.contains(WidgetState.disabled)
+                  ? outlineColor
+                  : outlineColor,
             ),
           ),
-          overlayColor: WidgetStatePropertyAll(isDark ? hover : const Color(0xFFF0F0F0)),
+          overlayColor: WidgetStatePropertyAll(
+            isDark ? hover : const Color(0xFFF0F0F0),
+          ),
           shape: WidgetStatePropertyAll(
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
           ),
@@ -188,7 +212,9 @@ abstract final class IlaiosTheme {
             TextStyle(fontSize: 14, height: 1.2, fontWeight: FontWeight.w600),
           ),
           foregroundColor: WidgetStatePropertyAll(foreground),
-          overlayColor: WidgetStatePropertyAll(isDark ? hover : const Color(0xFFF0F0F0)),
+          overlayColor: WidgetStatePropertyAll(
+            isDark ? hover : const Color(0xFFF0F0F0),
+          ),
         ),
       ),
       popupMenuTheme: PopupMenuThemeData(
@@ -197,35 +223,100 @@ abstract final class IlaiosTheme {
           fontSize: 13.5,
           height: 1.25,
           fontWeight: FontWeight.w400,
-          letterSpacing: -1.75,
+          letterSpacing: 0,
         ),
       ),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith(
-          (states) => states.contains(WidgetState.selected) ? white : foreground,
+          (states) =>
+              states.contains(WidgetState.selected) ? white : foreground,
         ),
         trackColor: WidgetStateProperty.resolveWith(
-          (states) => states.contains(WidgetState.selected) ? active : raisedColor,
+          (states) =>
+              states.contains(WidgetState.selected) ? active : raisedColor,
         ),
       ),
       checkboxTheme: CheckboxThemeData(
         fillColor: WidgetStateProperty.resolveWith(
-          (states) => states.contains(WidgetState.selected) ? neutralPrimary : null,
+          (states) =>
+              states.contains(WidgetState.selected) ? neutralPrimary : null,
         ),
         checkColor: WidgetStatePropertyAll(isDark ? carbon : white),
       ),
       textTheme: TextTheme(
-        headlineLarge: TextStyle(color: foreground, fontSize: 30, height: 1.15, fontWeight: FontWeight.w700, letterSpacing: -.5),
-        headlineMedium: TextStyle(color: foreground, fontSize: 26, height: 1.17, fontWeight: FontWeight.w700, letterSpacing: -.35),
-        titleLarge: TextStyle(color: foreground, fontSize: 20, height: 1.25, fontWeight: FontWeight.w700, letterSpacing: -.15),
-        titleMedium: TextStyle(color: foreground, fontSize: 17, height: 1.3, fontWeight: FontWeight.w600),
-        titleSmall: TextStyle(color: foreground, fontSize: 15, height: 1.3, fontWeight: FontWeight.w600, letterSpacing: .05),
-        bodyLarge: TextStyle(color: foreground, fontSize: 15, height: 1.45, fontWeight: FontWeight.w400),
-        bodyMedium: TextStyle(color: strongSecondary, fontSize: 14, height: 1.45, fontWeight: FontWeight.w400),
-        bodySmall: TextStyle(color: mutedColor, fontSize: 13, height: 1.4, fontWeight: FontWeight.w400),
-        labelLarge: TextStyle(color: foreground, fontSize: 14, height: 1.25, fontWeight: FontWeight.w600, letterSpacing: .05),
-        labelMedium: TextStyle(color: strongSecondary, fontSize: 13, height: 1.25, fontWeight: FontWeight.w600, letterSpacing: .1),
-        labelSmall: TextStyle(color: mutedColor, fontSize: 12.5, height: 1.25, fontWeight: FontWeight.w600, letterSpacing: .15),
+        headlineLarge: TextStyle(
+          color: foreground,
+          fontSize: 30,
+          height: 1.15,
+          fontWeight: FontWeight.w800,
+          letterSpacing: -.65,
+        ),
+        headlineMedium: TextStyle(
+          color: foreground,
+          fontSize: 26,
+          height: 1.17,
+          fontWeight: FontWeight.w800,
+          letterSpacing: -.5,
+        ),
+        titleLarge: TextStyle(
+          color: foreground,
+          fontSize: 20,
+          height: 1.25,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -.15,
+        ),
+        titleMedium: TextStyle(
+          color: foreground,
+          fontSize: 17,
+          height: 1.3,
+          fontWeight: FontWeight.w600,
+        ),
+        titleSmall: TextStyle(
+          color: foreground,
+          fontSize: 15,
+          height: 1.3,
+          fontWeight: FontWeight.w600,
+          letterSpacing: .05,
+        ),
+        bodyLarge: TextStyle(
+          color: foreground,
+          fontSize: 15,
+          height: 1.45,
+          fontWeight: FontWeight.w500,
+        ),
+        bodyMedium: TextStyle(
+          color: strongSecondary,
+          fontSize: 14,
+          height: 1.45,
+          fontWeight: FontWeight.w500,
+        ),
+        bodySmall: TextStyle(
+          color: mutedColor,
+          fontSize: 13,
+          height: 1.4,
+          fontWeight: FontWeight.w500,
+        ),
+        labelLarge: TextStyle(
+          color: foreground,
+          fontSize: 14,
+          height: 1.25,
+          fontWeight: FontWeight.w600,
+          letterSpacing: .05,
+        ),
+        labelMedium: TextStyle(
+          color: strongSecondary,
+          fontSize: 13,
+          height: 1.25,
+          fontWeight: FontWeight.w600,
+          letterSpacing: .1,
+        ),
+        labelSmall: TextStyle(
+          color: mutedColor,
+          fontSize: 12.5,
+          height: 1.25,
+          fontWeight: FontWeight.w600,
+          letterSpacing: .15,
+        ),
       ),
       cardTheme: CardThemeData(
         color: surfaceColor,

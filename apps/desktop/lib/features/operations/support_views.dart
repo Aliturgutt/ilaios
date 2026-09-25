@@ -15,11 +15,7 @@ import 'usage_stats_view.dart';
 /// Usage & Stats projection can be opened without adding a second telemetry
 /// authority. Both surfaces render only authenticated OperationalSnapshot data.
 class CostsView extends StatefulWidget {
-  const CostsView({
-    required this.snapshot,
-    required this.status,
-    super.key,
-  });
+  const CostsView({required this.snapshot, required this.status, super.key});
 
   final OperationalSnapshot snapshot;
   final String status;
@@ -58,10 +54,7 @@ class _CostsViewState extends State<CostsView> {
         ),
         Expanded(
           child: _showStats
-              ? UsageStatsView(
-                  snapshot: widget.snapshot,
-                  status: widget.status,
-                )
+              ? UsageStatsView(snapshot: widget.snapshot, status: widget.status)
               : ReferenceCostsViewV3(
                   snapshot: widget.snapshot,
                   status: widget.status,
@@ -82,6 +75,8 @@ class SettingsView extends StatefulWidget {
     required this.identityStatus,
     required this.userSession,
     required this.providers,
+    this.themeMode = ThemeMode.light,
+    this.onThemeModeChanged,
     this.onSignIn,
     this.onLogout,
     super.key,
@@ -91,6 +86,8 @@ class SettingsView extends StatefulWidget {
   final String identityStatus;
   final DesktopUserSession? userSession;
   final List<IdentityProviderOption> providers;
+  final ThemeMode themeMode;
+  final ValueChanged<ThemeMode>? onThemeModeChanged;
   final Future<void> Function(String providerId)? onSignIn;
   final Future<void> Function()? onLogout;
 
@@ -139,9 +136,6 @@ class _SettingsViewState extends State<SettingsView> {
 
   @override
   Widget build(BuildContext context) {
-    final mode = Theme.of(context).brightness == Brightness.dark
-        ? ThemeMode.dark
-        : ThemeMode.light;
     final scope = DesktopIdentityActionScope.maybeOf(context);
     final signIn = widget.onSignIn ?? scope?.onSignIn;
     final logout = widget.onLogout ?? scope?.onLogout;
@@ -153,7 +147,8 @@ class _SettingsViewState extends State<SettingsView> {
             identityStatus: widget.identityStatus,
             userSession: widget.userSession,
             providers: widget.providers,
-            themeMode: mode,
+            themeMode: widget.themeMode,
+            onThemeModeChanged: widget.onThemeModeChanged,
           ),
         ),
         if (widget.providers.isNotEmpty)
@@ -217,13 +212,17 @@ class _ProviderActions extends StatelessWidget {
                   provider: provider,
                   connected: session?.providerId == provider.providerId,
                   pending: pendingProviderId == provider.providerId,
-                  connectEnabled: onSignIn != null &&
+                  connectEnabled:
+                      onSignIn != null &&
                       session == null &&
                       pendingProviderId == null,
-                  logoutEnabled: onLogout != null &&
+                  logoutEnabled:
+                      onLogout != null &&
                       session?.providerId == provider.providerId &&
                       pendingProviderId == null,
-                  onConnect: onSignIn == null ? null : () => onSignIn!(provider),
+                  onConnect: onSignIn == null
+                      ? null
+                      : () => onSignIn!(provider),
                   onLogout: onLogout,
                 ),
               ),
@@ -236,7 +235,7 @@ class _ProviderActions extends StatelessWidget {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 8,
+                  fontSize: 11,
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
@@ -274,17 +273,17 @@ class _ProviderActionRow extends StatelessWidget {
     final label = pending
         ? (tr ? 'İşleniyor…' : 'Working…')
         : connected
-            ? (tr ? 'Çıkış' : 'Sign out')
-            : unavailable
-                ? (tr ? 'Kullanılamıyor' : 'Unavailable')
-                : (tr ? 'Bağlan' : 'Connect');
+        ? (tr ? 'Çıkış' : 'Sign out')
+        : unavailable
+        ? (tr ? 'Kullanılamıyor' : 'Unavailable')
+        : (tr ? 'Bağlan' : 'Connect');
     final semanticLabel = connected
         ? '${tr ? 'Çıkış yap' : 'Sign out'} ${provider.displayName}'
         : pending
-            ? '${provider.displayName} ${tr ? 'işleniyor' : 'working'}'
-            : unavailable
-                ? '${provider.displayName} ${tr ? 'bağlantısı kullanılamıyor' : 'connection unavailable'}'
-                : '${tr ? 'Bağlan' : 'Connect'} ${provider.displayName}';
+        ? '${provider.displayName} ${tr ? 'işleniyor' : 'working'}'
+        : unavailable
+        ? '${provider.displayName} ${tr ? 'bağlantısı kullanılamıyor' : 'connection unavailable'}'
+        : '${tr ? 'Bağlan' : 'Connect'} ${provider.displayName}';
     final action = connected ? onLogout : onConnect;
     return Row(
       children: [
@@ -299,7 +298,7 @@ class _ProviderActionRow extends StatelessWidget {
             provider.displayName,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 8.2, fontWeight: FontWeight.w600),
+            style: Theme.of(context).textTheme.labelSmall,
           ),
         ),
         const SizedBox(width: 6),

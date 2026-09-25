@@ -93,7 +93,8 @@ class _SourceVideoPickerState extends State<SourceVideoPicker> {
         'Select an MP4 source video',
         'MP4 kaynak video seç',
       ).replaceAll("'", "''");
-      final script = '''
+      final script =
+          '''
 Add-Type -AssemblyName System.Windows.Forms
 \$dialog = New-Object System.Windows.Forms.OpenFileDialog
 \$dialog.Filter = 'MP4 video (*.mp4)|*.mp4'
@@ -105,18 +106,14 @@ if (\$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
   [Console]::WriteLine(\$dialog.FileName)
 }
 ''';
-      final result = await Process.run(
-        'powershell.exe',
-        <String>[
-          '-NoLogo',
-          '-NoProfile',
-          '-NonInteractive',
-          '-STA',
-          '-Command',
-          script,
-        ],
-        runInShell: false,
-      );
+      final result = await Process.run('powershell.exe', <String>[
+        '-NoLogo',
+        '-NoProfile',
+        '-NonInteractive',
+        '-STA',
+        '-Command',
+        script,
+      ], runInShell: false);
       if (result.exitCode != 0) {
         throw _SourcePickerError(
           _text(
@@ -236,7 +233,11 @@ if (\$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.video_file_outlined, size: 16),
+                    const Icon(
+                      Icons.video_file_outlined,
+                      size: 16,
+                      color: Color(0xFFFF8A65),
+                    ),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
@@ -258,9 +259,15 @@ if (\$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
                               ? const SizedBox(
                                   width: 12,
                                   height: 12,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
                                 )
-                              : const Icon(Icons.upload_file_outlined, size: 14),
+                              : const Icon(
+                                  Icons.upload_file_outlined,
+                                  size: 14,
+                                  color: Color(0xFFFF8A65),
+                                ),
                           label: Text(
                             _reading
                                 ? _text('Reading…', 'Okunuyor…')
@@ -276,7 +283,9 @@ if (\$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
                           'Remove source video',
                           'Kaynak videoyu kaldır',
                         ),
-                        onPressed: widget.enabled ? widget.controller.clear : null,
+                        onPressed: widget.enabled
+                            ? widget.controller.clear
+                            : null,
                         visualDensity: VisualDensity.compact,
                         icon: const Icon(Icons.close_rounded, size: 16),
                       ),
@@ -293,7 +302,9 @@ if (\$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall?.copyWith(fontSize: 12.5),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontSize: 12.5,
+                      ),
                     ),
                   )
                 else ...[
@@ -313,7 +324,9 @@ if (\$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
                       '${_formatBytes(source.sizeBytes)} • SHA-256 ${source.sha256Hex.substring(0, 12)}…',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall?.copyWith(fontSize: 12.5),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontSize: 12.5,
+                      ),
                     ),
                   ),
                 ],
@@ -337,7 +350,11 @@ if (\$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.video_file_outlined, size: 17),
+                    const Icon(
+                      Icons.video_file_outlined,
+                      size: 17,
+                      color: Color(0xFFFF8A65),
+                    ),
                     const SizedBox(width: 7),
                     Expanded(
                       child: Text(
@@ -354,7 +371,9 @@ if (\$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
                           'Remove source video',
                           'Kaynak videoyu kaldır',
                         ),
-                        onPressed: widget.enabled ? widget.controller.clear : null,
+                        onPressed: widget.enabled
+                            ? widget.controller.clear
+                            : null,
                         icon: const Icon(Icons.close_rounded, size: 17),
                       ),
                   ],
@@ -377,7 +396,11 @@ if (\$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
                               height: 13,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : const Icon(Icons.upload_file_outlined, size: 16),
+                          : const Icon(
+                              Icons.upload_file_outlined,
+                              size: 16,
+                              color: Color(0xFFFF8A65),
+                            ),
                       label: Text(
                         _reading
                             ? _text('Reading…', 'Okunuyor…')

@@ -43,7 +43,12 @@ class HomeDashboardView extends StatelessWidget {
         return Scrollbar(
           thumbVisibility: false,
           child: SingleChildScrollView(
-            padding: EdgeInsets.fromLTRB(contentPadding, 12, contentPadding, 16),
+            padding: EdgeInsets.fromLTRB(
+              contentPadding,
+              12,
+              contentPadding,
+              16,
+            ),
             child: showRightRail
                 ? Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -79,19 +84,19 @@ class _MainDashboardColumn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _Header(model: model, onRefreshRequested: onRefreshRequested),
-          const SizedBox(height: 10),
-          _WorkflowPanel(model: model),
-          const SizedBox(height: 10),
-          _LiveExecutionPanel(model: model),
-          const SizedBox(height: 10),
-          _WorkspacePreview(model: model),
-          const SizedBox(height: 10),
-          _BottomPanels(model: model),
-        ],
-      );
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      _Header(model: model, onRefreshRequested: onRefreshRequested),
+      const SizedBox(height: 10),
+      _WorkflowPanel(model: model),
+      const SizedBox(height: 10),
+      _LiveExecutionPanel(model: model),
+      const SizedBox(height: 10),
+      _WorkspacePreview(model: model),
+      const SizedBox(height: 10),
+      _BottomPanels(model: model),
+    ],
+  );
 }
 
 class _DashboardModel {
@@ -143,10 +148,11 @@ class _DashboardModel {
   }
 
   double? get progressValue {
-    final value = _firstNumber(
-      latestEvent,
-      const ['progress', 'progress_percent', 'completion_percent'],
-    );
+    final value = _firstNumber(latestEvent, const [
+      'progress',
+      'progress_percent',
+      'completion_percent',
+    ]);
     if (value == null) return null;
     final normalized = value <= 1 ? value * 100 : value;
     if (normalized < 0 || normalized > 100) return null;
@@ -197,38 +203,48 @@ class _DashboardModel {
   }
 
   String workerTitle(Map<String, Object?> worker, int index) =>
-      _firstText(
-        worker,
-        const ['role', 'worker_type', 'executor_type', 'worker_id', 'lease_id'],
-      ) ??
+      _firstText(worker, const [
+        'role',
+        'worker_type',
+        'executor_type',
+        'worker_id',
+        'lease_id',
+      ]) ??
       'Worker ${index + 1}';
   String workerTask(Map<String, Object?> worker) =>
-      _firstText(worker, const ['task', 'task_id', 'current_task', 'request_id']) ??
+      _firstText(worker, const [
+        'task',
+        'task_id',
+        'current_task',
+        'request_id',
+      ]) ??
       'Task unavailable';
   String workerState(Map<String, Object?> worker) =>
       _firstText(worker, const ['state', 'status', 'health']) ?? 'Active lease';
 
   List<Map<String, Object?>> get costSources => <Map<String, Object?>>[
-        snapshot.governanceState,
-        snapshot.schedulerState,
-        ..._mapList(snapshot.governanceState['costs']),
-      ];
+    snapshot.governanceState,
+    snapshot.schedulerState,
+    ..._mapList(snapshot.governanceState['costs']),
+  ];
 
   String? get totalCostUsd =>
       _firstValue(costSources, const ['total_cost_usd', 'cost_usd']);
-  String? get totalCostMinor => _firstValue(
-        costSources,
-        const ['total_cost_minor', 'spent_minor', 'used_minor'],
-      );
+  String? get totalCostMinor => _firstValue(costSources, const [
+    'total_cost_minor',
+    'spent_minor',
+    'used_minor',
+  ]);
   String? get budgetUsd => _firstValue(costSources, const ['budget_usd']);
   String? get budgetMinor =>
       _firstValue(costSources, const ['budget_minor', 'hard_cap_minor']);
 
   double? get budgetRatio {
-    final cost = double.tryParse(totalCostUsd ?? '') ??
+    final cost =
+        double.tryParse(totalCostUsd ?? '') ??
         double.tryParse(totalCostMinor ?? '');
-    final budget = double.tryParse(budgetUsd ?? '') ??
-        double.tryParse(budgetMinor ?? '');
+    final budget =
+        double.tryParse(budgetUsd ?? '') ?? double.tryParse(budgetMinor ?? '');
     if (cost == null || budget == null || budget <= 0) return null;
     return (cost / budget).clamp(0, 1).toDouble();
   }
@@ -241,61 +257,61 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
-        children: [
-          Expanded(
-            child: Row(
-              children: [
-                Flexible(
-                  child: Text(
-                    _home(context, 'Active Workflow'),
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 19,
-                      height: 1.1,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -.25,
-                    ),
-                  ),
+    children: [
+      Expanded(
+        child: Row(
+          children: [
+            Flexible(
+              child: Text(
+                _home(context, 'Active Workflow'),
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 19,
+                  height: 1.1,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -.25,
                 ),
-                const SizedBox(width: 9),
-                _StatusBadge(
-                  label: _home(context, model.workflowBadgeLabel),
-                  color: model.workflowBadgeColor,
-                ),
-                if (model.started != '—') ...[
-                  const SizedBox(width: 11),
-                  Flexible(
-                    child: Text(
-                      '${_home(context, 'Started')}: ${model.started}',
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: IlaiosTheme.muted,
-                        fontSize: 9.5,
-                      ),
-                    ),
-                  ),
-                ],
-              ],
+              ),
             ),
-          ),
-          Text(
-            model.projection.connected
-                ? model.status
-                : _home(context, 'Runtime unavailable'),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: IlaiosTheme.muted, fontSize: 9.5),
-          ),
-          const SizedBox(width: 8),
-          IconButton(
-            key: const Key('home-refresh-command'),
-            tooltip: _home(context, 'Refresh authoritative state'),
-            onPressed: onRefreshRequested,
-            visualDensity: VisualDensity.compact,
-            icon: const Icon(Icons.refresh, size: 19),
-          ),
-        ],
-      );
+            const SizedBox(width: 9),
+            _StatusBadge(
+              label: _home(context, model.workflowBadgeLabel),
+              color: model.workflowBadgeColor,
+            ),
+            if (model.started != '—') ...[
+              const SizedBox(width: 11),
+              Flexible(
+                child: Text(
+                  '${_home(context, 'Started')}: ${model.started}',
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: IlaiosTheme.muted,
+                    fontSize: 9.5,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+      Text(
+        model.projection.connected
+            ? model.status
+            : _home(context, 'Runtime unavailable'),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(color: IlaiosTheme.muted, fontSize: 9.5),
+      ),
+      const SizedBox(width: 8),
+      IconButton(
+        key: const Key('home-refresh-command'),
+        tooltip: _home(context, 'Refresh authoritative state'),
+        onPressed: onRefreshRequested,
+        visualDensity: VisualDensity.compact,
+        icon: const Icon(Icons.refresh, size: 19),
+      ),
+    ],
+  );
 }
 
 class _WorkflowPanel extends StatelessWidget {
@@ -312,103 +328,100 @@ class _WorkflowPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => _Panel(
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
-        child: Column(
-          children: [
-            LayoutBuilder(
-              builder: (context, constraints) {
-                if (constraints.maxWidth >= 650) {
-                  return Row(
-                    children: [
-                      for (var i = 0; i < _stages.length; i++) ...[
-                        Expanded(
-                          child: _StageCard(
-                            title: _home(context, _stages[i].$1),
-                            subtitle: _home(context, _stages[i].$2),
-                            icon: _stages[i].$3,
-                            state: model.stageState(_stages[i].$1),
-                          ),
-                        ),
-                        if (i != _stages.length - 1) ...[
-                          const SizedBox(width: 5),
-                          const Icon(
-                            Icons.arrow_forward,
-                            size: 13,
-                            color: IlaiosTheme.muted,
-                          ),
-                          const SizedBox(width: 5),
-                        ],
-                      ],
-                    ],
-                  );
-                }
-                return Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final stage in _stages)
-                      SizedBox(
-                        width: (constraints.maxWidth - 8) / 2,
-                        child: _StageCard(
-                          title: _home(context, stage.$1),
-                          subtitle: _home(context, stage.$2),
-                          icon: stage.$3,
-                          state: model.stageState(stage.$1),
-                        ),
+    padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+    child: Column(
+      children: [
+        LayoutBuilder(
+          builder: (context, constraints) {
+            if (constraints.maxWidth >= 650) {
+              return Row(
+                children: [
+                  for (var i = 0; i < _stages.length; i++) ...[
+                    Expanded(
+                      child: _StageCard(
+                        title: _home(context, _stages[i].$1),
+                        subtitle: _home(context, _stages[i].$2),
+                        icon: _stages[i].$3,
+                        state: model.stageState(_stages[i].$1),
                       ),
+                    ),
+                    if (i != _stages.length - 1) ...[
+                      const SizedBox(width: 5),
+                      const Icon(
+                        Icons.arrow_forward,
+                        size: 13,
+                        color: IlaiosTheme.muted,
+                      ),
+                      const SizedBox(width: 5),
+                    ],
                   ],
-                );
-              },
-            ),
-            const SizedBox(height: 10),
-            Row(
+                ],
+              );
+            }
+            return Wrap(
+              spacing: 8,
+              runSpacing: 8,
               children: [
-                Text(
-                  _home(context, 'Overall Progress'),
-                  style: const TextStyle(
-                    color: IlaiosTheme.muted,
-                    fontSize: 9.5,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: model.progressValue == null
-                      ? Container(
-                          key: const Key('progress-unavailable-track'),
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: IlaiosTheme.surfaceRaised,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        )
-                      : ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: LinearProgressIndicator(
-                            value: model.progressValue,
-                            minHeight: 4,
-                            backgroundColor: IlaiosTheme.surfaceRaised,
-                            color: IlaiosTheme.cyan,
-                          ),
-                        ),
-                ),
-                const SizedBox(width: 10),
-                SizedBox(
-                  width: 34,
-                  child: Text(
-                    model.progressLabel,
-                    textAlign: TextAlign.right,
-                    style: const TextStyle(
-                      color: IlaiosTheme.cyan,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
+                for (final stage in _stages)
+                  SizedBox(
+                    width: (constraints.maxWidth - 8) / 2,
+                    child: _StageCard(
+                      title: _home(context, stage.$1),
+                      subtitle: _home(context, stage.$2),
+                      icon: stage.$3,
+                      state: model.stageState(stage.$1),
                     ),
                   ),
-                ),
               ],
+            );
+          },
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Text(
+              _home(context, 'Overall Progress'),
+              style: const TextStyle(color: IlaiosTheme.muted, fontSize: 9.5),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: model.progressValue == null
+                  ? Container(
+                      key: const Key('progress-unavailable-track'),
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: IlaiosTheme.surfaceRaised,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    )
+                  : ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: LinearProgressIndicator(
+                        value: model.progressValue,
+                        minHeight: 4,
+                        backgroundColor: IlaiosTheme.surfaceRaised,
+                        color: IlaiosTheme.cyan,
+                      ),
+                    ),
+            ),
+            const SizedBox(width: 10),
+            SizedBox(
+              width: 34,
+              child: Text(
+                model.progressLabel,
+                textAlign: TextAlign.right,
+                style: const TextStyle(
+                  color: IlaiosTheme.cyan,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ),
           ],
         ),
-      );
+      ],
+    ),
+  );
 }
 
 class _StageCard extends StatelessWidget {
@@ -503,7 +516,10 @@ class _StageCard extends StatelessWidget {
                         _localizedKnownValue(context, state),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: stateColor, fontSize: 8.2),
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: stateColor,
+                          fontSize: 10.5,
+                        ),
                       ),
                     ),
                   ],
@@ -523,39 +539,39 @@ class _LiveExecutionPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => _Panel(
-        title: _home(context, 'LIVE EXECUTION'),
-        trailing: Text(
-          '${model.leases.length} ${_home(context, 'active')}',
-          style: const TextStyle(color: IlaiosTheme.muted, fontSize: 8.5),
-        ),
-        child: model.leases.isEmpty
-            ? SizedBox(
-                height: 96,
-                child: _EmptyState(
-                  icon: Icons.groups_2_outlined,
-                  message: _home(
-                    context,
-                    'No active worker leases are exposed by the scheduler.',
-                  ),
-                ),
-              )
-            : SizedBox(
-                height: 118,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: model.leases.length,
-                  separatorBuilder: (_, _) => const SizedBox(width: 8),
-                  itemBuilder: (context, index) => SizedBox(
-                    width: 132,
-                    child: _WorkerCard(
-                      title: model.workerTitle(model.leases[index], index),
-                      task: model.workerTask(model.leases[index]),
-                      state: model.workerState(model.leases[index]),
-                    ),
-                  ),
+    title: _home(context, 'LIVE EXECUTION'),
+    trailing: Text(
+      '${model.leases.length} ${_home(context, 'active')}',
+      style: const TextStyle(color: IlaiosTheme.muted, fontSize: 8.5),
+    ),
+    child: model.leases.isEmpty
+        ? SizedBox(
+            height: 96,
+            child: _EmptyState(
+              icon: Icons.groups_2_outlined,
+              message: _home(
+                context,
+                'No active worker leases are exposed by the scheduler.',
+              ),
+            ),
+          )
+        : SizedBox(
+            height: 118,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: model.leases.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 8),
+              itemBuilder: (context, index) => SizedBox(
+                width: 132,
+                child: _WorkerCard(
+                  title: model.workerTitle(model.leases[index], index),
+                  task: model.workerTask(model.leases[index]),
+                  state: model.workerState(model.leases[index]),
                 ),
               ),
-      );
+            ),
+          ),
+  );
 }
 
 class _WorkerCard extends StatelessWidget {
@@ -570,72 +586,69 @@ class _WorkerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(9),
-        decoration: BoxDecoration(
-          color: IlaiosTheme.canvas,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: IlaiosTheme.border),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    padding: const EdgeInsets.all(9),
+    decoration: BoxDecoration(
+      color: IlaiosTheme.canvas,
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(color: IlaiosTheme.border),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
           children: [
-            Row(
-              children: [
-                Container(
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    color: IlaiosTheme.surfaceRaised,
-                    borderRadius: BorderRadius.circular(7),
-                  ),
-                  child: const Icon(
-                    Icons.smart_toy_outlined,
-                    size: 16,
-                    color: IlaiosTheme.cyan,
-                  ),
-                ),
-                const SizedBox(width: 7),
-                Expanded(
-                  child: Text(
-                    _localizedWorkerTitle(context, title),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 9.5,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _localizedKnownValue(context, task),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: IlaiosTheme.muted,
-                fontSize: 8.5,
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: IlaiosTheme.surfaceRaised,
+                borderRadius: BorderRadius.circular(7),
+              ),
+              child: const Icon(
+                Icons.smart_toy_outlined,
+                size: 16,
+                color: IlaiosTheme.cyan,
               ),
             ),
-            const Spacer(),
-            Row(
-              children: [
-                Icon(Icons.circle, size: 6, color: _stateColor(state)),
-                const SizedBox(width: 5),
-                Expanded(
-                  child: Text(
-                    _localizedKnownValue(context, state),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 8.5),
-                  ),
+            const SizedBox(width: 7),
+            Expanded(
+              child: Text(
+                _localizedWorkerTitle(context, title),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 9.5,
                 ),
-              ],
+              ),
             ),
           ],
         ),
-      );
+        const SizedBox(height: 8),
+        Text(
+          _localizedKnownValue(context, task),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(color: IlaiosTheme.muted, fontSize: 8.5),
+        ),
+        const Spacer(),
+        Row(
+          children: [
+            Icon(Icons.circle, size: 6, color: _stateColor(state)),
+            const SizedBox(width: 5),
+            Expanded(
+              child: Text(
+                _localizedKnownValue(context, state),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 8.5),
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
 }
 
 class _WorkspacePreview extends StatelessWidget {
@@ -644,140 +657,133 @@ class _WorkspacePreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => _Panel(
-        title: _home(context, 'LIVE WORKSPACE'),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    title: _home(context, 'LIVE WORKSPACE'),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: 15,
+          runSpacing: 6,
           children: [
-            Wrap(
-              spacing: 15,
-              runSpacing: 6,
-              children: [
-                _MiniTab(
-                  icon: Icons.code,
-                  label: _home(context, 'Live Code'),
-                  active: true,
-                ),
-                _MiniTab(
-                  icon: Icons.terminal,
-                  label: _home(context, 'Terminal'),
-                ),
-                _MiniTab(
-                  icon: Icons.language,
-                  label: _home(context, 'Browser'),
-                ),
-                _MiniTab(
-                  icon: Icons.folder_outlined,
-                  label: _home(context, 'Files'),
-                ),
-                _MiniTab(
-                  icon: Icons.list_alt,
-                  label: _home(context, 'Logs'),
-                ),
-                _MiniTab(
-                  icon: Icons.bolt_outlined,
-                  label: _home(context, 'Events'),
-                ),
-              ],
+            _MiniTab(
+              icon: Icons.code,
+              label: _home(context, 'Live Code'),
+              active: true,
             ),
-            const SizedBox(height: 10),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final row = constraints.maxWidth >= 620;
-                final panes = <Widget>[
-                  _WorkspacePane(
-                    title: _home(context, 'Live Code'),
-                    icon: Icons.code,
-                    child: _UnavailableProjection(
-                      headline: _home(context, 'Code projection unavailable'),
-                      detail: _home(
-                        context,
-                        'No source buffer is exposed by the current Desktop API.',
-                      ),
-                    ),
-                  ),
-                  _WorkspacePane(
-                    title: _home(context, 'Terminal'),
-                    icon: Icons.terminal,
-                    child: _TerminalProjection(events: model.snapshot.liveEvents),
-                  ),
-                  _WorkspacePane(
-                    title: _home(context, 'Browser'),
-                    icon: Icons.language,
-                    child: _UnavailableProjection(
-                      headline: _home(context, 'Preview unavailable'),
-                      detail: _home(
-                        context,
-                        'No browser preview projection is exposed.',
-                      ),
-                    ),
-                  ),
-                ];
-                if (!row) {
-                  return Column(
-                    children: [
-                      for (var i = 0; i < panes.length; i++) ...[
-                        SizedBox(height: 138, child: panes[i]),
-                        if (i != panes.length - 1)
-                          const SizedBox(height: 8),
-                      ],
-                    ],
-                  );
-                }
-                return SizedBox(
-                  height: 180,
-                  child: Row(
-                    children: [
-                      for (var i = 0; i < panes.length; i++) ...[
-                        Expanded(child: panes[i]),
-                        if (i != panes.length - 1)
-                          const SizedBox(width: 8),
-                      ],
-                    ],
-                  ),
-                );
-              },
+            _MiniTab(icon: Icons.terminal, label: _home(context, 'Terminal')),
+            _MiniTab(icon: Icons.language, label: _home(context, 'Browser')),
+            _MiniTab(
+              icon: Icons.folder_outlined,
+              label: _home(context, 'Files'),
+            ),
+            _MiniTab(icon: Icons.list_alt, label: _home(context, 'Logs')),
+            _MiniTab(
+              icon: Icons.bolt_outlined,
+              label: _home(context, 'Events'),
             ),
           ],
         ),
-      );
+        const SizedBox(height: 10),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final row = constraints.maxWidth >= 620;
+            final panes = <Widget>[
+              _WorkspacePane(
+                title: _home(context, 'Live Code'),
+                icon: Icons.code,
+                child: _UnavailableProjection(
+                  headline: _home(context, 'Code projection unavailable'),
+                  detail: _home(
+                    context,
+                    'No source buffer is exposed by the current Desktop API.',
+                  ),
+                ),
+              ),
+              _WorkspacePane(
+                title: _home(context, 'Terminal'),
+                icon: Icons.terminal,
+                child: _TerminalProjection(events: model.snapshot.liveEvents),
+              ),
+              _WorkspacePane(
+                title: _home(context, 'Browser'),
+                icon: Icons.language,
+                child: _UnavailableProjection(
+                  headline: _home(context, 'Preview unavailable'),
+                  detail: _home(
+                    context,
+                    'No browser preview projection is exposed.',
+                  ),
+                ),
+              ),
+            ];
+            if (!row) {
+              return Column(
+                children: [
+                  for (var i = 0; i < panes.length; i++) ...[
+                    SizedBox(height: 138, child: panes[i]),
+                    if (i != panes.length - 1) const SizedBox(height: 8),
+                  ],
+                ],
+              );
+            }
+            return SizedBox(
+              height: 180,
+              child: Row(
+                children: [
+                  for (var i = 0; i < panes.length; i++) ...[
+                    Expanded(child: panes[i]),
+                    if (i != panes.length - 1) const SizedBox(width: 8),
+                  ],
+                ],
+              ),
+            );
+          },
+        ),
+      ],
+    ),
+  );
 }
 
 class _MiniTab extends StatelessWidget {
-  const _MiniTab({required this.icon, required this.label, this.active = false});
+  const _MiniTab({
+    required this.icon,
+    required this.label,
+    this.active = false,
+  });
   final IconData icon;
   final String label;
   final bool active;
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(vertical: 3),
-        decoration: BoxDecoration(
-          border: active
-              ? const Border(
-                  bottom: BorderSide(color: IlaiosTheme.cyan, width: 1.5),
-                )
-              : null,
+    padding: const EdgeInsets.symmetric(vertical: 3),
+    decoration: BoxDecoration(
+      border: active
+          ? const Border(
+              bottom: BorderSide(color: IlaiosTheme.cyan, width: 1.5),
+            )
+          : null,
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          icon,
+          size: 13,
+          color: active ? IlaiosTheme.cyan : IlaiosTheme.muted,
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 13,
-              color: active ? IlaiosTheme.cyan : IlaiosTheme.muted,
-            ),
-            const SizedBox(width: 5),
-            Text(
-              label,
-              style: TextStyle(
-                color: active ? IlaiosTheme.cyan : IlaiosTheme.muted,
-                fontSize: 9.5,
-                fontWeight: active ? FontWeight.w600 : FontWeight.w400,
-              ),
-            ),
-          ],
+        const SizedBox(width: 5),
+        Text(
+          label,
+          style: TextStyle(
+            color: active ? IlaiosTheme.cyan : IlaiosTheme.muted,
+            fontSize: 9.5,
+            fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+          ),
         ),
-      );
+      ],
+    ),
+  );
 }
 
 class _WorkspacePane extends StatelessWidget {
@@ -792,44 +798,40 @@ class _WorkspacePane extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        decoration: BoxDecoration(
-          color: IlaiosTheme.canvas,
-          borderRadius: BorderRadius.circular(7),
-          border: Border.all(color: IlaiosTheme.border),
-        ),
-        child: Column(
-          children: [
-            Container(
-              height: 32,
-              padding: const EdgeInsets.symmetric(horizontal: 9),
-              decoration: const BoxDecoration(
-                color: IlaiosTheme.surfaceSoft,
-                border: Border(bottom: BorderSide(color: IlaiosTheme.border)),
+    decoration: BoxDecoration(
+      color: IlaiosTheme.canvas,
+      borderRadius: BorderRadius.circular(7),
+      border: Border.all(color: IlaiosTheme.border),
+    ),
+    child: Column(
+      children: [
+        Container(
+          height: 32,
+          padding: const EdgeInsets.symmetric(horizontal: 9),
+          decoration: const BoxDecoration(
+            color: IlaiosTheme.surfaceSoft,
+            border: Border(bottom: BorderSide(color: IlaiosTheme.border)),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: 13, color: IlaiosTheme.mutedStrong),
+              const SizedBox(width: 6),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-              child: Row(
-                children: [
-                  Icon(icon, size: 13, color: IlaiosTheme.mutedStrong),
-                  const SizedBox(width: 6),
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const Spacer(),
-                  const Icon(
-                    Icons.more_horiz,
-                    size: 14,
-                    color: IlaiosTheme.muted,
-                  ),
-                ],
-              ),
-            ),
-            Expanded(child: child),
-          ],
+              const Spacer(),
+              const Icon(Icons.more_horiz, size: 14, color: IlaiosTheme.muted),
+            ],
+          ),
         ),
-      );
+        Expanded(child: child),
+      ],
+    ),
+  );
 }
 
 class _UnavailableProjection extends StatelessWidget {
@@ -839,40 +841,39 @@ class _UnavailableProjection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(10),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.remove_circle_outline,
-                size: 17,
-                color: IlaiosTheme.muted,
-              ),
-              const SizedBox(height: 6),
-              Text(
-                headline,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 8.8,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                detail,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: IlaiosTheme.muted,
-                  fontSize: 7.8,
-                ),
-              ),
-            ],
+    child: Padding(
+      padding: const EdgeInsets.all(10),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.remove_circle_outline,
+            size: 17,
+            color: IlaiosTheme.muted,
           ),
-        ),
-      );
+          const SizedBox(height: 6),
+          Text(
+            headline,
+            textAlign: TextAlign.center,
+            style: Theme.of(
+              context,
+            ).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            detail,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: IlaiosTheme.muted,
+              fontSize: 11,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 class _TerminalProjection extends StatelessWidget {
@@ -887,7 +888,10 @@ class _TerminalProjection extends StatelessWidget {
         child: Text(
           _home(context, 'No authoritative live events are available.'),
           textAlign: TextAlign.center,
-          style: const TextStyle(color: IlaiosTheme.muted, fontSize: 8.2),
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: IlaiosTheme.muted,
+            fontSize: 11,
+          ),
         ),
       );
     }
@@ -922,44 +926,44 @@ class _RightRail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Column(
-        children: [
-          _SidePanel(
-            title: _home(context, 'STATUS'),
-            rows: <(String, String)>[
-              (_home(context, 'Job ID'), model.jobId),
-              (_home(context, 'Started'), model.started),
-              (_home(context, 'Elapsed'), model.elapsed),
-              (_home(context, 'Est. finish'), model.estimatedFinish),
-              (_home(context, 'Phase'), model.currentPhase),
-              (_home(context, 'Active workers'), '${model.leases.length}'),
-              (_home(context, 'Status'), model.executionStatus),
-            ],
-            accentLast: true,
-          ),
-          const SizedBox(height: 9),
-          _CostPanel(model: model),
-          const SizedBox(height: 9),
-          _SidePanel(
-            title: _home(context, 'APPROVALS'),
-            rows: <(String, String)>[
-              (
-                _home(context, 'Pending'),
-                model.pendingApprovals?.toString() ?? 'Unavailable',
-              ),
-              (
-                _home(context, 'Approved'),
-                model.approvedCount?.toString() ?? 'Unavailable',
-              ),
-              (
-                _home(context, 'Denied'),
-                model.deniedCount?.toString() ?? 'Unavailable',
-              ),
-            ],
-          ),
-          const SizedBox(height: 9),
-          _LatestEvents(model: model),
+    children: [
+      _SidePanel(
+        title: _home(context, 'STATUS'),
+        rows: <(String, String)>[
+          (_home(context, 'Job ID'), model.jobId),
+          (_home(context, 'Started'), model.started),
+          (_home(context, 'Elapsed'), model.elapsed),
+          (_home(context, 'Est. finish'), model.estimatedFinish),
+          (_home(context, 'Phase'), model.currentPhase),
+          (_home(context, 'Active workers'), '${model.leases.length}'),
+          (_home(context, 'Status'), model.executionStatus),
         ],
-      );
+        accentLast: true,
+      ),
+      const SizedBox(height: 9),
+      _CostPanel(model: model),
+      const SizedBox(height: 9),
+      _SidePanel(
+        title: _home(context, 'APPROVALS'),
+        rows: <(String, String)>[
+          (
+            _home(context, 'Pending'),
+            model.pendingApprovals?.toString() ?? 'Unavailable',
+          ),
+          (
+            _home(context, 'Approved'),
+            model.approvedCount?.toString() ?? 'Unavailable',
+          ),
+          (
+            _home(context, 'Denied'),
+            model.deniedCount?.toString() ?? 'Unavailable',
+          ),
+        ],
+      ),
+      const SizedBox(height: 9),
+      _LatestEvents(model: model),
+    ],
+  );
 }
 
 class _CostPanel extends StatelessWidget {
@@ -996,15 +1000,9 @@ class _CostPanel extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 9),
-          _SideRow(
-            label: _home(context, 'Token usage'),
-            value: 'Unavailable',
-          ),
+          _SideRow(label: _home(context, 'Token usage'), value: 'Unavailable'),
           const SizedBox(height: 7),
-          _SideRow(
-            label: _home(context, 'GPU time'),
-            value: 'Unavailable',
-          ),
+          _SideRow(label: _home(context, 'GPU time'), value: 'Unavailable'),
         ],
       ),
     );
@@ -1023,21 +1021,21 @@ class _SidePanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => _Panel(
-        title: title,
-        padding: const EdgeInsets.all(11),
-        child: Column(
-          children: [
-            for (var i = 0; i < rows.length; i++) ...[
-              _SideRow(
-                label: rows[i].$1,
-                value: rows[i].$2,
-                accent: accentLast && i == rows.length - 1,
-              ),
-              if (i != rows.length - 1) const SizedBox(height: 7),
-            ],
-          ],
-        ),
-      );
+    title: title,
+    padding: const EdgeInsets.all(11),
+    child: Column(
+      children: [
+        for (var i = 0; i < rows.length; i++) ...[
+          _SideRow(
+            label: rows[i].$1,
+            value: rows[i].$2,
+            accent: accentLast && i == rows.length - 1,
+          ),
+          if (i != rows.length - 1) const SizedBox(height: 7),
+        ],
+      ],
+    ),
+  );
 }
 
 class _SideRow extends StatelessWidget {
@@ -1052,35 +1050,32 @@ class _SideRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 82,
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: IlaiosTheme.muted,
-                fontSize: 9,
-              ),
-            ),
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      SizedBox(
+        width: 82,
+        child: Text(
+          label,
+          style: const TextStyle(color: IlaiosTheme.muted, fontSize: 9),
+        ),
+      ),
+      Expanded(
+        child: Text(
+          _localizedKnownValue(context, value),
+          textAlign: TextAlign.right,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: accent && value != 'Unavailable'
+                ? IlaiosTheme.success
+                : IlaiosTheme.text,
+            fontSize: 9,
+            fontWeight: FontWeight.w600,
           ),
-          Expanded(
-            child: Text(
-              _localizedKnownValue(context, value),
-              textAlign: TextAlign.right,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: accent && value != 'Unavailable'
-                    ? IlaiosTheme.success
-                    : IlaiosTheme.text,
-                fontSize: 9,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      );
+        ),
+      ),
+    ],
+  );
 }
 
 class _LatestEvents extends StatelessWidget {
@@ -1120,29 +1115,25 @@ class _BottomPanels extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
-        builder: (context, constraints) {
-          final sideBySide = constraints.maxWidth >= 660;
-          final artifacts = _ArtifactsPanel(model: model);
-          final evidence = _EvidencePanel(model: model);
-          if (!sideBySide) {
-            return Column(
-              children: [
-                artifacts,
-                const SizedBox(height: 9),
-                evidence,
-              ],
-            );
-          }
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(flex: 6, child: artifacts),
-              const SizedBox(width: 9),
-              Expanded(flex: 5, child: evidence),
-            ],
-          );
-        },
+    builder: (context, constraints) {
+      final sideBySide = constraints.maxWidth >= 660;
+      final artifacts = _ArtifactsPanel(model: model);
+      final evidence = _EvidencePanel(model: model);
+      if (!sideBySide) {
+        return Column(
+          children: [artifacts, const SizedBox(height: 9), evidence],
+        );
+      }
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(flex: 6, child: artifacts),
+          const SizedBox(width: 9),
+          Expanded(flex: 5, child: evidence),
+        ],
       );
+    },
+  );
 }
 
 class _ArtifactsPanel extends StatelessWidget {
@@ -1174,8 +1165,7 @@ class _ArtifactsPanel extends StatelessWidget {
                 children: [
                   for (var i = 0; i < records.length; i++) ...[
                     Expanded(child: _ArtifactCard(record: records[i])),
-                    if (i != records.length - 1)
-                      const SizedBox(width: 7),
+                    if (i != records.length - 1) const SizedBox(width: 7),
                   ],
                 ],
               ),
@@ -1190,59 +1180,56 @@ class _ArtifactCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        height: 84,
-        padding: const EdgeInsets.all(9),
-        decoration: BoxDecoration(
-          color: IlaiosTheme.canvas,
-          borderRadius: BorderRadius.circular(7),
-          border: Border.all(color: IlaiosTheme.border),
+    height: 84,
+    padding: const EdgeInsets.all(9),
+    decoration: BoxDecoration(
+      color: IlaiosTheme.canvas,
+      borderRadius: BorderRadius.circular(7),
+      border: Border.all(color: IlaiosTheme.border),
+    ),
+    child: Row(
+      children: [
+        Container(
+          width: 35,
+          height: 48,
+          decoration: BoxDecoration(
+            color: IlaiosTheme.surfaceRaised,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: const Icon(
+            Icons.insert_drive_file_outlined,
+            size: 19,
+            color: IlaiosTheme.cyan,
+          ),
         ),
-        child: Row(
-          children: [
-            Container(
-              width: 35,
-              height: 48,
-              decoration: BoxDecoration(
-                color: IlaiosTheme.surfaceRaised,
-                borderRadius: BorderRadius.circular(6),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                record.action,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 8.5,
+                ),
               ),
-              child: const Icon(
-                Icons.insert_drive_file_outlined,
-                size: 19,
-                color: IlaiosTheme.cyan,
+              const SizedBox(height: 4),
+              Text(
+                _short(record.executionId),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: IlaiosTheme.muted, fontSize: 7.5),
               ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    record.action,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 8.5,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _short(record.executionId),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: IlaiosTheme.muted,
-                      fontSize: 7.5,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
-      );
+      ],
+    ),
+  );
 }
 
 class _EvidencePanel extends StatelessWidget {
@@ -1251,45 +1238,45 @@ class _EvidencePanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => _Panel(
-        title: _home(context, 'EVIDENCE & VERIFICATION'),
-        trailing: Text(
-          _home(context, 'View all →'),
-          style: const TextStyle(color: IlaiosTheme.muted, fontSize: 8.5),
+    title: _home(context, 'EVIDENCE & VERIFICATION'),
+    trailing: Text(
+      _home(context, 'View all →'),
+      style: const TextStyle(color: IlaiosTheme.muted, fontSize: 8.5),
+    ),
+    child: Row(
+      children: [
+        Expanded(
+          child: _VerificationCard(
+            icon: Icons.verified_user_outlined,
+            label: _home(context, 'Verified'),
+            value: model.projection.connected
+                ? '${model.snapshot.evidenceCount}'
+                : 'Unavailable',
+          ),
         ),
-        child: Row(
-          children: [
-            Expanded(
-              child: _VerificationCard(
-                icon: Icons.verified_user_outlined,
-                label: _home(context, 'Verified'),
-                value: model.projection.connected
-                    ? '${model.snapshot.evidenceCount}'
-                    : 'Unavailable',
-              ),
-            ),
-            const SizedBox(width: 7),
-            Expanded(
-              child: _VerificationCard(
-                icon: Icons.policy_outlined,
-                label: _home(context, 'Policy'),
-                value: model.snapshot.governanceState.isEmpty
-                    ? 'Unavailable'
-                    : 'Available',
-              ),
-            ),
-            const SizedBox(width: 7),
-            Expanded(
-              child: _VerificationCard(
-                icon: Icons.route_outlined,
-                label: _home(context, 'Routes'),
-                value: model.projection.connected
-                    ? '${model.snapshot.runtimeRouteCount}'
-                    : 'Unavailable',
-              ),
-            ),
-          ],
+        const SizedBox(width: 7),
+        Expanded(
+          child: _VerificationCard(
+            icon: Icons.policy_outlined,
+            label: _home(context, 'Policy'),
+            value: model.snapshot.governanceState.isEmpty
+                ? 'Unavailable'
+                : 'Available',
+          ),
         ),
-      );
+        const SizedBox(width: 7),
+        Expanded(
+          child: _VerificationCard(
+            icon: Icons.route_outlined,
+            label: _home(context, 'Routes'),
+            value: model.projection.connected
+                ? '${model.snapshot.runtimeRouteCount}'
+                : 'Unavailable',
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _VerificationCard extends StatelessWidget {
@@ -1349,7 +1336,11 @@ class _EventRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final type = _firstText(event, const ['event_type', 'type']) ?? 'event';
-    final time = _firstText(event, const ['timestamp', 'created_at', 'occurred_at']);
+    final time = _firstText(event, const [
+      'timestamp',
+      'created_at',
+      'occurred_at',
+    ]);
     final state = _firstText(event, const ['state', 'status']);
     return Padding(
       padding: const EdgeInsets.only(bottom: 7),
@@ -1377,10 +1368,7 @@ class _EventRow extends StatelessWidget {
                 time,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: IlaiosTheme.muted,
-                  fontSize: 7.5,
-                ),
+                style: const TextStyle(color: IlaiosTheme.muted, fontSize: 7.5),
               ),
             ),
           ],
@@ -1404,44 +1392,44 @@ class _Panel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        width: double.infinity,
-        padding: padding,
-        decoration: BoxDecoration(
-          color: IlaiosTheme.surface,
-          borderRadius: BorderRadius.circular(9),
-          border: Border.all(color: IlaiosTheme.border),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: .14),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
+    width: double.infinity,
+    padding: padding,
+    decoration: BoxDecoration(
+      color: IlaiosTheme.surface,
+      borderRadius: BorderRadius.circular(9),
+      border: Border.all(color: IlaiosTheme.border),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: .14),
+          blurRadius: 16,
+          offset: const Offset(0, 4),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (title != null) ...[
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      title!,
-                      style: const TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
+      ],
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (title != null) ...[
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title!,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
                   ),
-                  ?trailing,
-                ],
+                ),
               ),
-              const SizedBox(height: 9),
+              ?trailing,
             ],
-            child,
-          ],
-        ),
-      );
+          ),
+          const SizedBox(height: 9),
+        ],
+        child,
+      ],
+    ),
+  );
 }
 
 class _StatusBadge extends StatelessWidget {
@@ -1451,23 +1439,23 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: .12),
-          borderRadius: BorderRadius.circular(5),
-          border: Border.all(color: color.withValues(alpha: .18)),
-        ),
-        child: Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: color,
-            fontSize: 8.5,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: .12),
+      borderRadius: BorderRadius.circular(5),
+      border: Border.all(color: color.withValues(alpha: .18)),
+    ),
+    child: Text(
+      label,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        color: color,
+        fontSize: 8.5,
+        fontWeight: FontWeight.w700,
+      ),
+    ),
+  );
 }
 
 class _EmptyState extends StatelessWidget {
@@ -1477,25 +1465,22 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: IlaiosTheme.muted, size: 21),
-              const SizedBox(height: 7),
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: IlaiosTheme.muted,
-                  fontSize: 9,
-                ),
-              ),
-            ],
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: IlaiosTheme.muted, size: 21),
+          const SizedBox(height: 7),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: IlaiosTheme.muted, fontSize: 9),
           ),
-        ),
-      );
+        ],
+      ),
+    ),
+  );
 }
 
 List<Map<String, Object?>> _mapList(Object? value) =>
@@ -1576,16 +1561,15 @@ String _normalizePhase(String value) =>
 String _short(String value) =>
     value.length <= 18 ? value : '${value.substring(0, 18)}…';
 
-String _home(BuildContext context, String english) => IlaiosHomeCatalog.text(
-      context.ilaiosLocale.locale.code,
-      english,
-    );
+String _home(BuildContext context, String english) =>
+    IlaiosHomeCatalog.text(context.ilaiosLocale.locale.code, english);
 
 String _localizedKnownValue(BuildContext context, String value) =>
     _home(context, value);
 
 String _localizedWorkerTitle(BuildContext context, String value) {
-  if (context.ilaiosLocale.locale.code != 'tr' || !value.startsWith('Worker ')) {
+  if (context.ilaiosLocale.locale.code != 'tr' ||
+      !value.startsWith('Worker ')) {
     return value;
   }
   return value.replaceFirst('Worker ', '${_home(context, 'Worker')} ');

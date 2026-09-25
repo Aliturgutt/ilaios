@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:multiview_desktop/multiview_desktop.dart';
 
 import 'package:flutter/material.dart';
 
@@ -11,6 +12,7 @@ import '../../identity/desktop_identity_action_scope.dart';
 import '../../identity/identity_client.dart';
 import '../../presentation/desktop_runtime_status.dart';
 import '../assistant/assistant_overlay.dart';
+import '../assistant/assistant_html_preview.dart';
 import '../assistant/assistant_symbol.dart';
 import '../create/governed_lifecycle_projection.dart';
 import '../create/reference_asset_picker.dart';
@@ -31,6 +33,7 @@ import 'reference_workflows_view.dart';
 /// identity, governance and provider callbacks remain the existing authorities.
 /// Superseded 10-screen visual constants are intentionally not consulted here.
 class ReferenceDesktopShellV11 extends StatefulWidget {
+  static bool nativeAssistantWindowEnabled = false;
   const ReferenceDesktopShellV11({
     required this.projection,
     required this.operationalSnapshot,
@@ -73,17 +76,19 @@ class ReferenceDesktopShellV11 extends StatefulWidget {
   final Future<PromptRefinementPreview> Function(
     String prompt,
     PromptRefinementMode mode,
-  )? onPromptRefine;
+  )?
+  onPromptRefine;
   final Future<String> Function(EvidenceRecord record)? onSaveArtifact;
   final Future<DesktopLiState> Function()? onFetchLiState;
   final Future<List<DesktopLiMemory>> Function()? onFetchLiMemories;
   final Future<DesktopLiMemory> Function(String kind, String content)?
-      onRememberLiMemory;
+  onRememberLiMemory;
   final VoidCallback? onRefreshRequested;
-  final Future<Map<String, dynamic>> Function(Map<String, Object?>)? onAssistantRequest;
+  final Future<Map<String, dynamic>> Function(Map<String, Object?>)?
+  onAssistantRequest;
   final Future<void> Function(String agentId)? onProvisionAgent;
   final Future<void> Function(String requestId, GovernanceDecision decision)?
-      onGovernanceDecision;
+  onGovernanceDecision;
 
   @override
   State<ReferenceDesktopShellV11> createState() =>
@@ -103,6 +108,7 @@ class _ReferenceDesktopShellV11State extends State<ReferenceDesktopShellV11> {
 
   DesktopSection _section = DesktopSection.home;
   bool _assistantOpen = false;
+  bool _liPreviewOpen = false;
   bool _assistantMounted = false;
 
   @override
@@ -117,12 +123,120 @@ class _ReferenceDesktopShellV11State extends State<ReferenceDesktopShellV11> {
     }
   }
 
-  void _toggleAssistant() {
-    if (widget.userSession == null) return;
-    setState(() {
-      _assistantOpen = !_assistantOpen;
-      _assistantMounted = true;
-    });
+  Future<void> _toggleLiPreview() async {
+    // Isolated design-only Li preview. Never shares Assistant sessions or memory.
+    if (widget.userSession?.liFounder != true ||
+        !Platform.isWindows ||
+        !ReferenceDesktopShellV11.nativeAssistantWindowEnabled ||
+        _liPreviewOpen) {
+      return;
+    }
+    setState(() => _liPreviewOpen = true);
+    try {
+      await openWindow(
+        (context, id) => AssistantHtmlPreview(
+          assetPath: 'assets/li_design_reference.html',
+          dark: Theme.of(this.context).brightness == Brightness.dark,
+          english:
+              IlaiosLocaleScope.of(this.context).locale != IlaiosLocale.turkish,
+        ),
+        parentContext: context,
+        options: const WindowOptions(
+          title: 'ILAIOS Li - Tasarım önizlemesi',
+          size: Size(1100, 700),
+          minimumSize: Size(760, 540),
+        ),
+      );
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Li preview could not open: $error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _liPreviewOpen = false);
+    }
+  }
+
+  Future<void> _toggleAssistant() async {
+    final session = widget.userSession;
+    // Unauthenticated isolated Desktop: display only the bundled design.
+    // Authenticated sessions retain the existing governed Assistant implementation.
+    if (session == null &&
+        Platform.isWindows &&
+        ReferenceDesktopShellV11.nativeAssistantWindowEnabled) {
+      if (_assistantOpen) return;
+      setState(() => _assistantOpen = true);
+      try {
+        await openWindow(
+          (context, id) => AssistantHtmlPreview(
+            dark: Theme.of(this.context).brightness == Brightness.dark,
+            english:
+                IlaiosLocaleScope.of(this.context).locale !=
+                IlaiosLocale.turkish,
+          ),
+          parentContext: context,
+          options: const WindowOptions(
+            title: 'ILAIOS Assistant — Tasarım önizlemesi',
+            size: Size(1100, 700),
+            minimumSize: Size(760, 540),
+          ),
+        );
+      } catch (error) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Assistant preview could not open: $error')),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _assistantOpen = false);
+      }
+      return;
+    }
+    if (session == null) return;
+    if (!Platform.isWindows ||
+        !ReferenceDesktopShellV11.nativeAssistantWindowEnabled) {
+      setState(() {
+        _assistantOpen = !_assistantOpen;
+        _assistantMounted = true;
+      });
+      return;
+    }
+    if (_assistantOpen) return;
+    setState(() => _assistantOpen = true);
+    try {
+      await openWindow(
+        (context, id) => IlaiosLocaleScope(
+          locale: IlaiosLocaleScope.of(this.context).locale,
+          onChanged: (_) {},
+          child: AssistantOverlay(
+            session: session,
+            onClose: () => MultiViewDesktop.fromId(id).closeWindow(),
+            onRequest: widget.onAssistantRequest,
+            onFetchLiState: widget.onFetchLiState,
+            onFetchLiMemories: widget.onFetchLiMemories,
+            onRememberLiMemory: widget.onRememberLiMemory,
+            onSubmitWork: widget.onPromptSubmit,
+            onPromptRefine: widget.onPromptRefine,
+            fullWindow: true,
+          ),
+        ),
+        parentContext: context,
+        options: const WindowOptions(
+          title: 'ILAIOS Assistant / Li',
+          size: Size(1100, 760),
+          minimumSize: Size(700, 520),
+        ),
+      );
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Assistant window could not open: $error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _assistantOpen = false);
+    }
   }
 
   bool _isCanonical(DesktopSection section) =>
@@ -130,58 +244,113 @@ class _ReferenceDesktopShellV11State extends State<ReferenceDesktopShellV11> {
 
   void _select(DesktopSection section) {
     if (!_isCanonical(section) || _section == section) return;
-    setState(() { _section = section; _assistantOpen = false; });
+    setState(() {
+      _section = section;
+      _assistantOpen = false;
+    });
   }
 
   Widget _buildSection(String presentedStatus) => switch (_section) {
-        DesktopSection.home => ReferenceHomeDashboardV3(
-            projection: widget.projection,
-            snapshot: widget.operationalSnapshot,
-            status: presentedStatus,
-            userSession: widget.userSession,
-            onPromptSubmit: widget.onPromptSubmit,
-            onPromptRefine: widget.onPromptRefine,
-            onNavigate: _select,
-            onRefreshRequested: widget.onRefreshRequested,
+    DesktopSection.home => ReferenceHomeDashboardV3(
+      projection: widget.projection,
+      snapshot: widget.operationalSnapshot,
+      status: presentedStatus,
+      userSession: widget.userSession,
+      onPromptSubmit: widget.onPromptSubmit,
+      onPromptRefine: widget.onPromptRefine,
+      onNavigate: _select,
+      onRefreshRequested: widget.onRefreshRequested,
+    ),
+    DesktopSection.workflows => ReferenceWorkflowsView(
+      projection: widget.projection,
+      snapshot: widget.operationalSnapshot,
+      status: presentedStatus,
+      onRefreshRequested: widget.onRefreshRequested,
+      onNavigate: _select,
+    ),
+    DesktopSection.agents => ReferenceAgentsSummaryView(
+      projection: widget.projection,
+      snapshot: widget.operationalSnapshot,
+      status: presentedStatus,
+      onNavigate: _select,
+      onRefreshRequested: widget.onRefreshRequested,
+    ),
+    DesktopSection.artifacts => DeliveriesView(
+      dataAvailable: widget.projection.connected && !_operationalAccessDenied,
+      accessDenied: _operationalAccessDenied,
+      snapshot: widget.projection.connected
+          ? widget.operationalSnapshot
+          : const OperationalSnapshot.unavailable(),
+      status: presentedStatus,
+      onSaveArtifact: widget.onSaveArtifact,
+    ),
+    DesktopSection.approvals => GovernanceView(
+      dataAvailable: widget.projection.connected && !_operationalAccessDenied,
+      accessDenied: _operationalAccessDenied,
+      snapshot: widget.projection.connected
+          ? widget.operationalSnapshot
+          : const OperationalSnapshot.unavailable(),
+      status: presentedStatus,
+      approverId: widget.approverId,
+      onDecision: widget.onGovernanceDecision,
+    ),
+    DesktopSection.evidence => EvidenceView(
+      snapshot: widget.operationalSnapshot,
+      status: presentedStatus,
+      onSaveArtifact: widget.onSaveArtifact,
+    ),
+    DesktopSection.settings => SettingsView(
+      themeMode: widget.themeMode,
+      onThemeModeChanged: widget.onThemeModeChanged,
+      projection: widget.projection,
+      identityStatus: widget.identityStatus,
+      userSession: widget.userSession,
+      providers: widget.identityProviders,
+    ),
+    _ => const SizedBox.shrink(),
+  };
+
+  // Readability adjustments apply only to non-Home Desktop pages.
+  // Home retains its separately approved typography and layout.
+  Widget _readableSecondaryPage(BuildContext context, Widget child) {
+    if (_section == DesktopSection.home) return child;
+    final base = Theme.of(context);
+    final dark = base.brightness == Brightness.dark;
+    final ink = dark ? const Color(0xFFF2F2F2) : const Color(0xFF202124);
+    final secondary = dark ? const Color(0xFFE0E0E0) : const Color(0xFF383C42);
+    final helper = dark ? const Color(0xFFCCCCCC) : const Color(0xFF535860);
+    final text = base.textTheme;
+    return Theme(
+      data: base.copyWith(
+        textTheme: text.copyWith(
+          titleLarge: text.titleLarge?.copyWith(color: ink),
+          titleMedium: text.titleMedium?.copyWith(color: ink),
+          titleSmall: text.titleSmall?.copyWith(color: ink),
+          bodyLarge: text.bodyLarge?.copyWith(color: ink),
+          bodyMedium: text.bodyMedium?.copyWith(color: secondary),
+          bodySmall: text.bodySmall?.copyWith(color: helper, fontSize: 13.5),
+          labelLarge: text.labelLarge?.copyWith(color: ink),
+          labelMedium: text.labelMedium?.copyWith(
+            color: secondary,
+            fontSize: 13.5,
           ),
-        DesktopSection.workflows => ReferenceWorkflowsView(
-            projection: widget.projection,
-            snapshot: widget.operationalSnapshot,
-            status: presentedStatus,
-            onRefreshRequested: widget.onRefreshRequested,
-            onNavigate: _select,
-          ),
-        DesktopSection.agents => ReferenceAgentsSummaryView(
-            projection: widget.projection,
-            snapshot: widget.operationalSnapshot,
-            status: presentedStatus,
-            onNavigate: _select,
-            onRefreshRequested: widget.onRefreshRequested,
-          ),
-        DesktopSection.artifacts => DeliveriesView(
-            snapshot: widget.operationalSnapshot,
-            status: presentedStatus,
-            onSaveArtifact: widget.onSaveArtifact,
-          ),
-        DesktopSection.approvals => GovernanceView(
-            snapshot: widget.operationalSnapshot,
-            status: presentedStatus,
-            approverId: widget.approverId,
-            onDecision: widget.onGovernanceDecision,
-          ),
-        DesktopSection.evidence => EvidenceView(
-            snapshot: widget.operationalSnapshot,
-            status: presentedStatus,
-            onSaveArtifact: widget.onSaveArtifact,
-          ),
-        DesktopSection.settings => SettingsView(
-            projection: widget.projection,
-            identityStatus: widget.identityStatus,
-            userSession: widget.userSession,
-            providers: widget.identityProviders,
-          ),
-        _ => const SizedBox.shrink(),
-      };
+          labelSmall: text.labelSmall?.copyWith(color: helper, fontSize: 13),
+        ),
+      ),
+      child: child,
+    );
+  }
+
+  bool get _operationalAccessDenied {
+    final status = widget.operationalStatus.trim().toLowerCase();
+    return RegExp(r'(^|[^0-9])40[13]([^0-9]|$)').hasMatch(status) ||
+        status.contains('permission denied') ||
+        status.contains('access denied') ||
+        status.contains('forbidden') ||
+        status.contains('unauthorized') ||
+        status.contains('authentication failed') ||
+        status.contains('yetki reddedildi');
+  }
 
   Widget _scopedShell(BuildContext context) {
     final locale = IlaiosLocaleScope.of(context).locale;
@@ -205,52 +374,70 @@ class _ReferenceDesktopShellV11State extends State<ReferenceDesktopShellV11> {
               onPromptSubmit: widget.onPromptSubmit,
               child: Scaffold(
                 backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-                body: Stack(fit: StackFit.expand, children: [
-                  Row(
+                body: Stack(
+                  fit: StackFit.expand,
                   children: [
-                    _CanonicalSidebar(
-                      selected: _section,
-                      projection: widget.projection,
-                      snapshot: widget.operationalSnapshot,
-                      onSelected: _select,
-                      onAssistant: widget.userSession == null ? null : _toggleAssistant,
-                    ),
-                    Container(
-                      width: 1,
-                      color: Theme.of(context).colorScheme.outlineVariant,
-                    ),
-                    Expanded(
-                      child: Column(
-                        children: [
-                          _CanonicalTopBar(
-                            identityProviders: widget.identityProviders,
-                            userSession: widget.userSession,
-                            themeMode: widget.themeMode,
-                            onThemeModeChanged: widget.onThemeModeChanged,
-                            onSignIn: widget.onSignIn,
-                            onLogout: widget.onLogout,
+                    Row(
+                      children: [
+                        _CanonicalSidebar(
+                          selected: _section,
+                          projection: widget.projection,
+                          snapshot: widget.operationalSnapshot,
+                          onSelected: _select,
+                          onAssistant: _toggleAssistant,
+                          onLi: widget.userSession?.liFounder == true
+                              ? _toggleLiPreview
+                              : null,
+                          showLi: widget.userSession?.liFounder == true,
+                        ),
+                        Container(
+                          width: 1,
+                          color: Theme.of(context).colorScheme.outlineVariant,
+                        ),
+                        Expanded(
+                          child: Column(
+                            children: [
+                              _CanonicalTopBar(
+                                identityProviders: widget.identityProviders,
+                                userSession: widget.userSession,
+                                themeMode: widget.themeMode,
+                                onThemeModeChanged: widget.onThemeModeChanged,
+                                onSignIn: widget.onSignIn,
+                                onLogout: widget.onLogout,
+                              ),
+                              Expanded(
+                                child: _readableSecondaryPage(
+                                  context,
+                                  _buildSection(presentedStatus.label),
+                                ),
+                              ),
+                            ],
                           ),
-                          Expanded(
-                            child: _buildSection(presentedStatus.label),
+                        ),
+                      ],
+                    ),
+                    if (!ReferenceDesktopShellV11
+                            .nativeAssistantWindowEnabled &&
+                        _assistantMounted &&
+                        widget.userSession != null)
+                      Offstage(
+                        offstage: !_assistantOpen,
+                        child: AssistantOverlay(
+                          key: ValueKey(
+                            'assistant-${widget.userSession!.sessionId}',
                           ),
-                        ],
+                          session: widget.userSession!,
+                          onClose: () => setState(() => _assistantOpen = false),
+                          onRequest: widget.onAssistantRequest,
+                          onFetchLiState: widget.onFetchLiState,
+                          onFetchLiMemories: widget.onFetchLiMemories,
+                          onRememberLiMemory: widget.onRememberLiMemory,
+                          onSubmitWork: widget.onPromptSubmit,
+                          onPromptRefine: widget.onPromptRefine,
+                        ),
                       ),
-                    ),
                   ],
-                  ),
-                  if (_assistantMounted && widget.userSession != null)
-                    Offstage(offstage: !_assistantOpen,
-                      child: AssistantOverlay(
-                        key: ValueKey('assistant-${widget.userSession!.sessionId}'),
-                        session: widget.userSession!,
-                        onClose: () => setState(() => _assistantOpen = false),
-                        onRequest: widget.onAssistantRequest,
-                        onFetchLiState: widget.onFetchLiState,
-                        onFetchLiMemories: widget.onFetchLiMemories,
-                        onRememberLiMemory: widget.onRememberLiMemory,
-                        onSubmitWork: widget.onPromptSubmit,
-                      )),
-                ]),
+                ),
               ),
             ),
           ),
@@ -281,10 +468,14 @@ class _CanonicalSidebar extends StatelessWidget {
     required this.snapshot,
     required this.onSelected,
     required this.onAssistant,
+    required this.onLi,
+    required this.showLi,
   });
 
-  static const _darkLogo = '../../brand/assets/02-ilaios-primary-horizontal-dark.jpg';
-  static const _lightLogo = '../../brand/assets/13-ilaios-primary-horizontal-light.jpg';
+  static const _darkLogo =
+      'brand/assets/02-ilaios-primary-horizontal-dark-transparent.png';
+  static const _lightLogo =
+      'brand/assets/13-ilaios-primary-horizontal-light-transparent.png';
   static const _sections = <DesktopSection>[
     DesktopSection.home,
     DesktopSection.workflows,
@@ -300,13 +491,15 @@ class _CanonicalSidebar extends StatelessWidget {
   final OperationalSnapshot snapshot;
   final ValueChanged<DesktopSection> onSelected;
   final VoidCallback? onAssistant;
+  final VoidCallback? onLi;
+  final bool showLi;
 
   Widget _logoWidget(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
     final logo = dark ? _darkLogo : _lightLogo;
     final fallbackAssetName = dark
-        ? '02-ilaios-primary-horizontal-dark.jpg'
-        : '13-ilaios-primary-horizontal-light.jpg';
+        ? '02-ilaios-primary-horizontal-dark-transparent.png'
+        : '13-ilaios-primary-horizontal-light-transparent.png';
     final executableDir = File(Platform.resolvedExecutable).parent.path;
     final fallbackFile = File(
       '$executableDir${Platform.pathSeparator}brand${Platform.pathSeparator}assets${Platform.pathSeparator}$fallbackAssetName',
@@ -342,7 +535,10 @@ class _CanonicalSidebar extends StatelessWidget {
     );
   }
 
-  Widget _navigationContent(BuildContext context, {required bool compactHeight}) {
+  Widget _navigationContent(
+    BuildContext context, {
+    required bool compactHeight,
+  }) {
     final children = <Widget>[
       _logoWidget(context),
       const SizedBox(height: 20),
@@ -354,29 +550,76 @@ class _CanonicalSidebar extends StatelessWidget {
         ),
         const SizedBox(height: 8),
       ],
-      Material(color: Colors.transparent,
+      Material(
+        color: Colors.transparent,
         borderRadius: BorderRadius.circular(8),
-        child: InkWell(key: const Key('nav-assistant'), onTap: onAssistant,
-          child: SizedBox(height: 54, child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: Row(children: [
-              const AssistantSymbol(size: 22), const SizedBox(width: 18),
-              Expanded(child: Text(
-                IlaiosLocaleScope.of(context).locale == IlaiosLocale.turkish ? 'Asistan' : 'Assistant',
-                maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 16, height: 1.15, fontWeight: FontWeight.w600),
-              )),
-            ]),
-          )),
-        )),
+        child: InkWell(
+          key: const Key('nav-assistant'),
+          onTap: onAssistant,
+          child: SizedBox(
+            height: 54,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              child: Row(
+                children: [
+                  const AssistantSymbol(size: 22),
+                  const SizedBox(width: 18),
+                  Expanded(
+                    child: Text(
+                      IlaiosLocaleScope.of(context).locale ==
+                              IlaiosLocale.turkish
+                          ? 'Asistan'
+                          : 'Assistant',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        height: 1.15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+      if (showLi)
+        Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          child: InkWell(
+            key: const Key('nav-li'),
+            onTap: onLi,
+            child: const SizedBox(
+              height: 48,
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 14),
+                child: Row(
+                  children: [
+                    Icon(Icons.auto_awesome_outlined, size: 22),
+                    SizedBox(width: 18),
+                    Expanded(
+                      child: Text(
+                        'Li',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
     ];
 
     if (compactHeight) {
       children.add(
-        _CanonicalSystemStatus(
-          projection: projection,
-          snapshot: snapshot,
-        ),
+        _CanonicalSystemStatus(projection: projection, snapshot: snapshot),
       );
       return SingleChildScrollView(
         primary: false,
@@ -392,10 +635,7 @@ class _CanonicalSidebar extends StatelessWidget {
       children: [
         ...children,
         const Spacer(),
-        _CanonicalSystemStatus(
-          projection: projection,
-          snapshot: snapshot,
-        ),
+        _CanonicalSystemStatus(projection: projection, snapshot: snapshot),
       ],
     );
   }
@@ -406,7 +646,9 @@ class _CanonicalSidebar extends StatelessWidget {
     final background = light
         ? const Color(0xFFF8FAFC)
         : Theme.of(context).colorScheme.surface;
-    final semanticsLabel = IlaiosLocaleScope.of(context).text('shell.primaryNavigation');
+    final semanticsLabel = IlaiosLocaleScope.of(
+      context,
+    ).text('shell.primaryNavigation');
 
     return Container(
       key: const Key('canonical-7-page-sidebar'),
@@ -497,7 +739,8 @@ class _CanonicalSystemStatus extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tr = IlaiosLocaleScope.of(context).locale == IlaiosLocale.turkish;
-    final hasEvidence = snapshot.liveEvents.isNotEmpty ||
+    final hasEvidence =
+        snapshot.liveEvents.isNotEmpty ||
         snapshot.evidenceRecords.isNotEmpty ||
         snapshot.governanceState.isNotEmpty;
     final title = projection.connected
@@ -505,8 +748,8 @@ class _CanonicalSystemStatus extends StatelessWidget {
         : (tr ? 'Sistem Çevrimdışı' : 'System Offline');
     final subtitle = projection.connected
         ? (hasEvidence
-            ? (tr ? 'Canlı durum verisi mevcut' : 'Live status data available')
-            : (tr ? 'Bağlantı doğrulandı' : 'Connection verified'))
+              ? (tr ? 'Canlı veri mevcut' : 'Live status data available')
+              : (tr ? 'Bağlantı doğrulandı' : 'Connection verified'))
         : (tr ? 'Yetkili bağlantı yok' : 'No authorized connection');
 
     return Container(
@@ -594,7 +837,9 @@ class _CanonicalTopBar extends StatelessWidget {
       decoration: BoxDecoration(
         color: background,
         border: Border(
-          bottom: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+          bottom: BorderSide(
+            color: Theme.of(context).colorScheme.outlineVariant,
+          ),
         ),
       ),
       child: LayoutBuilder(
@@ -606,7 +851,10 @@ class _CanonicalTopBar extends StatelessWidget {
               if (!compact) ...[
                 Text(
                   tr ? 'Bildirimler' : 'Notifications',
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
                 const SizedBox(width: 10),
               ],
@@ -617,36 +865,54 @@ class _CanonicalTopBar extends StatelessWidget {
                 icon: const Icon(Icons.notifications_none_rounded, size: 22),
               ),
               SizedBox(width: compact ? 4 : 12),
-              if (!compact)
-                Text(
-                  tr ? 'TR' : 'EN',
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                ),
-              PopupMenuButton<IlaiosLocale>(
-                tooltip: tr ? 'Dil' : 'Language',
-                icon: const Icon(Icons.language_rounded, size: 21),
-                onSelected: (locale) =>
-                    IlaiosLocaleScope.of(context).onChanged(locale),
-                itemBuilder: (context) => [
-                  for (final locale in IlaiosLocale.values)
-                    PopupMenuItem(
-                      value: locale,
-                      child: Text(locale.displayName),
-                    ),
-                ],
-              ),
-              IconButton(
+              OutlinedButton.icon(
                 key: const Key('theme-toggle'),
-                tooltip: tr ? 'Tema' : 'Theme',
-                visualDensity: VisualDensity.compact,
                 onPressed: () => onThemeModeChanged?.call(
-                  themeMode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark,
-                ),
-                icon: Icon(
                   themeMode == ThemeMode.dark
-                      ? Icons.light_mode_outlined
-                      : Icons.dark_mode_outlined,
-                  size: 22,
+                      ? ThemeMode.light
+                      : ThemeMode.dark,
+                ),
+                icon: const Icon(Icons.brightness_6_rounded, size: 17),
+                label: Text(tr ? 'Tema' : 'Theme'),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(88, 38),
+                  shape: const StadiumBorder(),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                height: 38,
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                  ),
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (final language in IlaiosLocale.values)
+                      TextButton(
+                        key: Key('locale-${language.name}'),
+                        onPressed: () =>
+                            IlaiosLocaleScope.of(context).onChanged(language),
+                        style: TextButton.styleFrom(
+                          minimumSize: const Size(36, 30),
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          backgroundColor:
+                              IlaiosLocaleScope.of(context).locale == language
+                              ? Theme.of(
+                                  context,
+                                ).colorScheme.surfaceContainerHighest
+                              : Colors.transparent,
+                          shape: const StadiumBorder(),
+                        ),
+                        child: Text(
+                          language == IlaiosLocale.turkish ? 'TR' : 'EN',
+                        ),
+                      ),
+                  ],
                 ),
               ),
               SizedBox(width: compact ? 4 : 12),

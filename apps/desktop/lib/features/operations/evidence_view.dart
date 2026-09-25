@@ -1,3 +1,4 @@
+import '../../app/desktop_page_heading.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -155,10 +156,7 @@ class _ReferenceEvidenceViewState extends State<ReferenceEvidenceView> {
           _Header(total: records.length, status: widget.status),
           if (records.isNotEmpty) ...[
             const SizedBox(height: 8),
-            _MetricStrip(
-              total: records.length,
-              chainIssues: chainIssues,
-            ),
+            _MetricStrip(total: records.length, chainIssues: chainIssues),
           ],
           const SizedBox(height: 8),
           _EvidenceTabs(
@@ -191,7 +189,6 @@ class _ReferenceEvidenceViewState extends State<ReferenceEvidenceView> {
                               onSelected: _select,
                             ),
                           ),
-
                         ],
                       ),
                     ),
@@ -216,7 +213,11 @@ class _ReferenceEvidenceViewState extends State<ReferenceEvidenceView> {
                             SizedBox(
                               height: 164,
                               child: _InfoCard(
-                                title: _copy(context, 'Audit Trail', 'Denetim İzi'),
+                                title: _copy(
+                                  context,
+                                  'Audit Trail',
+                                  'Denetim İzi',
+                                ),
                                 child: _AuditTrail(records: records),
                               ),
                             ),
@@ -247,40 +248,36 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-        height: 50,
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    _copy(context, 'Evidence', 'Kanıtlar'),
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w700,
-                        ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    _copy(
-                      context,
-                      'Inspect authoritative verification records, hashes and audit lineage.',
-                      'Yetkili doğrulama kayıtlarını, hash’leri ve denetim zincirini inceleyin.',
-                    ),
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodySmall
-                        ?.copyWith(fontSize: 10.2),
-                  ),
-                ],
+    height: 72,
+    child: Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                _copy(context, 'Evidence', 'Kanıtlar'),
+                style: DesktopPageHeading.style(context),
               ),
-            ),
-            _StatusBadge(status: status, total: total),
-          ],
+              const SizedBox(height: 2),
+              Text(
+                _copy(
+                  context,
+                  'Inspect authoritative verification records, hashes and audit lineage.',
+                  'Yetkili doğrulama kayıtlarını, hash’leri ve denetim zincirini inceleyin.',
+                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(fontSize: 13),
+              ),
+            ],
+          ),
         ),
-      );
+        _StatusBadge(status: status, total: total),
+      ],
+    ),
+  );
 }
 
 class _StatusBadge extends StatelessWidget {
@@ -311,9 +308,20 @@ class _StatusBadge extends StatelessWidget {
           const SizedBox(width: 6),
           Text(
             connected
-                ? _copy(context, '$total verified records', '$total doğrulanmış kayıt')
-                : _copy(context, 'Evidence feed unavailable', 'Kanıt akışı kullanılamıyor'),
-            style: TextStyle(fontSize: 8.8, fontWeight: FontWeight.w700, color: color),
+                ? _copy(
+                    context,
+                    '$total verified records',
+                    '$total doğrulanmış kayıt',
+                  )
+                : _copy(
+                    context,
+                    'Evidence feed unavailable',
+                    'Kanıt akışı kullanılamıyor',
+                  ),
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
           ),
         ],
       ),
@@ -329,52 +337,83 @@ class _MetricStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final metrics = <({IconData icon, Color color, String label, String value, String note})>[
-      (
-        icon: Icons.folder_outlined,
-        color: IlaiosTheme.coreBlue,
-        label: _copy(context, 'Total Evidence', 'Toplam Kanıt'),
-        value: '$total',
-        note: _copy(context, 'Authoritative records', 'Yetkili kayıtlar'),
-      ),
-      (
-        icon: Icons.check_circle_outline_rounded,
-        color: IlaiosTheme.success,
-        label: _copy(context, 'Verified', 'Doğrulandı'),
-        value: '$total',
-        note: _copy(context, 'Verified evidence feed', 'Doğrulanmış kanıt akışı'),
-      ),
-      (
-        icon: Icons.schedule_outlined,
-        color: IlaiosTheme.warning,
-        label: _copy(context, 'Reviewed', 'İncelemede'),
-        value: '—',
-        note: _copy(context, 'Not in evidence contract', 'Kanıt sözleşmesinde yok'),
-      ),
-      (
-        icon: Icons.cancel_outlined,
-        color: IlaiosTheme.danger,
-        label: _copy(context, 'Failed', 'Başarısız'),
-        value: '—',
-        note: _copy(context, 'Not in evidence contract', 'Kanıt sözleşmesinde yok'),
-      ),
-      (
-        icon: Icons.shield_outlined,
-        color: const Color(0xFF9C5CFF),
-        label: _copy(context, 'Chain Integrity', 'Zincir Bütünlüğü'),
-        value: total == 0 ? '—' : (chainIssues == 0 ? '100%' : '⚠ $chainIssues'),
-        note: total == 0
-            ? _copy(context, 'No records', 'Kayıt yok')
-            : _copy(context, 'Local linkage check', 'Yerel bağlantı kontrolü'),
-      ),
-      (
-        icon: Icons.speed_outlined,
-        color: IlaiosTheme.enterpriseCyan,
-        label: _copy(context, 'Average Processing Time', 'Ortalama İşlem Süresi'),
-        value: '—',
-        note: _copy(context, 'Timing unavailable', 'Süre verisi yok'),
-      ),
-    ];
+    final metrics =
+        <
+          ({
+            IconData icon,
+            Color color,
+            String label,
+            String value,
+            String note,
+          })
+        >[
+          (
+            icon: Icons.folder_outlined,
+            color: Theme.of(context).colorScheme.onSurface,
+            label: _copy(context, 'Total Evidence', 'Toplam Kanıt'),
+            value: '$total',
+            note: _copy(context, 'Authoritative records', 'Yetkili kayıtlar'),
+          ),
+          (
+            icon: Icons.check_circle_outline_rounded,
+            color: IlaiosTheme.success,
+            label: _copy(context, 'Verified', 'Doğrulandı'),
+            value: '$total',
+            note: _copy(
+              context,
+              'Verified evidence feed',
+              'Doğrulanmış kanıt akışı',
+            ),
+          ),
+          (
+            icon: Icons.schedule_outlined,
+            color: IlaiosTheme.warning,
+            label: _copy(context, 'Reviewed', 'İncelemede'),
+            value: '—',
+            note: _copy(
+              context,
+              'Not in evidence contract',
+              'Kanıt sözleşmesinde yok',
+            ),
+          ),
+          (
+            icon: Icons.cancel_outlined,
+            color: IlaiosTheme.danger,
+            label: _copy(context, 'Failed', 'Başarısız'),
+            value: '—',
+            note: _copy(
+              context,
+              'Not in evidence contract',
+              'Kanıt sözleşmesinde yok',
+            ),
+          ),
+          (
+            icon: Icons.shield_outlined,
+            color: const Color(0xFF7445CC),
+            label: _copy(context, 'Chain Integrity', 'Zincir Bütünlüğü'),
+            value: total == 0
+                ? '—'
+                : (chainIssues == 0 ? '100%' : '⚠ $chainIssues'),
+            note: total == 0
+                ? _copy(context, 'No records', 'Kayıt yok')
+                : _copy(
+                    context,
+                    'Local linkage check',
+                    'Yerel bağlantı kontrolü',
+                  ),
+          ),
+          (
+            icon: Icons.speed_outlined,
+            color: const Color(0xFF087F9A),
+            label: _copy(
+              context,
+              'Average Processing Time',
+              'Ortalama İşlem Süresi',
+            ),
+            value: '—',
+            note: _copy(context, 'Timing unavailable', 'Süre verisi yok'),
+          ),
+        ];
 
     return SizedBox(
       key: const Key('evidence-kpis'),
@@ -394,65 +433,65 @@ class _MetricStrip extends StatelessWidget {
 class _MetricCard extends StatelessWidget {
   const _MetricCard({required this.metric});
 
-  final ({IconData icon, Color color, String label, String value, String note}) metric;
+  final ({IconData icon, Color color, String label, String value, String note})
+  metric;
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-        decoration: _cardDecoration(context, radius: 7),
-        child: Row(
-          children: [
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: metric.color.withValues(alpha: .11),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(metric.icon, color: metric.color, size: 21),
-            ),
-            const SizedBox(width: 9),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    metric.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context)
-                        .textTheme
-                        .labelSmall
-                        ?.copyWith(fontSize: 8.2),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    metric.value,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                      height: 1,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    metric.note,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 7.3,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+    decoration: _cardDecoration(context, radius: 7),
+    child: Row(
+      children: [
+        Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: metric.color.withValues(alpha: .16),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(metric.icon, color: metric.color, size: 23, weight: 600),
         ),
-      );
+        const SizedBox(width: 9),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                metric.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(
+                  context,
+                ).textTheme.labelSmall?.copyWith(fontSize: 12),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                metric.value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  height: 1,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                metric.note,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _EvidenceTabs extends StatelessWidget {
@@ -489,7 +528,9 @@ class _EvidenceTabs extends StatelessWidget {
       height: 38,
       decoration: BoxDecoration(
         border: Border(
-          bottom: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+          bottom: BorderSide(
+            color: Theme.of(context).colorScheme.outlineVariant,
+          ),
         ),
       ),
       child: Row(
@@ -508,7 +549,7 @@ class _EvidenceTabs extends StatelessWidget {
                         border: Border(
                           bottom: BorderSide(
                             color: activeTab == tab.id
-                                ? IlaiosTheme.coreBlue
+                                ? Theme.of(context).colorScheme.onSurface
                                 : Colors.transparent,
                             width: 2,
                           ),
@@ -517,12 +558,12 @@ class _EvidenceTabs extends StatelessWidget {
                       child: Text(
                         tab.label,
                         style: TextStyle(
-                          fontSize: 8.6,
+                          fontSize: 14,
                           fontWeight: activeTab == tab.id
                               ? FontWeight.w700
                               : FontWeight.w500,
                           color: activeTab == tab.id
-                              ? IlaiosTheme.coreBlue
+                              ? Theme.of(context).colorScheme.onSurface
                               : Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
@@ -540,7 +581,9 @@ class _EvidenceTabs extends StatelessWidget {
             const SizedBox(width: 7),
           ],
           _ToolbarButton(
-            icon: exporting ? Icons.hourglass_top_rounded : Icons.download_outlined,
+            icon: exporting
+                ? Icons.hourglass_top_rounded
+                : Icons.download_outlined,
             label: _copy(context, 'Export', 'Dışa Aktar'),
             onPressed: exporting ? null : onExport,
           ),
@@ -563,17 +606,18 @@ class _ToolbarButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-        height: 30,
-        child: OutlinedButton.icon(
-          onPressed: onPressed,
-          icon: Icon(icon, size: 14),
-          label: Text(label),
-          style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            textStyle: const TextStyle(fontSize: 8.2, fontWeight: FontWeight.w600),
-          ),
-        ),
-      );
+    height: 30,
+    child: OutlinedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 14),
+      label: Text(label),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+      ),
+    ),
+  );
 }
 
 class _EvidenceTable extends StatelessWidget {
@@ -591,72 +635,80 @@ class _EvidenceTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        key: const Key('evidence-table'),
-        decoration: _cardDecoration(context, radius: 7),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const _EvidenceTableHeader(),
-            Divider(height: 1, color: Theme.of(context).colorScheme.outlineVariant),
-            Expanded(
-              child: records.isEmpty
-                  ? _EmptyTable()
-                  : ListView.builder(
-                      padding: EdgeInsets.zero,
-                      itemCount: math.min(records.length, 10),
-                      itemExtent: 42,
-                      itemBuilder: (context, index) {
-                        final record = records[index];
-                        return _EvidenceTableRow(
-                          record: record,
-                          selected: record.sequence == selectedSequence,
-                          onTap: () => onSelected(record),
-                        );
-                      },
-                    ),
-            ),
-            Divider(height: 1, color: Theme.of(context).colorScheme.outlineVariant),
-            SizedBox(
-              height: 40,
-              child: Row(
-                children: [
-                  const SizedBox(width: 11),
-                  Text(
-                    _copy(
-                      context,
-                      '${records.isEmpty ? 0 : 1} - ${math.min(records.length, 10)} / $totalCount results',
-                      '${records.isEmpty ? 0 : 1} - ${math.min(records.length, 10)} / $totalCount sonuç',
-                    ),
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 8.1),
-                  ),
-                  const Spacer(),
-                  const _PageBox(label: '‹'),
-                  const SizedBox(width: 5),
-                  const _PageBox(label: '1', selected: true),
-                  const SizedBox(width: 5),
-                  const _PageBox(label: '›'),
-                  const SizedBox(width: 8),
-                  Container(
-                    height: 26,
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      _copy(context, '10 / page', '10 / sayfa'),
-                      style: const TextStyle(fontSize: 8.2, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                ],
-              ),
-            ),
-          ],
+    key: const Key('evidence-table'),
+    decoration: _cardDecoration(context, radius: 7),
+    clipBehavior: Clip.antiAlias,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _EvidenceTableHeader(),
+        Divider(height: 1, color: Theme.of(context).colorScheme.outlineVariant),
+        Expanded(
+          child: records.isEmpty
+              ? _EmptyTable()
+              : ListView.builder(
+                  padding: EdgeInsets.zero,
+                  itemCount: math.min(records.length, 10),
+                  itemExtent: 47,
+                  itemBuilder: (context, index) {
+                    final record = records[index];
+                    return _EvidenceTableRow(
+                      record: record,
+                      selected: record.sequence == selectedSequence,
+                      onTap: () => onSelected(record),
+                    );
+                  },
+                ),
         ),
-      );
+        Divider(height: 1, color: Theme.of(context).colorScheme.outlineVariant),
+        SizedBox(
+          height: 46,
+          child: Row(
+            children: [
+              const SizedBox(width: 11),
+              Text(
+                _copy(
+                  context,
+                  '${records.isEmpty ? 0 : 1} - ${math.min(records.length, 10)} / $totalCount results',
+                  '${records.isEmpty ? 0 : 1} - ${math.min(records.length, 10)} / $totalCount sonuç',
+                ),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  fontSize: 13,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const Spacer(),
+              const _PageBox(label: '‹'),
+              const SizedBox(width: 5),
+              const _PageBox(label: '1', selected: true),
+              const SizedBox(width: 5),
+              const _PageBox(label: '›'),
+              const SizedBox(width: 8),
+              Container(
+                height: 26,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                  ),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  _copy(context, '10 / page', '10 / sayfa'),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _EvidenceTableHeader extends StatelessWidget {
@@ -664,21 +716,21 @@ class _EvidenceTableHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        height: 34,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        color: Theme.of(context).colorScheme.surfaceContainerLow,
-        child: const Row(
-          children: [
-            Expanded(flex: 28, child: _HeaderCell('Kanıt Adı')),
-            Expanded(flex: 15, child: _HeaderCell('Kategori')),
-            Expanded(flex: 20, child: _HeaderCell('Kaynak')),
-            Expanded(flex: 16, child: _HeaderCell('Durum')),
-            Expanded(flex: 14, child: _HeaderCell('Güven')),
-            Expanded(flex: 13, child: _HeaderCell('Sıra')),
-            SizedBox(width: 26),
-          ],
-        ),
-      );
+    height: 34,
+    padding: const EdgeInsets.symmetric(horizontal: 10),
+    color: Theme.of(context).colorScheme.surfaceContainerLow,
+    child: const Row(
+      children: [
+        Expanded(flex: 28, child: _HeaderCell('Kanıt Adı')),
+        Expanded(flex: 15, child: _HeaderCell('Kategori')),
+        Expanded(flex: 20, child: _HeaderCell('Kaynak')),
+        Expanded(flex: 16, child: _HeaderCell('Durum')),
+        Expanded(flex: 14, child: _HeaderCell('Güven')),
+        Expanded(flex: 13, child: _HeaderCell('Sıra')),
+        SizedBox(width: 26),
+      ],
+    ),
+  );
 }
 
 class _HeaderCell extends StatelessWidget {
@@ -687,11 +739,14 @@ class _HeaderCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Text(
-        label,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 7.8),
-      );
+    label,
+    maxLines: 1,
+    overflow: TextOverflow.ellipsis,
+    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+      fontWeight: FontWeight.w600,
+      color: Theme.of(context).colorScheme.onSurface,
+    ),
+  );
 }
 
 class _EvidenceTableRow extends StatelessWidget {
@@ -711,7 +766,7 @@ class _EvidenceTableRow extends StatelessWidget {
     final categoryColor = _categoryColor(category);
     return Material(
       color: selected
-          ? IlaiosTheme.coreBlue.withValues(alpha: .08)
+          ? Theme.of(context).colorScheme.onSurface.withValues(alpha: .05)
           : Colors.transparent,
       child: InkWell(
         key: ValueKey('evidence-row-${record.sequence}'),
@@ -721,7 +776,9 @@ class _EvidenceTableRow extends StatelessWidget {
           decoration: BoxDecoration(
             border: Border(
               bottom: BorderSide(
-                color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: .65),
+                color: Theme.of(
+                  context,
+                ).colorScheme.outlineVariant.withValues(alpha: .65),
               ),
             ),
           ),
@@ -731,14 +788,21 @@ class _EvidenceTableRow extends StatelessWidget {
                 flex: 28,
                 child: Row(
                   children: [
-                    Icon(Icons.description_outlined, size: 15, color: IlaiosTheme.coreBlue),
+                    Icon(
+                      Icons.description_outlined,
+                      size: 17,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
                     const SizedBox(width: 7),
                     Expanded(
                       child: Text(
                         record.action,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 8.7, fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],
@@ -764,14 +828,14 @@ class _EvidenceTableRow extends StatelessWidget {
                       _short(record.executionId, 18),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 8.2),
+                      style: const TextStyle(fontSize: 12),
                     ),
                     Text(
                       _short(record.artifactDigest, 18),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 7.1,
+                        fontSize: 12,
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
@@ -792,11 +856,18 @@ class _EvidenceTableRow extends StatelessWidget {
                 flex: 14,
                 child: Row(
                   children: [
-                    const Icon(Icons.verified_user_outlined, size: 13, color: IlaiosTheme.success),
+                    const Icon(
+                      Icons.verified_user_outlined,
+                      size: 13,
+                      color: IlaiosTheme.success,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       _copy(context, 'verified', 'doğrulandı'),
-                      style: const TextStyle(fontSize: 7.9, fontWeight: FontWeight.w600),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),
@@ -805,7 +876,7 @@ class _EvidenceTableRow extends StatelessWidget {
                 flex: 13,
                 child: Text(
                   '#${record.sequence}',
-                  style: const TextStyle(fontSize: 8.1),
+                  style: const TextStyle(fontSize: 12),
                 ),
               ),
             ],
@@ -819,32 +890,39 @@ class _EvidenceTableRow extends StatelessWidget {
 class _EmptyTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.fact_check_outlined,
-              size: 34,
-              color: Theme.of(context).colorScheme.outline,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _copy(context, 'No verified evidence records', 'Doğrulanmış kanıt kaydı yok'),
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
-            const SizedBox(height: 3),
-            Text(
-              _copy(
-                context,
-                'Records appear here only after the authoritative runtime returns verified evidence.',
-                'Kayıtlar yalnızca yetkili çalışma zamanı doğrulanmış kanıt döndürdüğünde burada görünür.',
-              ),
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 8.2),
-            ),
-          ],
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          Icons.fact_check_outlined,
+          size: 34,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
         ),
-      );
+        const SizedBox(height: 8),
+        Text(
+          _copy(
+            context,
+            'No verified evidence records',
+            'Doğrulanmış kanıt kaydı yok',
+          ),
+          style: Theme.of(context).textTheme.titleSmall,
+        ),
+        const SizedBox(height: 3),
+        Text(
+          _copy(
+            context,
+            'Records appear here only after the authoritative runtime returns verified evidence.',
+            'Kayıtlar yalnızca yetkili çalışma zamanı doğrulanmış kanıt döndürdüğünde burada görünür.',
+          ),
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            fontSize: 13,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _SelectedEvidence extends StatelessWidget {
@@ -879,10 +957,16 @@ class _SelectedEvidence extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(12, 11, 12, 8),
                   child: Text(
                     _copy(context, 'Selected Evidence', 'Seçili Kanıt'),
-                    style: const TextStyle(fontSize: 9.2, fontWeight: FontWeight.w700),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
-                Divider(height: 1, color: Theme.of(context).colorScheme.outlineVariant),
+                Divider(
+                  height: 1,
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                ),
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.all(12),
@@ -896,12 +980,14 @@ class _SelectedEvidence extends StatelessWidget {
                               width: 42,
                               height: 42,
                               decoration: BoxDecoration(
-                                color: IlaiosTheme.coreBlue.withValues(alpha: .10),
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withValues(alpha: .10),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: const Icon(
                                 Icons.description_outlined,
-                                color: IlaiosTheme.coreBlue,
+                                color: Colors.black87,
                                 size: 23,
                               ),
                             ),
@@ -917,12 +1003,19 @@ class _SelectedEvidence extends StatelessWidget {
                                           record.action,
                                           maxLines: 2,
                                           overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700,
+                                          ),
                                         ),
                                       ),
                                       const SizedBox(width: 7),
                                       _Pill(
-                                        label: _copy(context, 'Verified', 'Doğrulandı'),
+                                        label: _copy(
+                                          context,
+                                          'Verified',
+                                          'Doğrulandı',
+                                        ),
                                         color: IlaiosTheme.success,
                                       ),
                                     ],
@@ -932,7 +1025,8 @@ class _SelectedEvidence extends StatelessWidget {
                                     'ID: ${_short(record.recordHash, 24)}',
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 7.8),
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(fontSize: 11),
                                   ),
                                 ],
                               ),
@@ -942,11 +1036,17 @@ class _SelectedEvidence extends StatelessWidget {
                         const SizedBox(height: 12),
                         _DetailGrid(record: record),
                         const SizedBox(height: 12),
-                        Divider(height: 1, color: Theme.of(context).colorScheme.outlineVariant),
+                        Divider(
+                          height: 1,
+                          color: Theme.of(context).colorScheme.outlineVariant,
+                        ),
                         const SizedBox(height: 10),
                         Text(
                           _copy(context, 'Summary', 'Özet'),
-                          style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                         const SizedBox(height: 5),
                         Text(
@@ -955,24 +1055,40 @@ class _SelectedEvidence extends StatelessWidget {
                             'This record is returned by the authoritative verified evidence feed. Its artifact digest and lineage hashes are shown exactly as supplied by the control plane.',
                             'Bu kayıt yetkili doğrulanmış kanıt akışından döndürülür. Artefakt özeti ve zincir hash’leri kontrol düzleminin sağladığı biçimde gösterilir.',
                           ),
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 8),
+                          style: Theme.of(
+                            context,
+                          ).textTheme.bodySmall?.copyWith(fontSize: 12),
                         ),
                         const SizedBox(height: 12),
                         Text(
                           _copy(context, 'Evidence Chain', 'Kanıt Zinciri'),
-                          style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                         const SizedBox(height: 7),
                         _ChainView(record: record),
                         const SizedBox(height: 12),
                         Text(
-                          _copy(context, 'Evidence Items', 'Eklenen Kanıt Öğeleri'),
-                          style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700),
+                          _copy(
+                            context,
+                            'Evidence Items',
+                            'Eklenen Kanıt Öğeleri',
+                          ),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                         const SizedBox(height: 6),
                         _EvidenceItem(
                           icon: Icons.fingerprint_rounded,
-                          name: _copy(context, 'Artifact digest', 'Artefakt özeti'),
+                          name: _copy(
+                            context,
+                            'Artifact digest',
+                            'Artefakt özeti',
+                          ),
                           value: _short(record.artifactDigest, 30),
                         ),
                         _EvidenceItem(
@@ -989,7 +1105,10 @@ class _SelectedEvidence extends StatelessWidget {
                     ),
                   ),
                 ),
-                Divider(height: 1, color: Theme.of(context).colorScheme.outlineVariant),
+                Divider(
+                  height: 1,
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                ),
                 Padding(
                   padding: const EdgeInsets.all(10),
                   child: Row(
@@ -1005,7 +1124,9 @@ class _SelectedEvidence extends StatelessWidget {
                       const SizedBox(width: 7),
                       Expanded(
                         child: _ActionButton(
-                          icon: saving ? Icons.hourglass_top_rounded : Icons.download_outlined,
+                          icon: saving
+                              ? Icons.hourglass_top_rounded
+                              : Icons.download_outlined,
                           label: _copy(context, 'Download', 'İndir'),
                           onPressed: saveEnabled && !saving ? onSave : null,
                         ),
@@ -1031,21 +1152,25 @@ class _SelectedEvidence extends StatelessWidget {
 class _EmptySelected extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.fact_check_outlined, size: 34, color: Theme.of(context).colorScheme.outline),
-              const SizedBox(height: 8),
-              Text(
-                _copy(context, 'No evidence selected', 'Seçili kanıt yok'),
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-            ],
+    child: Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.fact_check_outlined,
+            size: 34,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
-        ),
-      );
+          const SizedBox(height: 8),
+          Text(
+            _copy(context, 'No evidence selected', 'Seçili kanıt yok'),
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 class _DetailGrid extends StatelessWidget {
@@ -1053,89 +1178,68 @@ class _DetailGrid extends StatelessWidget {
   final EvidenceRecord record;
 
   @override
-  Widget build(BuildContext context) => Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Column(
-              children: [
-                _DetailLine(
-                  label: _copy(context, 'Source', 'Kaynak'),
-                  value: _short(record.executionId, 22),
-                ),
-                _DetailLine(
-                  label: _copy(context, 'Owner', 'Sahip'),
-                  value: '—',
-                ),
-                _DetailLine(
-                  label: _copy(context, 'Related Agent', 'İlgili Ajan'),
-                  value: '—',
-                ),
-              ],
-            ),
-          ),
-          Container(
-            width: 1,
-            height: 70,
-            margin: const EdgeInsets.symmetric(horizontal: 10),
-            color: Theme.of(context).colorScheme.outlineVariant,
-          ),
-          Expanded(
-            child: Column(
-              children: [
-                _DetailLine(
-                  label: _copy(context, 'Created', 'Oluşturulma'),
-                  value: '—',
-                ),
-                _DetailLine(
-                  label: _copy(context, 'Verification Result', 'Doğrulama Sonucu'),
-                  value: _copy(context, 'Verified', 'Başarılı'),
-                  valueColor: IlaiosTheme.success,
-                ),
-                _DetailLine(
-                  label: _copy(context, 'Trust Score', 'Güven Skoru'),
-                  value: '—',
-                ),
-              ],
-            ),
-          ),
-        ],
-      );
+  Widget build(BuildContext context) => Column(
+    children: [
+      _DetailLine(
+        label: _copy(context, 'Source', 'Kaynak'),
+        value: _short(record.executionId, 22),
+      ),
+      _DetailLine(label: _copy(context, 'Owner', 'Sahip'), value: '\u2014'),
+      _DetailLine(
+        label: _copy(context, 'Related Agent', '\u0130lgili Ajan'),
+        value: '\u2014',
+      ),
+      _DetailLine(
+        label: _copy(context, 'Created', 'Olu\u015fturulma'),
+        value: '\u2014',
+      ),
+      _DetailLine(
+        label: _copy(context, 'Verification Result', 'Do\u011frulama Sonucu'),
+        value: _copy(context, 'Verified', 'Ba\u015far\u0131l\u0131'),
+      ),
+      _DetailLine(
+        label: _copy(context, 'Trust Score', 'G\u00fcven Skoru'),
+        value: '\u2014',
+      ),
+    ],
+  );
 }
 
 class _DetailLine extends StatelessWidget {
-  const _DetailLine({required this.label, required this.value, this.valueColor});
+  const _DetailLine({required this.label, required this.value});
   final String label;
   final String value;
-  final Color? valueColor;
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 6),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 72,
-              child: Text(
-                label,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 7.5),
-              ),
+    padding: const EdgeInsets.only(bottom: 6),
+    child: Row(
+      children: [
+        SizedBox(
+          width: 96,
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              fontSize: 13,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
-            Expanded(
-              child: Text(
-                value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 8,
-                  fontWeight: FontWeight.w600,
-                  color: valueColor,
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
-      );
+        Expanded(
+          child: Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _ChainView extends StatelessWidget {
@@ -1160,7 +1264,9 @@ class _ChainView extends StatelessWidget {
       (
         icon: Icons.link_rounded,
         label: _copy(context, 'Previous', 'Önceki'),
-        value: record.previousHash.isEmpty ? 'GENESIS' : _short(record.previousHash, 12),
+        value: record.previousHash.isEmpty
+            ? 'GENESIS'
+            : _short(record.previousHash, 12),
         success: true,
       ),
       (
@@ -1193,74 +1299,97 @@ class _ChainNode extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Column(
-        children: [
-          Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: node.success ? IlaiosTheme.coreBlue : Theme.of(context).colorScheme.outline,
-              ),
-            ),
-            child: Icon(node.icon, size: 14, color: node.success ? IlaiosTheme.coreBlue : null),
+    children: [
+      Container(
+        width: 28,
+        height: 28,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: node.success
+                ? Theme.of(context).colorScheme.onSurface
+                : Theme.of(context).colorScheme.outline,
           ),
-          const SizedBox(height: 4),
-          Text(
-            node.label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 6.9, fontWeight: FontWeight.w600),
-          ),
-          Text(
-            node.value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 6.2, color: Theme.of(context).colorScheme.onSurfaceVariant),
-          ),
-        ],
-      );
+        ),
+        child: Icon(
+          node.icon,
+          size: 14,
+          color: node.success ? Theme.of(context).colorScheme.onSurface : null,
+        ),
+      ),
+      const SizedBox(height: 4),
+      Text(
+        node.label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.center,
+        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+      ),
+      Text(
+        node.value,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontSize: 12,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+      ),
+    ],
+  );
 }
 
 class _EvidenceItem extends StatelessWidget {
-  const _EvidenceItem({required this.icon, required this.name, required this.value});
+  const _EvidenceItem({
+    required this.icon,
+    required this.name,
+    required this.value,
+  });
   final IconData icon;
   final String name;
   final String value;
 
   @override
   Widget build(BuildContext context) => SizedBox(
-        height: 28,
-        child: Row(
-          children: [
-            const Icon(Icons.check_circle_outline_rounded, size: 13, color: IlaiosTheme.success),
-            const SizedBox(width: 7),
-            Icon(icon, size: 13, color: Theme.of(context).colorScheme.onSurfaceVariant),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 7.8, fontWeight: FontWeight.w600),
-              ),
-            ),
-            const SizedBox(width: 8),
-            SizedBox(
-              width: 122,
-              child: Text(
-                value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.right,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 7.2),
-              ),
-            ),
-          ],
+    height: 28,
+    child: Row(
+      children: [
+        const Icon(
+          Icons.check_circle_outline_rounded,
+          size: 13,
+          color: IlaiosTheme.success,
         ),
-      );
+        const SizedBox(width: 7),
+        Icon(
+          icon,
+          size: 13,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+          ),
+        ),
+        const SizedBox(width: 8),
+        SizedBox(
+          width: 122,
+          child: Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.right,
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(fontSize: 11),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _ActionButton extends StatelessWidget {
@@ -1287,7 +1416,10 @@ class _ActionButton extends StatelessWidget {
           style: FilledButton.styleFrom(backgroundColor: IlaiosTheme.success),
           onPressed: onPressed,
           icon: Icon(icon, size: 14),
-          label: Text(label),
+          label: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(label, maxLines: 1),
+          ),
         ),
       );
     }
@@ -1295,19 +1427,31 @@ class _ActionButton extends StatelessWidget {
       return SizedBox(
         height: 34,
         child: FilledButton.icon(
-          style: FilledButton.styleFrom(backgroundColor: IlaiosTheme.coreBlue),
+          style: FilledButton.styleFrom(
+            backgroundColor: Theme.of(context).colorScheme.onSurface,
+            foregroundColor: Theme.of(context).colorScheme.surface,
+          ),
           onPressed: onPressed,
           icon: Icon(icon, size: 14),
-          label: Text(label),
+          label: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(label, maxLines: 1),
+          ),
         ),
       );
     }
     return SizedBox(
       height: 34,
       child: OutlinedButton.icon(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Theme.of(context).colorScheme.onSurface,
+        ),
         onPressed: onPressed,
         icon: Icon(icon, size: 14),
-        label: Text(label),
+        label: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(label, maxLines: 1),
+        ),
       ),
     );
   }
@@ -1320,32 +1464,38 @@ class _InfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        decoration: _cardDecoration(context, radius: 7),
-        padding: const EdgeInsets.fromLTRB(10, 9, 10, 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+    decoration: _cardDecoration(context, radius: 7),
+    padding: const EdgeInsets.fromLTRB(10, 9, 10, 8),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 9.2, fontWeight: FontWeight.w700),
-                  ),
+            Expanded(
+              child: Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
                 ),
-                Text(
-                  _copy(context, 'All ›', 'Tümü ›'),
-                  style: const TextStyle(fontSize: 7.5, color: IlaiosTheme.coreBlue),
-                ),
-              ],
+              ),
             ),
-            const SizedBox(height: 6),
-            Expanded(child: child),
+            Text(
+              _copy(context, 'All ›', 'Tümü ›'),
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
           ],
         ),
-      );
+        const SizedBox(height: 6),
+        Expanded(child: child),
+      ],
+    ),
+  );
 }
 
 class _AuditTrail extends StatelessWidget {
@@ -1354,7 +1504,9 @@ class _AuditTrail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (records.isEmpty) return const _Unavailable(icon: Icons.history_outlined);
+    if (records.isEmpty) {
+      return const _Unavailable(icon: Icons.history_outlined);
+    }
     return Column(
       children: [
         for (final record in records.take(5))
@@ -1366,16 +1518,24 @@ class _AuditTrail extends StatelessWidget {
                   height: 17,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(color: IlaiosTheme.coreBlue),
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
                   ),
-                  child: const Icon(Icons.check_rounded, size: 10, color: IlaiosTheme.coreBlue),
+                  child: const Icon(
+                    Icons.check_rounded,
+                    size: 10,
+                    color: Colors.black87,
+                  ),
                 ),
                 const SizedBox(width: 7),
                 SizedBox(
                   width: 42,
                   child: Text(
                     '#${record.sequence}',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 6.9),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(fontSize: 11),
                   ),
                 ),
                 Expanded(
@@ -1383,7 +1543,10 @@ class _AuditTrail extends StatelessWidget {
                     record.action,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 7.4, fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 6),
@@ -1394,7 +1557,9 @@ class _AuditTrail extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.right,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 6.5),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(fontSize: 10),
                   ),
                 ),
               ],
@@ -1411,18 +1576,21 @@ class _Unavailable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 17, color: Theme.of(context).colorScheme.outline),
-            const SizedBox(width: 7),
-            Text(
-              _copy(context, 'No authoritative data', 'Yetkili veri yok'),
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 7.8),
-            ),
-          ],
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 17, color: Theme.of(context).colorScheme.outline),
+        const SizedBox(width: 7),
+        Text(
+          _copy(context, 'No authoritative data', 'Yetkili veri yok'),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            fontSize: 13,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
-      );
+      ],
+    ),
+  );
 }
 
 class _InlineMessage extends StatelessWidget {
@@ -1431,22 +1599,22 @@ class _InlineMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        key: const Key('evidence-action-message'),
-        height: 30,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        alignment: Alignment.centerLeft,
-        decoration: BoxDecoration(
-          color: IlaiosTheme.coreBlue.withValues(alpha: .07),
-          borderRadius: BorderRadius.circular(5),
-          border: Border.all(color: IlaiosTheme.coreBlue.withValues(alpha: .18)),
-        ),
-        child: Text(
-          message,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 8.1, fontWeight: FontWeight.w600),
-        ),
-      );
+    key: const Key('evidence-action-message'),
+    height: 30,
+    padding: const EdgeInsets.symmetric(horizontal: 10),
+    alignment: Alignment.centerLeft,
+    decoration: BoxDecoration(
+      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .05),
+      borderRadius: BorderRadius.circular(5),
+      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+    ),
+    child: Text(
+      message,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+    ),
+  );
 }
 
 class _Pill extends StatelessWidget {
@@ -1456,22 +1624,22 @@ class _Pill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: .12),
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontSize: 7.2,
-            fontWeight: FontWeight.w700,
-            color: color,
-          ),
-        ),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+    decoration: BoxDecoration(
+      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .06),
+      borderRadius: BorderRadius.circular(4),
+    ),
+    child: Text(
+      label,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w700,
+        color: Theme.of(context).colorScheme.onSurface,
+      ),
+    ),
+  );
 }
 
 class _PageBox extends StatelessWidget {
@@ -1481,25 +1649,30 @@ class _PageBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        constraints: const BoxConstraints(minWidth: 26),
-        height: 26,
-        alignment: Alignment.center,
-        padding: const EdgeInsets.symmetric(horizontal: 7),
-        decoration: BoxDecoration(
-          color: selected ? IlaiosTheme.coreBlue.withValues(alpha: .10) : Colors.transparent,
-          borderRadius: BorderRadius.circular(4),
-          border: Border.all(
-            color: selected ? IlaiosTheme.coreBlue : Theme.of(context).colorScheme.outlineVariant,
-          ),
-        ),
-        child: Text(
-          label,
-          style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w600),
-        ),
-      );
+    constraints: const BoxConstraints(minWidth: 26),
+    height: 26,
+    alignment: Alignment.center,
+    padding: const EdgeInsets.symmetric(horizontal: 7),
+    decoration: BoxDecoration(
+      color: selected
+          ? Theme.of(context).colorScheme.onSurface.withValues(alpha: .06)
+          : Colors.transparent,
+      borderRadius: BorderRadius.circular(4),
+      border: Border.all(
+        color: selected
+            ? Theme.of(context).colorScheme.onSurface
+            : Theme.of(context).colorScheme.outlineVariant,
+      ),
+    ),
+    child: Text(
+      label,
+      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+    ),
+  );
 }
 
-BoxDecoration _cardDecoration(BuildContext context, {double radius = 8}) => BoxDecoration(
+BoxDecoration _cardDecoration(BuildContext context, {double radius = 8}) =>
+    BoxDecoration(
       color: Theme.of(context).colorScheme.surfaceContainerLowest,
       borderRadius: BorderRadius.circular(radius),
       border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
@@ -1535,20 +1708,20 @@ String _categoryCode(EvidenceRecord record) {
 }
 
 String _categoryLabel(BuildContext context, String code) => switch (code) {
-      'test' => _copy(context, 'Test', 'Test'),
-      'security' => _copy(context, 'Security', 'Güvenlik'),
-      'deployment' => _copy(context, 'Deployment', 'Dağıtım'),
-      'policy' => _copy(context, 'Policy', 'Politika'),
-      _ => _copy(context, 'Other', 'Diğer'),
-    };
+  'test' => _copy(context, 'Test', 'Test'),
+  'security' => _copy(context, 'Security', 'Güvenlik'),
+  'deployment' => _copy(context, 'Deployment', 'Dağıtım'),
+  'policy' => _copy(context, 'Policy', 'Politika'),
+  _ => _copy(context, 'Other', 'Diğer'),
+};
 
 Color _categoryColor(String code) => switch (code) {
-      'test' => IlaiosTheme.coreBlue,
-      'security' => const Color(0xFF8B5CF6),
-      'deployment' => IlaiosTheme.enterpriseCyan,
-      'policy' => IlaiosTheme.success,
-      _ => Colors.grey,
-    };
+  'test' => Colors.black87,
+  'security' => Colors.black87,
+  'deployment' => Colors.black87,
+  'policy' => Colors.black87,
+  _ => Colors.grey,
+};
 
 int _chainIssueCount(List<EvidenceRecord> records) {
   if (records.length < 2) return 0;
@@ -1558,7 +1731,8 @@ int _chainIssueCount(List<EvidenceRecord> records) {
   for (var index = 1; index < ordered.length; index++) {
     final current = ordered[index];
     final previous = ordered[index - 1];
-    if (current.previousHash.isNotEmpty && current.previousHash != previous.recordHash) {
+    if (current.previousHash.isNotEmpty &&
+        current.previousHash != previous.recordHash) {
       issues += 1;
     }
   }
@@ -1581,4 +1755,5 @@ String _short(String value, int max) =>
 bool _isTr(BuildContext context) =>
     IlaiosLocaleScope.of(context).locale == IlaiosLocale.turkish;
 
-String _copy(BuildContext context, String en, String tr) => _isTr(context) ? tr : en;
+String _copy(BuildContext context, String en, String tr) =>
+    _isTr(context) ? tr : en;

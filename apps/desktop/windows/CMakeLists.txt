@@ -55,7 +55,14 @@ add_subdirectory("runner")
 
 # Generated plugin build rules, which manage building the plugins and adding
 # them to the application.
+# webview_windows 0.4.x includes the deprecated experimental coroutine header.
+# Newer MSVC toolchains treat that deprecation as an error (STL1011).
+# Limit the compatibility definition to this third-party plugin target.
 include(flutter/generated_plugins.cmake)
+if(MSVC AND TARGET webview_windows_plugin)
+  target_compile_definitions(webview_windows_plugin PRIVATE
+    _SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS)
+endif()
 
 
 # === Installation ===

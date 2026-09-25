@@ -19,18 +19,21 @@ class DesktopBootstrap extends StatefulWidget {
   const DesktopBootstrap({
     required this.config,
     this.runtime,
+    this.controlPlaneClient,
     super.key,
   });
 
   final ControlPlaneConfig? config;
   final DesktopRuntime? runtime;
+  final ControlPlaneClient? controlPlaneClient;
 
   @override
   State<DesktopBootstrap> createState() => _DesktopBootstrapState();
 }
 
 class _DesktopBootstrapState extends State<DesktopBootstrap> {
-  ControlPlaneProjection _projection = const ControlPlaneProjection.unavailable();
+  ControlPlaneProjection _projection =
+      const ControlPlaneProjection.unavailable();
   OperationalSnapshot _operationalSnapshot =
       const OperationalSnapshot.unavailable();
   String _operationalStatus = 'Operational APIs not connected';
@@ -51,13 +54,22 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
     unawaited(_loadLocale());
     unawaited(_deliveryStorage.cleanupDisposable());
     final config = widget.config;
+    if (widget.controlPlaneClient != null) {
+      _client = widget.controlPlaneClient;
+      _operationalStatus = 'Control plane configured';
+      unawaited(_refresh());
+      return;
+    }
     if (config == null) {
       _operationalStatus =
           widget.runtime?.status ?? 'Control plane configuration unavailable';
       return;
     }
     try {
-      _client = ControlPlaneClient(baseUri: config.baseUri, token: config.token);
+      _client = ControlPlaneClient(
+        baseUri: config.baseUri,
+        token: config.token,
+      );
       final identityUri = config.identityUri;
       if (identityUri != null) {
         _identityClient = IdentityClient(
@@ -116,11 +128,11 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
         _userSession = restoredSession;
         _identityStatus = restoredSession != null
             ? (restoredSession.displayIdentity == null
-                ? 'Signed in with ${restoredSession.providerId}'
-                : 'Signed in as ${restoredSession.displayIdentity}')
+                  ? 'Signed in with ${restoredSession.providerId}'
+                  : 'Signed in as ${restoredSession.displayIdentity}')
             : (providers.isEmpty
-                ? 'Account sign-in is not configured; governed execution is disabled'
-                : 'Sign in to submit governed work');
+                  ? 'Account sign-in is not configured; governed execution is disabled'
+                  : 'Sign in to submit governed work');
       });
     } on IdentityClientException catch (error) {
       if (!mounted) return;
@@ -143,14 +155,10 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
     }
 
     final started = await client.start(providerId);
-    await Process.start(
-      'rundll32.exe',
-      <String>[
-        'url.dll,FileProtocolHandler',
-        started.authorizationUri.toString(),
-      ],
-      mode: ProcessStartMode.detached,
-    );
+    await Process.start('rundll32.exe', <String>[
+      'url.dll,FileProtocolHandler',
+      started.authorizationUri.toString(),
+    ], mode: ProcessStartMode.detached);
     if (mounted) {
       setState(() => _identityStatus = 'Waiting for browser sign-in');
     }
@@ -196,7 +204,9 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
       } on ControlPlaneClientException catch (error) {
         if (!mounted) return;
         setState(() {
-          _projection = ControlPlaneProjection.unavailable(status: error.message);
+          _projection = ControlPlaneProjection.unavailable(
+            status: error.message,
+          );
           _operationalSnapshot = const OperationalSnapshot.unavailable();
           _operationalStatus = error.message;
           _lastLiveSequence = 0;
@@ -214,10 +224,10 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
         ];
         final boundedEvents =
             mergedEvents.length <= ControlPlaneClient.maxLiveEvents
-                ? mergedEvents
-                : mergedEvents.sublist(
-                    mergedEvents.length - ControlPlaneClient.maxLiveEvents,
-                  );
+            ? mergedEvents
+            : mergedEvents.sublist(
+                mergedEvents.length - ControlPlaneClient.maxLiveEvents,
+              );
         if (boundedEvents.isNotEmpty) {
           final sequence = boundedEvents.last['sequence'];
           if (sequence is int && sequence > _lastLiveSequence) {
@@ -456,10 +466,7 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
     return identityClient.fetchLiMemories(session);
   }
 
-  Future<DesktopLiMemory> _rememberLiMemory(
-    String kind,
-    String content,
-  ) async {
+  Future<DesktopLiMemory> _rememberLiMemory(String kind, String content) async {
     final identityClient = _identityClient;
     final session = _userSession;
     if (identityClient == null || session == null || !session.liFounder) {
@@ -474,12 +481,14 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
 
   @override
   Widget build(BuildContext context) {
-    final promptEnabled = _client != null &&
+    final promptEnabled =
+        _client != null &&
         _identityClient != null &&
         _identityProviders.isNotEmpty &&
         _userSession != null;
     final agentProvisionEnabled = _client != null && _userSession != null;
-    final governanceEnabled = _client != null &&
+    final governanceEnabled =
+        _client != null &&
         (widget.config?.approverId != null ||
             (_identityClient != null && _userSession != null));
     return IlaiosDesktopApp(
@@ -492,20 +501,24 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
       identityStatus: _identityStatus,
       locale: _locale,
       onLocaleChanged: _changeLocale,
-      onSignIn:
-          _identityClient == null || _identityProviders.isEmpty ? null : _signIn,
+      onSignIn: _identityClient == null || _identityProviders.isEmpty
+          ? null
+          : _signIn,
       onLogout: _userSession == null ? null : _logout,
       onPromptSubmit: promptEnabled ? _submitPrompt : null,
       onPromptRefine: _client == null ? null : _refinePrompt,
       onSaveArtifact: _client == null ? null : _saveArtifact,
       onFetchLiState: _userSession?.liFounder == true ? _fetchLiState : null,
-      onFetchLiMemories:
-          _userSession?.liFounder == true ? _fetchLiMemories : null,
-      onRememberLiMemory:
-          _userSession?.liFounder == true ? _rememberLiMemory : null,
+      onFetchLiMemories: _userSession?.liFounder == true
+          ? _fetchLiMemories
+          : null,
+      onRememberLiMemory: _userSession?.liFounder == true
+          ? _rememberLiMemory
+          : null,
       onAssistantRequest: _identityClient == null || _userSession == null
           ? null
-          : (request) => _identityClient!.assistantRequest(_userSession!, request),
+          : (request) =>
+                _identityClient!.assistantRequest(_userSession!, request),
       onRefreshRequested: _client == null ? null : _refresh,
       onProvisionAgent: agentProvisionEnabled ? _provisionAgent : null,
       onGovernanceDecision: governanceEnabled ? _decideGovernance : null,

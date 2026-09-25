@@ -16,7 +16,8 @@ class PromptEditorPanel extends StatefulWidget {
   final Future<PromptRefinementPreview> Function(
     String prompt,
     PromptRefinementMode mode,
-  )? onRefine;
+  )?
+  onRefine;
 
   @override
   State<PromptEditorPanel> createState() => _PromptEditorPanelState();
@@ -69,7 +70,8 @@ class _PromptEditorPanelState extends State<PromptEditorPanel> {
   }
 
   void _onPromptChanged() {
-    final previewMatchesSource = _preview?.originalPrompt == widget.controller.text;
+    final previewMatchesSource =
+        _preview?.originalPrompt == widget.controller.text;
     if (_refining || (_preview != null && !previewMatchesSource)) {
       _invalidatePendingRefinement();
     }
@@ -80,17 +82,24 @@ class _PromptEditorPanelState extends State<PromptEditorPanel> {
     final prompt = widget.controller.text;
     if (callback == null || prompt.trim().isEmpty || _refining) return;
     final requestSerial = ++_requestSerial;
+    final requestedMode = _mode;
     setState(() {
       _refining = true;
       _preview = null;
       _error = null;
     });
     try {
-      final result = await callback(prompt, _mode);
+      final result = await callback(prompt, requestedMode);
       if (!mounted ||
           requestSerial != _requestSerial ||
-          widget.controller.text != prompt) {
+          widget.controller.text != prompt ||
+          _mode != requestedMode) {
         return;
+      }
+      if (result.originalPrompt != prompt || result.mode != requestedMode) {
+        throw const FormatException(
+          'Prompt preview does not match the request',
+        );
       }
       setState(() => _preview = result);
     } on Object {
@@ -114,9 +123,9 @@ class _PromptEditorPanelState extends State<PromptEditorPanel> {
   }
 
   void _discard() => setState(() {
-        _preview = null;
-        _error = null;
-      });
+    _preview = null;
+    _error = null;
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -137,11 +146,16 @@ class _PromptEditorPanelState extends State<PromptEditorPanel> {
               Expanded(
                 child: Text(
                   tr ? 'Prompt Editor' : 'Prompt Editor',
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               Text(
-                tr ? 'Danışman katman · yürütme yetkisi yok' : 'Advisory layer · no execution authority',
+                tr
+                    ? 'Danışman katman · yürütme yetkisi yok'
+                    : 'Advisory layer · no execution authority',
                 style: TextStyle(
                   fontSize: 11,
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -162,15 +176,16 @@ class _PromptEditorPanelState extends State<PromptEditorPanel> {
                   selected: _mode == mode,
                   onSelected: widget.enabled && !_refining
                       ? (_) => setState(() {
-                            _mode = mode;
-                            _preview = null;
-                            _error = null;
-                          })
+                          _mode = mode;
+                          _preview = null;
+                          _error = null;
+                        })
                       : null,
                 ),
               OutlinedButton.icon(
                 key: const Key('prompt-refine-action'),
-                onPressed: widget.enabled && !_refining && widget.onRefine != null
+                onPressed:
+                    widget.enabled && !_refining && widget.onRefine != null
                     ? _refine
                     : null,
                 icon: _refining
@@ -187,7 +202,9 @@ class _PromptEditorPanelState extends State<PromptEditorPanel> {
           if (_error != null) ...[
             const SizedBox(height: 8),
             Text(
-              tr ? 'Prompt önizlemesi oluşturulamadı.' : 'Prompt preview could not be generated.',
+              tr
+                  ? 'Prompt önizlemesi oluşturulamadı.'
+                  : 'Prompt preview could not be generated.',
               key: const Key('prompt-refinement-error'),
               style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
@@ -228,12 +245,14 @@ class _PromptPreview extends StatelessWidget {
     final riskLabel = preview.riskCues.isEmpty
         ? (turkish ? 'Risk ifadesi yok' : 'No risk cues')
         : preview.riskCuesPreserved == true
-            ? (turkish ? 'Risk ifadeleri korundu' : 'Risk cues preserved')
-            : (turkish ? 'Risk ifadesi korunumu doğrulanamadı' : 'Risk cue preservation failed');
+        ? (turkish ? 'Risk ifadeleri korundu' : 'Risk cues preserved')
+        : (turkish
+              ? 'Risk ifadesi korunumu doğrulanamadı'
+              : 'Risk cue preservation failed');
     final constraintLabel = preview.constraintsDetected
         ? (turkish
-            ? '${preview.preservedConstraints.length} kısıt korundu'
-            : '${preview.preservedConstraints.length} constraints preserved')
+              ? '${preview.preservedConstraints.length} kısıt korundu'
+              : '${preview.preservedConstraints.length} constraints preserved')
         : (turkish ? 'Kısıt algılanmadı' : 'No constraints detected');
 
     return Column(
@@ -284,12 +303,18 @@ class _PromptPreview extends StatelessWidget {
             Text(riskLabel, key: const Key('prompt-risk-status')),
           ],
         ),
-        if (preview.unresolvedAmbiguities.isNotEmpty || preview.warnings.isNotEmpty) ...[
+        if (preview.unresolvedAmbiguities.isNotEmpty ||
+            preview.warnings.isNotEmpty) ...[
           const SizedBox(height: 6),
           Text(
-            <String>[...preview.unresolvedAmbiguities, ...preview.warnings].join(' · '),
+            <String>[
+              ...preview.unresolvedAmbiguities,
+              ...preview.warnings,
+            ].join(' · '),
             key: const Key('prompt-refinement-warnings'),
-            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
         ],
         const SizedBox(height: 8),
@@ -327,30 +352,30 @@ class _PromptTextCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        key: widgetKey,
-        constraints: const BoxConstraints(minHeight: 92),
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerLowest,
-          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-            const SizedBox(height: 5),
-            SelectableText(text),
-          ],
-        ),
-      );
+    key: widgetKey,
+    constraints: const BoxConstraints(minHeight: 92),
+    padding: const EdgeInsets.all(10),
+    decoration: BoxDecoration(
+      color: Theme.of(context).colorScheme.surfaceContainerLowest,
+      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+      borderRadius: BorderRadius.circular(6),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+        const SizedBox(height: 5),
+        SelectableText(text),
+      ],
+    ),
+  );
 }
 
 String _modeLabel(PromptRefinementMode mode, bool tr) => switch (mode) {
-      PromptRefinementMode.improve => tr ? 'İyileştir' : 'Improve',
-      PromptRefinementMode.clarify => tr ? 'Netleştir' : 'Clarify',
-      PromptRefinementMode.structure => tr ? 'Yapılandır' : 'Structure',
-      PromptRefinementMode.preserveIntent => tr ? 'Niyeti Koru' : 'Preserve Intent',
-      PromptRefinementMode.compress => tr ? 'Sıkıştır' : 'Compress',
-      PromptRefinementMode.evaluate => tr ? 'Değerlendir' : 'Evaluate',
-    };
+  PromptRefinementMode.improve => tr ? 'İyileştir' : 'Improve',
+  PromptRefinementMode.clarify => tr ? 'Netleştir' : 'Clarify',
+  PromptRefinementMode.structure => tr ? 'Yapılandır' : 'Structure',
+  PromptRefinementMode.preserveIntent => tr ? 'Niyeti Koru' : 'Preserve Intent',
+  PromptRefinementMode.compress => tr ? 'Sıkıştır' : 'Compress',
+  PromptRefinementMode.evaluate => tr ? 'Değerlendir' : 'Evaluate',
+};

@@ -19,6 +19,8 @@ class GovernanceView extends StatelessWidget {
   const GovernanceView({
     required this.snapshot,
     required this.status,
+    this.dataAvailable = true,
+    this.accessDenied = false,
     this.approverId,
     this.onDecision,
     super.key,
@@ -26,9 +28,11 @@ class GovernanceView extends StatelessWidget {
 
   final OperationalSnapshot snapshot;
   final String status;
+  final bool dataAvailable;
+  final bool accessDenied;
   final String? approverId;
   final Future<void> Function(String requestId, GovernanceDecision decision)?
-      onDecision;
+  onDecision;
 
   bool get _hasQueueItems {
     final raw = snapshot.governanceState['work'];
@@ -39,7 +43,7 @@ class GovernanceView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (_hasQueueItems) {
+    if (dataAvailable && !accessDenied && _hasQueueItems) {
       return ApprovalsView(
         snapshot: snapshot,
         status: status,
@@ -48,7 +52,8 @@ class GovernanceView extends StatelessWidget {
       );
     }
 
-    final turkish = IlaiosLocaleScope.of(context).locale == IlaiosLocale.turkish;
+    final turkish =
+        IlaiosLocaleScope.of(context).locale == IlaiosLocale.turkish;
     return Container(
       key: const Key('reference-approvals-page'),
       color: Theme.of(context).scaffoldBackgroundColor,
@@ -59,34 +64,60 @@ class GovernanceView extends StatelessWidget {
           Text(
             turkish ? 'Onaylar' : 'Approvals',
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w700,
-                  height: 1.15,
-                ),
+              fontSize: 28,
+              fontWeight: FontWeight.w700,
+              height: 1.15,
+            ),
           ),
           const SizedBox(height: 18),
-          Expanded(
+          Align(
+            alignment: Alignment.topCenter,
             child: Container(
               key: const Key('approvals-table'),
+              constraints: const BoxConstraints(maxWidth: 720),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 30),
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surfaceContainerLowest,
                 border: Border.all(
                   color: Theme.of(context).colorScheme.outlineVariant,
                 ),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(12),
               ),
-              alignment: Alignment.center,
-              child: Text(
-                _governanceUnavailable
-                    ? (turkish
-                        ? 'Yönetişim verisi şu anda kullanılamıyor.'
-                        : 'Governance data is currently unavailable.')
-                    : (turkish
-                        ? 'Karar kuyruğunda talep yok.'
-                        : 'No requests in the decision queue.'),
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    accessDenied
+                        ? Icons.lock_outline
+                        : !dataAvailable
+                        ? Icons.cloud_off_outlined
+                        : _governanceUnavailable
+                        ? Icons.info_outline
+                        : Icons.inbox_outlined,
+                    size: 32,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    accessDenied
+                        ? (turkish
+                              ? 'Onaylara erişim yetkisi reddedildi.'
+                              : 'Access to approvals was denied.')
+                        : !dataAvailable
+                        ? (turkish
+                              ? 'Bağlantı kesildi; onay verileri doğrulanamıyor.'
+                              : 'Connection lost; approval data cannot be verified.')
+                        : _governanceUnavailable
+                        ? (turkish
+                              ? 'Yönetim verisi şu anda kullanılamıyor.'
+                              : 'Governance data is currently unavailable.')
+                        : (turkish
+                              ? 'Karar kuyruğunda talep yok.'
+                              : 'No requests in the decision queue.'),
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
+                ],
               ),
             ),
           ),
@@ -133,24 +164,27 @@ class _EvidenceViewState extends State<EvidenceView> {
   @override
   Widget build(BuildContext context) {
     final tr = IlaiosLocaleScope.of(context).locale == IlaiosLocale.turkish;
-    final actions = widget.snapshot.evidenceRecords
-        .map((record) => record.action.trim())
-        .where((value) => value.isNotEmpty)
-        .toSet()
-        .toList(growable: false)
-      ..sort();
+    final actions =
+        widget.snapshot.evidenceRecords
+            .map((record) => record.action.trim())
+            .where((value) => value.isNotEmpty)
+            .toSet()
+            .toList(growable: false)
+          ..sort();
     final effectiveAction = actions.contains(_action) ? _action : _all;
     final query = _query.trim().toLowerCase();
-    final filtered = widget.snapshot.evidenceRecords.where((record) {
-      final actionMatches =
-          effectiveAction == _all || record.action == effectiveAction;
-      if (!actionMatches) return false;
-      if (query.isEmpty) return true;
-      return '${record.sequence} ${record.executionId} ${record.artifactDigest} '
-              '${record.action} ${record.previousHash} ${record.recordHash}'
-          .toLowerCase()
-          .contains(query);
-    }).toList(growable: false);
+    final filtered = widget.snapshot.evidenceRecords
+        .where((record) {
+          final actionMatches =
+              effectiveAction == _all || record.action == effectiveAction;
+          if (!actionMatches) return false;
+          if (query.isEmpty) return true;
+          return '${record.sequence} ${record.executionId} ${record.artifactDigest} '
+                  '${record.action} ${record.previousHash} ${record.recordHash}'
+              .toLowerCase()
+              .contains(query);
+        })
+        .toList(growable: false);
 
     final filteredSnapshot = OperationalSnapshot(
       runtimeRoutes: widget.snapshot.runtimeRoutes,
@@ -202,7 +236,9 @@ class _EvidenceViewState extends State<EvidenceView> {
                   items: [
                     DropdownMenuItem<String>(
                       value: _all,
-                      child: Text(tr ? 'Tüm kanıt türleri' : 'All evidence types'),
+                      child: Text(
+                        tr ? 'Tüm kanıt türleri' : 'All evidence types',
+                      ),
                     ),
                     for (final action in actions)
                       DropdownMenuItem<String>(
