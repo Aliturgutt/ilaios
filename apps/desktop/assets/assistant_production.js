@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 // Authenticated, server-authoritative Assistant. No prototype state or actions.
 (() => {
   const pending = new Map();
@@ -121,4 +121,3 @@
     finally {busy = false; buttonState();}
   })();
 })();
-
