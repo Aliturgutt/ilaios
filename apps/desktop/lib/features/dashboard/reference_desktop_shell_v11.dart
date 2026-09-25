@@ -14,6 +14,7 @@ import '../../presentation/desktop_runtime_status.dart';
 import '../assistant/assistant_overlay.dart';
 import '../assistant/assistant_html_preview.dart';
 import '../assistant/assistant_symbol.dart';
+import '../li/li_html_window.dart';
 import '../create/governed_lifecycle_projection.dart';
 import '../create/reference_asset_picker.dart';
 import '../deliveries/deliveries_view.dart';
@@ -124,25 +125,35 @@ class _ReferenceDesktopShellV11State extends State<ReferenceDesktopShellV11> {
   }
 
   Future<void> _toggleLiPreview() async {
-    // Isolated design-only Li preview. Never shares Assistant sessions or memory.
+    // Li runs only in a verified founder session with a separate persona scope.
     if (widget.userSession?.liFounder != true ||
         !Platform.isWindows ||
         !ReferenceDesktopShellV11.nativeAssistantWindowEnabled ||
         _liPreviewOpen) {
       return;
     }
+    if (widget.onFetchLiState == null ||
+        widget.onAssistantRequest == null ||
+        widget.onFetchLiMemories == null ||
+        widget.onRememberLiMemory == null) {
+      return;
+    }
     setState(() => _liPreviewOpen = true);
     try {
       await openWindow(
-        (context, id) => AssistantHtmlPreview(
-          assetPath: 'assets/li_design_reference.html',
+        (context, id) => LiHtmlWindow(
+          session: widget.userSession!,
+          verifyFounder: widget.onFetchLiState!,
+          request: widget.onAssistantRequest!,
+          fetchMemories: widget.onFetchLiMemories!,
+          remember: widget.onRememberLiMemory!,
           dark: Theme.of(this.context).brightness == Brightness.dark,
           english:
               IlaiosLocaleScope.of(this.context).locale != IlaiosLocale.turkish,
         ),
         parentContext: context,
         options: const WindowOptions(
-          title: 'ILAIOS Li - Tasarım önizlemesi',
+          title: 'ILAIOS Li - Founder Intelligence',
           size: Size(1100, 700),
           minimumSize: Size(760, 540),
         ),
