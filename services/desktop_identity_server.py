@@ -15,7 +15,8 @@ from datetime import datetime, timezone
 from http import HTTPStatus
 
 from services.desktop_oidc import DesktopOIDCService
-from services.execution_coordinator import ExecutionCoordinator
+from services.execution_coordinator import ExecutionCoordinator, classify_execution_plan, ExecutionCoordinatorError
+from services.capability_registry import CAPABILITIES
 from services.reference_assets import ReferenceAssetStore
 
 from . import desktop_identity_server_core as _core
@@ -40,6 +41,8 @@ _WEB_REFERENCE_OBJECTIVE_TERMS = (
     "yönetim paneli",
     "yonetim paneli",
 )
+
+_DESKTOP_FACTORY_IDS = frozenset(item.capability_id for item in CAPABILITIES if item.domain == "factory")
 
 _BUSINESS_CONTEXT_CODES = frozenset({
     "BCF01",
@@ -83,6 +86,16 @@ class DesktopIdentityRequestHandler(_core.DesktopIdentityRequestHandler):
             raise ValueError("objective exceeds Desktop input limit")
 
         business_context_code = _business_context_code(body.get("business_context_code"))
+        selected_factory = body.get("selected_factory_id")
+        if selected_factory is not None:
+            if not isinstance(selected_factory, str) or selected_factory not in _DESKTOP_FACTORY_IDS:
+                raise ValueError("selected_factory_id must identify a canonical factory")
+            try:
+                selected_plan = classify_execution_plan(objective)
+            except ExecutionCoordinatorError as error:
+                raise ValueError("selected factory cannot be verified against objective") from error
+            if selected_plan.capability_ids != (selected_factory,):
+                raise ValueError("selected factory conflicts with classified objective; request rejected")
         asset_ids = _core._reference_asset_ids(body.get("reference_asset_ids", []))
         if asset_ids:
             factory_count = _reference_factory_count(objective)
@@ -128,6 +141,11 @@ class DesktopIdentityRequestHandler(_core.DesktopIdentityRequestHandler):
             tenant_id=session.tenant_id,
             now=datetime.now(timezone.utc),
         )
+        if selected_factory is not None:
+            actual_plan = execution.get("plan")
+            actual_routes = actual_plan.get("capabilities", []) if isinstance(actual_plan, dict) else []
+            if actual_routes != [selected_factory]:
+                raise ExecutionCoordinatorError("actual route differs from selected factory")
         if store is not None:
             store.bind_request(
                 request_id,
@@ -140,6 +158,9 @@ class DesktopIdentityRequestHandler(_core.DesktopIdentityRequestHandler):
         response = dict(execution)
         response["reference_asset_count"] = len(asset_ids)
         response["business_context_code"] = business_context_code
+        if selected_factory is not None:
+            response["selected_factory_id"] = selected_factory
+            response["resolved_factory_id"] = selected_factory
         self._send_json(HTTPStatus.CREATED, response)
 
 
