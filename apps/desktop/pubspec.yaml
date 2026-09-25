@@ -1,5 +1,5 @@
 name: ilaios_desktop
-description: "ILAIOS Desktop — Windows-first client projection for the ILAIOS control plane."
+description: "ILAIOS Desktop â€” Windows-first client projection for the ILAIOS control plane."
 publish_to: 'none'
 version: 0.1.0+1
 
@@ -23,6 +23,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/assistant_design_reference.html
+    - assets/assistant_production.js
     - assets/li_design_reference.html
     - ../../brand/assets/02-ilaios-primary-horizontal-dark-transparent.png
     - ../../brand/assets/04-ilaios-symbol-light.jpg
