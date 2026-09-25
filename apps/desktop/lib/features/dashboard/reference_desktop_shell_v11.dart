@@ -209,17 +209,29 @@ class _ReferenceDesktopShellV11State extends State<ReferenceDesktopShellV11> {
         (context, id) => IlaiosLocaleScope(
           locale: IlaiosLocaleScope.of(this.context).locale,
           onChanged: (_) {},
-          child: AssistantOverlay(
-            session: session,
-            onClose: () => MultiViewDesktop.fromId(id).closeWindow(),
-            onRequest: widget.onAssistantRequest,
-            onFetchLiState: widget.onFetchLiState,
-            onFetchLiMemories: widget.onFetchLiMemories,
-            onRememberLiMemory: widget.onRememberLiMemory,
-            onSubmitWork: widget.onPromptSubmit,
-            onPromptRefine: widget.onPromptRefine,
-            fullWindow: true,
-          ),
+          child:
+              Platform.isWindows &&
+                  !session.liFounder &&
+                  widget.onAssistantRequest != null
+              ? AssistantHtmlPreview(
+                  key: ValueKey('assistant-web-${session.sessionId}'),
+                  dark: Theme.of(this.context).brightness == Brightness.dark,
+                  english:
+                      IlaiosLocaleScope.of(this.context).locale !=
+                      IlaiosLocale.turkish,
+                  onRequest: widget.onAssistantRequest,
+                )
+              : AssistantOverlay(
+                  session: session,
+                  onClose: () => MultiViewDesktop.fromId(id).closeWindow(),
+                  onRequest: widget.onAssistantRequest,
+                  onFetchLiState: widget.onFetchLiState,
+                  onFetchLiMemories: widget.onFetchLiMemories,
+                  onRememberLiMemory: widget.onRememberLiMemory,
+                  onSubmitWork: widget.onPromptSubmit,
+                  onPromptRefine: widget.onPromptRefine,
+                  fullWindow: true,
+                ),
         ),
         parentContext: context,
         options: const WindowOptions(
