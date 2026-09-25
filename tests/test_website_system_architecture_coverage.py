@@ -41,38 +41,39 @@ CANONICAL_FACTORY_LABELS_TR = (
     "Uygulama",
     "Araştırma / Veri",
     "Güvenlik",
-    "Creative / Doküman",
-    "Commerce / Büyüme",
+    "Yaratıcı / Doküman",
+    "Ticaret / Büyüme",
     "Kişisel Operasyon",
 )
 
 
-def test_homepage_and_factories_surface_all_nine_factory_routes_in_both_locales() -> None:
+def test_homepage_links_to_bilingual_factory_catalog_with_nine_routes() -> None:
     home = HOME.read_text(encoding="utf-8")
     factories = FACTORIES.read_text(encoding="utf-8")
 
+    # The homepage is outcome-first; the bilingual catalog owns individual routes.
+    assert 'const base = locale === "tr" ? "/tr" : ""' in home
+    assert 'href={`${base}/factories`}' in home
+    assert 'Explore all nine production areas.' in home
+    assert 'Dokuz üretim alanının tamamını keşfet.' in home
     for route in FACTORY_ROUTES:
-        assert f'"{route}"' in home
-        assert f'"/tr{route}"' in home
         assert f'"{route}"' in factories
         assert f'"/tr{route}"' in factories
-
-    assert 'outcomesEyebrow: "Nine production areas"' in home
-    assert 'outcomesEyebrow: "Dokuz üretim alanı"' in home
     assert 'eyebrow: "Nine production areas"' in factories
     assert 'eyebrow: "Dokuz üretim alanı"' in factories
 
 
-def test_public_factory_taxonomy_is_consistent_across_capabilities_and_use_pages() -> None:
+def test_capabilities_and_use_pages_preserve_distinct_purposes_and_factory_taxonomy() -> None:
     capabilities = CAPABILITIES.read_text(encoding="utf-8")
     use_ilaios = USE_ILAIOS.read_text(encoding="utf-8")
 
+    # Capabilities explains shared actions and links to the full factory catalog.
+    assert 'href={`${base}/factories`}' in capabilities
+    for action in ("Research", "Plan", "Create", "Verify", "Automate", "Manage", "Measure", "Recover"):
+        assert f'["{action}",' in capabilities
     for label in CANONICAL_FACTORY_LABELS_EN:
-        assert f'"{label}"' in capabilities
         assert f'name: "{label}"' in use_ilaios
-
     for label in CANONICAL_FACTORY_LABELS_TR:
-        assert f'"{label}"' in capabilities
         assert f'name: "{label}"' in use_ilaios
 
 

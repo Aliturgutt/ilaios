@@ -110,14 +110,12 @@ def test_light_factory_explorer_keeps_normal_text_legible() -> None:
     assert "color: #2A2A2A !important;" in interaction
 
 
-def test_themed_diagram_renders_visible_native_workflow_content() -> None:
+def test_retired_themed_diagram_preserves_accessible_caption_without_duplicate_visuals() -> None:
     diagram = DIAGRAM.read_text(encoding="utf-8")
-    assert "type DiagramKey" in diagram
-    assert "const EN" in diagram
-    assert "const TR" in diagram
-    assert 'className="native-diagram-track"' in diagram
-    assert 'className="native-diagram-node"' in diagram
-    assert "data-diagram-key={key}" in diagram
+    assert "if (!caption) return null" in diagram
+    assert 'className={`diagram-caption ${className}`.trim()}' in diagram
+    assert "{caption}</p>" in diagram
+    assert "native-diagram-track" not in diagram
     assert "diagram-sprite-dark" not in diagram
     assert "diagram-sprite-light" not in diagram
 
