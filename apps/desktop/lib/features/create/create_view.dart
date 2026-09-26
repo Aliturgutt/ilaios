@@ -6,6 +6,7 @@ import '../../business_context/business_capability_context.dart';
 import '../../control_plane/client.dart';
 import '../../control_plane/projection.dart';
 import '../../identity/identity_client.dart';
+import '../../factory_selection/factory_selection.dart';
 import 'governed_lifecycle_projection.dart';
 import 'reference_asset_picker.dart';
 
@@ -43,7 +44,21 @@ class CreateView extends StatefulWidget {
   State<CreateView> createState() => _CreateViewState();
 }
 
-enum _FactoryPreset { web, video, software }
+enum _FactoryPreset {
+  web,
+  video,
+  software,
+  app,
+  research,
+  security,
+  creative,
+  commerce,
+  personal,
+}
+
+extension _FactoryPresetIdentity on _FactoryPreset {
+  String get canonicalId => DesktopFactorySelection.ids[index];
+}
 
 class _CreateViewState extends State<CreateView> {
   final TextEditingController _controller = TextEditingController();
@@ -67,12 +82,14 @@ class _CreateViewState extends State<CreateView> {
       _error = null;
       _selectedBusinessCapability = null;
       BusinessCapabilitySubmissionBus.clear();
+      FactorySelectionSubmissionBus.clear();
     }
   }
 
   @override
   void dispose() {
     BusinessCapabilitySubmissionBus.clear();
+    FactorySelectionSubmissionBus.clear();
     _controller.dispose();
     super.dispose();
   }
@@ -92,6 +109,18 @@ class _CreateViewState extends State<CreateView> {
         tr
             ? 'İhtiyacımı karşılayan çalışan bir yazılım ürünü oluştur, test et ve doğrulanmış çıktıyı teslim et.'
             : 'Build a working software product for my requirement, test it, and deliver the verified output.',
+      _FactoryPreset.app =>
+        'Build a desktop or mobile application and verify the output.',
+      _FactoryPreset.research =>
+        'Research the subject, analyze the data, and deliver a verified report.',
+      _FactoryPreset.security =>
+        'Perform an authorized security audit and deliver findings.',
+      _FactoryPreset.creative =>
+        'Create a professional document and deliver the finished artifact.',
+      _FactoryPreset.commerce =>
+        'Prepare a commerce and growth strategy and deliver the results.',
+      _FactoryPreset.personal =>
+        'Automate my personal operations and verify the workflow.',
     };
   }
 
@@ -104,6 +133,12 @@ class _CreateViewState extends State<CreateView> {
         tr ? 'Video oluşturma görevi:' : 'Video creation task:',
       _FactoryPreset.software =>
         tr ? 'Yazılım oluşturma görevi:' : 'Software build task:',
+      _FactoryPreset.app => 'App Factory task:',
+      _FactoryPreset.research => 'Research and Data task:',
+      _FactoryPreset.security => 'Security Factory task:',
+      _FactoryPreset.creative => 'Creative and Document task:',
+      _FactoryPreset.commerce => 'Commerce and Growth task:',
+      _FactoryPreset.personal => 'Personal Operations task:',
     };
   }
 
@@ -112,6 +147,12 @@ class _CreateViewState extends State<CreateView> {
         _FactoryPreset.web => 'Web Factory',
         _FactoryPreset.video => 'Video Factory',
         _FactoryPreset.software => 'Software Factory',
+        _FactoryPreset.app => 'App Factory',
+        _FactoryPreset.research => 'Research and Data',
+        _FactoryPreset.security => 'Security Factory',
+        _FactoryPreset.creative => 'Creative and Document',
+        _FactoryPreset.commerce => 'Commerce and Growth',
+        _FactoryPreset.personal => 'Personal Operations',
       };
 
   String _businessCapabilityLabel(
@@ -177,6 +218,7 @@ class _CreateViewState extends State<CreateView> {
       _error = null;
     });
     BusinessCapabilitySubmissionBus.clear();
+    FactorySelectionSubmissionBus.clear();
   }
 
   Future<void> _submit() async {
@@ -202,6 +244,7 @@ class _CreateViewState extends State<CreateView> {
     BusinessCapabilitySubmissionBus.stage(
       family == null ? null : BusinessCapabilityContext(family),
     );
+    FactorySelectionSubmissionBus.stage(preset?.canonicalId);
     setState(() {
       _submitting = true;
       _submission = null;
@@ -220,6 +263,7 @@ class _CreateViewState extends State<CreateView> {
       setState(() => _error = error.toString());
     } finally {
       BusinessCapabilitySubmissionBus.clear();
+      FactorySelectionSubmissionBus.clear();
       if (mounted) setState(() => _submitting = false);
     }
   }
@@ -587,8 +631,9 @@ class _FactoryRouteStrip extends StatelessWidget {
   final ValueChanged<_FactoryPreset> onChanged;
 
   @override
-  Widget build(BuildContext context) => Row(
-    mainAxisSize: MainAxisSize.min,
+  Widget build(BuildContext context) => Wrap(
+    spacing: 4,
+    runSpacing: 4,
     children: [
       for (final preset in _FactoryPreset.values) ...[
         if (preset.index > 0) const SizedBox(width: 4),
@@ -620,12 +665,24 @@ class _FactoryRouteChip extends StatelessWidget {
     _FactoryPreset.web => 'factory-preset-web',
     _FactoryPreset.video => 'factory-preset-video',
     _FactoryPreset.software => 'factory-preset-software',
+    _FactoryPreset.app => 'factory-preset-app',
+    _FactoryPreset.research => 'factory-preset-research',
+    _FactoryPreset.security => 'factory-preset-security',
+    _FactoryPreset.creative => 'factory-preset-creative',
+    _FactoryPreset.commerce => 'factory-preset-commerce',
+    _FactoryPreset.personal => 'factory-preset-personal',
   };
 
   IconData get _icon => switch (preset) {
     _FactoryPreset.web => Icons.language_outlined,
     _FactoryPreset.video => Icons.smart_display_outlined,
     _FactoryPreset.software => Icons.code_rounded,
+    _FactoryPreset.app => Icons.apps_outlined,
+    _FactoryPreset.research => Icons.science_outlined,
+    _FactoryPreset.security => Icons.security_outlined,
+    _FactoryPreset.creative => Icons.description_outlined,
+    _FactoryPreset.commerce => Icons.storefront_outlined,
+    _FactoryPreset.personal => Icons.person_outline,
   };
 
   @override

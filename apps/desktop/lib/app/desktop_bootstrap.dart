@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../business_context/business_capability_context.dart';
+import '../factory_selection/factory_selection.dart';
 import '../control_plane/client.dart';
 import '../control_plane/config.dart';
 import '../control_plane/evidence_record.dart';
@@ -185,6 +186,7 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
     if (client == null || session == null) return;
     await client.logout(session);
     BusinessCapabilitySubmissionBus.clear();
+    FactorySelectionSubmissionBus.clear();
     if (!mounted) return;
     setState(() {
       _userSession = null;
@@ -278,10 +280,12 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
     }
 
     final businessContext = BusinessCapabilitySubmissionBus.take();
+    final selectedFactoryId = FactorySelectionSubmissionBus.take();
     final submission = await identityClient.submitPrompt(
       objective,
       session,
       businessContext: businessContext,
+      selectedFactoryId: selectedFactoryId,
     );
     if (mounted) {
       setState(() {
