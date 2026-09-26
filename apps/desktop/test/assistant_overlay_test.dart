@@ -92,7 +92,7 @@ void main() {
         final attachmentRect = tester.getRect(find.byKey(const Key('home-prompt-attachments')));
         await tester.tap(trigger);
         await tester.pumpAndSettle();
-        expect(find.text(founder ? 'Li â€” Founder Intelligence' : 'ILAIOS Assistant'), findsOneWidget);
+        expect(find.text(founder ? 'Li — Founder Intelligence' : 'ILAIOS Assistant'), findsOneWidget);
         expect(fixture.founderReads, founder ? 1 : 0);
         final symbolPath = theme == ThemeMode.dark
             ? '../../brand/assets/05-ilaios-app-icon.jpg'
@@ -280,7 +280,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('nav-assistant')));
     await tester.pumpAndSettle();
-    expect(find.text('Li â€” Founder Intelligence'), findsNothing);
+    expect(find.text('Li — Founder Intelligence'), findsNothing);
     expect(find.byKey(const Key('assistant-memory')), findsNothing);
     expect(fixture.founderReads, 0);
     expect(find.byKey(const Key('assistant-error')), findsOneWidget);
