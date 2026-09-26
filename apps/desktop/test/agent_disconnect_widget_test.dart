@@ -12,7 +12,7 @@ const _online = ControlPlaneProjection(
   lastEvent: null,
 );
 const _offline = ControlPlaneProjection.unavailable();
-const _snapshot = OperationalSnapshot(
+final _snapshot = OperationalSnapshot(
   runtimeRoutes: <Map<String, Object?>>[
     <String, Object?>{
       'agent_id': _agentId,
@@ -32,6 +32,7 @@ const _snapshot = OperationalSnapshot(
     'agents': <Map<String, Object?>>[
       <String, Object?>{
         'agent_id': _agentId,
+        'readiness_updated_at': DateTime.now().toUtc().toIso8601String(),
         'alias': 'Disconnect Agent',
         'team': 'core',
         'registered': true,
@@ -161,7 +162,7 @@ void main() {
   testWidgets('connected idle agent shows zero working agents', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1648, 1024));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    const idleSnapshot = OperationalSnapshot(
+    final idleSnapshot = OperationalSnapshot(
       runtimeRoutes: <Map<String, Object?>>[],
       schedulerState: <String, Object?>{},
       grantsState: <String, Object?>{},
@@ -172,6 +173,7 @@ void main() {
         'agents': <Map<String, Object?>>[
           <String, Object?>{
             'agent_id': _agentId,
+            'readiness_updated_at': DateTime.now().toUtc().toIso8601String(),
             'alias': 'Disconnect Agent',
             'registered': true,
             'status': 'idle',
@@ -180,10 +182,7 @@ void main() {
       },
     );
     await tester.pumpWidget(
-      const IlaiosDesktopApp(
-        projection: _online,
-        operationalSnapshot: idleSnapshot,
-      ),
+      IlaiosDesktopApp(projection: _online, operationalSnapshot: idleSnapshot),
     );
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('nav-agents')));
@@ -199,7 +198,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(1648, 1024));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     const secondId = 'ilaios.agent.engineering.worker.v1';
-    const twoWorking = OperationalSnapshot(
+    final twoWorking = OperationalSnapshot(
       runtimeRoutes: <Map<String, Object?>>[],
       schedulerState: <String, Object?>{},
       grantsState: <String, Object?>{},
@@ -210,6 +209,7 @@ void main() {
         'agents': <Map<String, Object?>>[
           <String, Object?>{
             'agent_id': _agentId,
+            'readiness_updated_at': DateTime.now().toUtc().toIso8601String(),
             'alias': 'Core Worker',
             'team': 'core',
             'registered': true,
@@ -217,6 +217,7 @@ void main() {
           },
           <String, Object?>{
             'agent_id': secondId,
+            'readiness_updated_at': DateTime.now().toUtc().toIso8601String(),
             'alias': 'Engineer',
             'team': 'engineering',
             'registered': true,
@@ -226,10 +227,7 @@ void main() {
       },
     );
     await tester.pumpWidget(
-      const IlaiosDesktopApp(
-        projection: _online,
-        operationalSnapshot: twoWorking,
-      ),
+      IlaiosDesktopApp(projection: _online, operationalSnapshot: twoWorking),
     );
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('nav-agents')));
@@ -252,6 +250,43 @@ void main() {
       find.byKey(const ValueKey('office-department-engineering')),
       findsOneWidget,
     );
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('connected stale telemetry never animates a working agent', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1648, 1024));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final staleSnapshot = OperationalSnapshot(
+      runtimeRoutes: const <Map<String, Object?>>[],
+      schedulerState: const <String, Object?>{},
+      grantsState: const <String, Object?>{},
+      governanceState: const <String, Object?>{},
+      evidenceRecords: const <Never>[],
+      liveEvents: const <Map<String, Object?>>[],
+      agentState: <String, Object?>{
+        'agents': <Map<String, Object?>>[
+          <String, Object?>{
+            'agent_id': _agentId,
+            'alias': 'Stale Worker',
+            'team': 'core',
+            'registered': true,
+            'status': 'working',
+            'readiness_updated_at': DateTime.now()
+                .toUtc()
+                .subtract(const Duration(minutes: 11))
+                .toIso8601String(),
+          },
+        ],
+      },
+    );
+    await tester.pumpWidget(
+      IlaiosDesktopApp(projection: _online, operationalSnapshot: staleSnapshot),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('nav-agents')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('working-agent-$_agentId')), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

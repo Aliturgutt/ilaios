@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../app/ilaios_locale.dart';
@@ -17,13 +19,14 @@ import 'reference_agents_view.dart';
 /// Summary cards and the workspace reference consume the same canonical runtime
 /// projection without allowing the static workspace artwork to become runtime
 /// truth.
-class ReferenceAgentsSummaryView extends StatelessWidget {
+class ReferenceAgentsSummaryView extends StatefulWidget {
   const ReferenceAgentsSummaryView({
     required this.projection,
     required this.snapshot,
     required this.status,
     required this.onNavigate,
     this.onRefreshRequested,
+    this.now,
     super.key,
   });
 
@@ -33,32 +36,65 @@ class ReferenceAgentsSummaryView extends StatelessWidget {
   final ValueChanged<DesktopSection> onNavigate;
   final VoidCallback? onRefreshRequested;
 
+  /// Optional deterministic clock for freshness verification.
+  final DateTime? now;
+  static const _maximumTelemetryAge = Duration(minutes: 10);
+
+  @override
+  State<ReferenceAgentsSummaryView> createState() =>
+      _ReferenceAgentsSummaryViewState();
+}
+
+class _ReferenceAgentsSummaryViewState
+    extends State<ReferenceAgentsSummaryView> {
+  Timer? _freshnessTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    // Refresh even without incoming telemetry: old working states must expire.
+    _freshnessTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _freshnessTimer?.cancel();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final session = DeliveryIdentityScope.maybeSessionOf(context);
+    final checkedAt = widget.now ?? DateTime.now().toUtc();
     final presentationSnapshot = canonicalAgentPresentationSnapshot(
-      snapshot,
-      runtimeConnected: projection.connected,
+      widget.snapshot,
+      runtimeConnected: widget.projection.connected,
       authorizedTenantId: session?.tenantId,
+      now: checkedAt,
+      maxAge: ReferenceAgentsSummaryView._maximumTelemetryAge,
     );
     final states = resolveCanonicalAgentRuntimeStates(
-      snapshot,
-      runtimeConnected: projection.connected,
+      widget.snapshot,
+      runtimeConnected: widget.projection.connected,
       authorizedTenantId: session?.tenantId,
+      now: checkedAt,
+      maxAge: ReferenceAgentsSummaryView._maximumTelemetryAge,
     );
 
     return Stack(
       children: [
         Positioned.fill(
           child: ReferenceAgentsView(
-            projection: projection,
+            projection: widget.projection,
             snapshot: presentationSnapshot,
-            status: status,
-            onNavigate: onNavigate,
-            onRefreshRequested: onRefreshRequested,
+            status: widget.status,
+            onNavigate: widget.onNavigate,
+            onRefreshRequested: widget.onRefreshRequested,
             workspace: _VerifiedWorkingAgents(
               states: states,
-              snapshot: snapshot,
+              snapshot: widget.snapshot,
             ),
           ),
         ),
@@ -71,7 +107,7 @@ class ReferenceAgentsSummaryView extends StatelessWidget {
             child: _AgentSummaryCards(
               snapshot: presentationSnapshot,
               states: states,
-              runtimeConnected: projection.connected,
+              runtimeConnected: widget.projection.connected,
             ),
           ),
         ),
