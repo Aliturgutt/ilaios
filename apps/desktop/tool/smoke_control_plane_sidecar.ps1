@@ -49,6 +49,8 @@ function Invoke-SidecarCycle {
       -RedirectStandardError $stderrFile `
       -WindowStyle Hidden `
       -PassThru
+    # Acquire the handle before exit; Start-Process may otherwise expose a null ExitCode.
+    $null = $process.Handle
 
     $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
     $ready = $null
