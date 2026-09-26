@@ -45,7 +45,7 @@ def _connect(database: Path) -> sqlite3.Connection:
 
 def test_migration_v9_creates_canonical_identity_tables(tmp_path: Path) -> None:
     database = tmp_path / "identity.sqlite3"
-    assert migrate_database(database) == LATEST_SCHEMA_VERSION == 10
+    assert migrate_database(database) == LATEST_SCHEMA_VERSION == 11
     with _connect(database) as connection:
         tables = {
             row[0]
@@ -254,6 +254,9 @@ def test_v9_expand_only_rollback_preserves_identity_data(tmp_path: Path) -> None
     service = CentralIdentityService(SQLiteCentralIdentityStore(database))
     account = service.sign_in(_identity(IdentityProvider.GOOGLE, "google-1"))
 
+    backup_v11 = tmp_path / "identity-v11-backup.sqlite3"
+    assert rollback_database(database, backup_v11) == 10
+    assert current_schema_version(backup_v11) == 11
     assert rollback_database(database, backup_v10) == 9
     assert current_schema_version(database) == 9
     assert current_schema_version(backup_v10) == 10
