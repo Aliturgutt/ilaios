@@ -81,6 +81,11 @@ void main() {
         findsOneWidget,
       );
       expect(find.byKey(const Key('agents-summary-busy')), findsOneWidget);
+      expect(find.byKey(const Key('agents-working-count')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('working-agent-$_agentId')),
+        findsOneWidget,
+      );
       expect(
         find.descendant(of: row, matching: find.text('84.0%')),
         findsOneWidget,
@@ -91,6 +96,10 @@ void main() {
       );
 
       await show(false);
+      expect(
+        find.byKey(const ValueKey('working-agent-$_agentId')),
+        findsNothing,
+      );
       final disconnectedRow = find.byKey(const ValueKey('agent-row-$_agentId'));
       expect(
         find.descendant(
@@ -122,6 +131,10 @@ void main() {
         );
       }
       await show(true);
+      expect(
+        find.byKey(const ValueKey('working-agent-$_agentId')),
+        findsOneWidget,
+      );
       final restoredRow = find.byKey(const ValueKey('agent-row-$_agentId'));
       expect(
         find.descendant(of: restoredRow, matching: find.text('LIVE_TASK_123')),
@@ -145,4 +158,100 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+  testWidgets('connected idle agent shows zero working agents', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1648, 1024));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    const idleSnapshot = OperationalSnapshot(
+      runtimeRoutes: <Map<String, Object?>>[],
+      schedulerState: <String, Object?>{},
+      grantsState: <String, Object?>{},
+      governanceState: <String, Object?>{},
+      evidenceRecords: <Never>[],
+      liveEvents: <Map<String, Object?>>[],
+      agentState: <String, Object?>{
+        'agents': <Map<String, Object?>>[
+          <String, Object?>{
+            'agent_id': _agentId,
+            'alias': 'Disconnect Agent',
+            'registered': true,
+            'status': 'idle',
+          },
+        ],
+      },
+    );
+    await tester.pumpWidget(
+      const IlaiosDesktopApp(
+        projection: _online,
+        operationalSnapshot: idleSnapshot,
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('nav-agents')));
+    await tester.pumpAndSettle();
+    final busy = find.byKey(const Key('agents-summary-busy'));
+    expect(find.descendant(of: busy, matching: find.text('0')), findsOneWidget);
+    expect(find.byKey(const ValueKey('working-agent-$_agentId')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('two real working agents appear in their own departments', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1648, 1024));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    const secondId = 'ilaios.agent.engineering.worker.v1';
+    const twoWorking = OperationalSnapshot(
+      runtimeRoutes: <Map<String, Object?>>[],
+      schedulerState: <String, Object?>{},
+      grantsState: <String, Object?>{},
+      governanceState: <String, Object?>{},
+      evidenceRecords: <Never>[],
+      liveEvents: <Map<String, Object?>>[],
+      agentState: <String, Object?>{
+        'agents': <Map<String, Object?>>[
+          <String, Object?>{
+            'agent_id': _agentId,
+            'alias': 'Core Worker',
+            'team': 'core',
+            'registered': true,
+            'status': 'working',
+          },
+          <String, Object?>{
+            'agent_id': secondId,
+            'alias': 'Engineer',
+            'team': 'engineering',
+            'registered': true,
+            'status': 'working',
+          },
+        ],
+      },
+    );
+    await tester.pumpWidget(
+      const IlaiosDesktopApp(
+        projection: _online,
+        operationalSnapshot: twoWorking,
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('nav-agents')));
+    await tester.pumpAndSettle();
+    final busy = find.byKey(const Key('agents-summary-busy'));
+    expect(find.descendant(of: busy, matching: find.text('2')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('working-agent-$_agentId')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('working-agent-$secondId')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('office-department-core')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('office-department-engineering')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
 }
