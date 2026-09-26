@@ -1,7 +1,4 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../app/ilaios_locale.dart';
 
@@ -10,6 +7,8 @@ import '../../control_plane/projection.dart';
 import '../deliveries/delivery_identity_scope.dart';
 import '../navigation/desktop_section.dart';
 import 'agent_runtime_status.dart';
+import 'pixel_agent_presentation.dart';
+import 'pixel_agent_sprite.dart';
 import 'reference_agents_view.dart';
 
 /// Presentation-only wrapper for the canonical Agents surface.
@@ -57,19 +56,9 @@ class ReferenceAgentsSummaryView extends StatelessWidget {
             status: status,
             onNavigate: onNavigate,
             onRefreshRequested: onRefreshRequested,
-            workspace: Builder(
-              builder: (context) => Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Text(
-                    IlaiosLocaleScope.of(context).locale == IlaiosLocale.turkish
-                        ? 'Ajanların çalışma durumu yalnızca doğrulanmış canlı verilerden gösterilir. Güncel durum için yukarıdaki sayaçları ve aşağıdaki ajan listesini inceleyin.'
-                        : 'Agent activity is shown only from verified live data. See the counters above and the agent list below for current status.',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ),
-              ),
+            workspace: _VerifiedWorkingAgents(
+              states: states,
+              snapshot: snapshot,
             ),
           ),
         ),
@@ -91,74 +80,128 @@ class ReferenceAgentsSummaryView extends StatelessWidget {
   }
 }
 
-class _PixelWorkspacePanel extends StatefulWidget {
-  const _PixelWorkspacePanel();
+class _VerifiedWorkingAgents extends StatelessWidget {
+  const _VerifiedWorkingAgents({required this.states, required this.snapshot});
 
-  @override
-  State<_PixelWorkspacePanel> createState() => _PixelWorkspacePanelState();
-}
-
-class _PixelWorkspacePanelState extends State<_PixelWorkspacePanel> {
-  static const _assetPayload =
-      'assets/pixel_agents/workspace/office_reference.b64';
-  static Uint8List? _cachedOfficeBytes;
-
-  late final Future<Uint8List> _officeBytes = _loadOfficeBytes();
-
-  Future<Uint8List> _loadOfficeBytes() async {
-    final cached = _cachedOfficeBytes;
-    if (cached != null) return cached;
-
-    final payload = await rootBundle.loadString(_assetPayload, cache: true);
-    final encoded = payload.replaceAll(RegExp(r'[^A-Za-z0-9+/=]'), '');
-    if (encoded.isEmpty) {
-      throw const FormatException('Empty pixel workspace payload.');
-    }
-    final decoded = base64Decode(encoded);
-    _cachedOfficeBytes = decoded;
-    return decoded;
-  }
-
-  Widget _error(BuildContext context) => Center(
-    child: Text(
-      IlaiosLocaleScope.of(context).locale == IlaiosLocale.turkish
-          ? 'Pixel çalışma alanı yüklenemedi.'
-          : 'Pixel workspace could not be loaded.',
-      style: TextStyle(
-        fontSize: 13,
-        color: Theme.of(context).colorScheme.onSurfaceVariant,
-      ),
-    ),
-  );
+  final Map<String, AgentRuntimeDisplayState> states;
+  final OperationalSnapshot snapshot;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      key: const Key('agents-pixel-workspace'),
-      margin: const EdgeInsets.fromLTRB(14, 0, 12, 8),
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerLowest,
-        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: FutureBuilder<Uint8List>(
-        future: _officeBytes,
-        initialData: _cachedOfficeBytes,
-        builder: (context, snapshot) {
-          if (snapshot.hasError) return _error(context);
-          final bytes = snapshot.data;
-          if (bytes == null) return const SizedBox.shrink();
-          return Image.memory(
-            bytes,
-            key: const Key('agents-pixel-workspace-image'),
-            fit: BoxFit.contain,
-            alignment: Alignment.center,
-            filterQuality: FilterQuality.medium,
-            gaplessPlayback: true,
-            errorBuilder: (context, error, stackTrace) => _error(context),
-          );
-        },
+    final tr = IlaiosLocaleScope.of(context).locale == IlaiosLocale.turkish;
+    final workingIds = states.entries
+        .where((entry) => entry.value == AgentRuntimeDisplayState.working)
+        .map((entry) => entry.key)
+        .toList(growable: false);
+    final records = snapshot.agentState['agents'];
+    final names = <String, String>{};
+    final teams = <String, String>{};
+    if (records is List) {
+      for (final record in records) {
+        if (record is! Map) continue;
+        final id = record['agent_id'];
+        if (id is! String || !workingIds.contains(id)) continue;
+        final alias = record['alias'];
+        names[id] = alias is String && alias.trim().isNotEmpty ? alias : id;
+        final team = record['team'];
+        if (team is String && pixelAgentTeams.contains(team.toLowerCase())) {
+          teams[id] = team.toLowerCase();
+        }
+      }
+    }
+    return LayoutBuilder(
+      builder: (context, constraints) => Container(
+        key: const Key('agents-verified-workspace'),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              tr
+                  ? 'Ã‡alÄ±ÅŸan ajanlar: ${workingIds.length}'
+                  : 'Working agents: ${workingIds.length}',
+              key: const Key('agents-working-count'),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: GridView.builder(
+                key: const Key('agents-empty-office'),
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: 8,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: constraints.maxWidth < 550 ? 2 : 4,
+                  mainAxisSpacing: 5,
+                  crossAxisSpacing: 5,
+                  childAspectRatio: constraints.maxWidth < 550 ? 1.6 : 2.3,
+                ),
+                itemBuilder: (context, index) {
+                  final team = pixelAgentTeams.elementAt(index);
+                  final occupants = workingIds
+                      .where((id) => teams[id] == team)
+                      .toList();
+                  return Container(
+                    key: ValueKey('office-department-$team'),
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.outlineVariant,
+                      ),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          team,
+                          style: Theme.of(context).textTheme.labelSmall,
+                        ),
+                        const Icon(Icons.desktop_windows, size: 18),
+                        Expanded(
+                          child: occupants.isEmpty
+                              ? const SizedBox.shrink()
+                              : ListView(
+                                  scrollDirection: Axis.horizontal,
+                                  children: [
+                                    for (final id in occupants)
+                                      SizedBox(
+                                        key: ValueKey('working-agent-$id'),
+                                        width: 116,
+                                        child: Row(
+                                          children: [
+                                            PixelAgentSprite(
+                                              team: team,
+                                              view: PixelAgentView.rear,
+                                              motion: PixelAgentMotion.working,
+                                              size: const Size(20, 22),
+                                            ),
+                                            Expanded(
+                                              child: Text(
+                                                names[id] ?? id,
+                                                maxLines: 1,
+                                                style: Theme.of(
+                                                  context,
+                                                ).textTheme.labelSmall,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -187,11 +230,11 @@ class _AgentSummaryCards extends StatelessWidget {
         : states.values
               .where((item) => item == AgentRuntimeDisplayState.active)
               .length;
-    final busy = !runtimeConnected || states.isEmpty
-        ? null
-        : states.values
+    final busy = runtimeConnected
+        ? states.values
               .where((item) => item == AgentRuntimeDisplayState.working)
-              .length;
+              .length
+        : null;
     final idle = !runtimeConnected || states.isEmpty
         ? null
         : states.values
@@ -211,7 +254,7 @@ class _AgentSummaryCards extends StatelessWidget {
       (
         id: 'busy',
         label: tr ? 'Meşgul' : 'Busy',
-        value: busy?.toString() ?? '—',
+        value: busy?.toString() ?? '\u2014',
       ),
       (
         id: 'idle',

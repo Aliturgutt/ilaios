@@ -204,7 +204,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('nav-agents')));
     await tester.pumpAndSettle();
-    final workspace = find.textContaining('Agent activity is shown only from verified live data.');
+    final workspace = find.byKey(const Key('agents-verified-workspace'));
     final element = tester.element(workspace);
     final rect = tester.getRect(workspace);
     await tester.tap(find.byKey(const Key('nav-assistant')));

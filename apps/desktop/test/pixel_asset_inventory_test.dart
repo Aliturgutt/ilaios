@@ -13,8 +13,8 @@ void main() {
     expect(manifestFile.existsSync(), isTrue);
     expect(qaFile.existsSync(), isTrue);
 
-    final manifest = jsonDecode(manifestFile.readAsStringSync())
-        as Map<String, dynamic>;
+    final manifest =
+        jsonDecode(manifestFile.readAsStringSync()) as Map<String, dynamic>;
     final qa = jsonDecode(qaFile.readAsStringSync()) as Map<String, dynamic>;
     expect(manifest['total_frames'], 208);
     expect(qa['asset_count'], 208);
@@ -41,11 +41,16 @@ void main() {
             expect(file.existsSync(), isTrue, reason: path);
             final bytes = file.readAsBytesSync();
             expect(bytes.length, greaterThan(8), reason: path);
-            expect(
-              bytes.take(8).toList(),
-              <int>[137, 80, 78, 71, 13, 10, 26, 10],
-              reason: path,
-            );
+            expect(bytes.take(8).toList(), <int>[
+              137,
+              80,
+              78,
+              71,
+              13,
+              10,
+              26,
+              10,
+            ], reason: path);
             observed++;
           }
         }
@@ -63,11 +68,16 @@ void main() {
     expect(encoded, isNotEmpty, reason: assetPath);
     final bytes = base64Decode(encoded);
     expect(bytes.length, greaterThan(1024), reason: assetPath);
-    expect(
-      bytes.take(8).toList(),
-      <int>[137, 80, 78, 71, 13, 10, 26, 10],
-      reason: assetPath,
-    );
+    expect(bytes.take(8).toList(), <int>[
+      137,
+      80,
+      78,
+      71,
+      13,
+      10,
+      26,
+      10,
+    ], reason: assetPath);
     expect(
       sha256.convert(bytes).toString(),
       '72fa37f69f0af4308bd9d544a3d659b0ffee0ce7ccab0f12c43f88115cdc11d2',
@@ -80,9 +90,9 @@ void main() {
     final agentsView = File(
       'lib/features/dashboard/reference_agents_summary_view.dart',
     ).readAsStringSync();
-    expect(agentsView, contains("key: const Key('agents-pixel-workspace')"));
-    expect(agentsView, contains(assetPath));
-    expect(agentsView, contains('base64Decode'));
-    expect(agentsView, contains("RegExp(r'[^A-Za-z0-9+/=]')"));
+    expect(agentsView, contains("key: const Key('agents-verified-workspace')"));
+    expect(agentsView, contains("key: const Key('agents-empty-office')"));
+    expect(agentsView, contains('PixelAgentMotion.working'));
+    expect(agentsView, isNot(contains('base64Decode')));
   });
 }
