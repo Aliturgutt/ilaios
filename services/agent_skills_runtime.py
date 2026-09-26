@@ -21,6 +21,7 @@ from typing import Any
 
 from services.agent_skills_compat import ImportedAgentSkill, load_agent_skill
 from services.cloud import TenantBoundary
+from services.evidence.store import EvidenceStore
 from services.governance.runtime import GovernedRuntimeGateway
 from services.identity import AccessRequest, AuthorizationEngine, Principal
 from services.runtime import GovernedRuntime
@@ -97,6 +98,7 @@ class AgentSkillsProductionRuntime:
         authorization: AuthorizationEngine,
         tenants: TenantBoundary,
         evidence_chain: EvidenceChain,
+        evidence_store: EvidenceStore,
     ) -> None:
         self._runtime = runtime
         self._governed_gateway = governed_gateway
@@ -104,6 +106,7 @@ class AgentSkillsProductionRuntime:
         self._authorization = authorization
         self._tenants = tenants
         self._evidence_chain = evidence_chain
+        self._evidence_store = evidence_store
         self._tool_gateway.register_handler(_TOOL_NAME, self._governed_gateway.execute)
 
     def submit(self, request: ExternalSkillExecutionRequest, *, now: datetime) -> dict[str, object]:
@@ -164,6 +167,8 @@ class AgentSkillsProductionRuntime:
 
     def execute(self, request: ExternalSkillExecutionRequest) -> ExternalSkillExecutionReceipt:
         """Execute only through Tool Gateway and append validation evidence."""
+        if self._evidence_store is None:
+            raise AgentSkillsRuntimeError("durable evidence store is required")
         package = self._load_and_verify(request)
         skill_id = self._skill_id(package)
         result = self._tool_gateway.dispatch(_TOOL_NAME, request.request_id)
@@ -218,6 +223,15 @@ class AgentSkillsProductionRuntime:
         self._evidence_chain.add_record(record)
         if not self._evidence_chain.verify_integrity():
             raise AgentSkillsRuntimeError("evidence chain integrity verification failed")
+        durable_payload = json.dumps(
+            {**evidence_payload, "evidence_chain_hash": record.chain_hash},
+            sort_keys=True, separators=(",", ":"),
+        ).encode("utf-8")
+        artifact = self._evidence_store.put_artifact(durable_payload)
+        self._evidence_store.append_provenance(
+            request.request_id, artifact, "external-skill-executed"
+        )
+        self._evidence_store.verify()
 
         return ExternalSkillExecutionReceipt(
             request_id=request.request_id,
