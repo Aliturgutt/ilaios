@@ -112,7 +112,8 @@ jobs:
             tests/test_mobile_android_executor.py \
             tests/test_mobile_android_release.py \
             tests/test_mobile_android_build_executor.py \
-            tests/test_mobile_android_device_executor.py
+            tests/test_mobile_android_device_executor.py \
+            tests/test_phase3_google_play.py
 
       - name: Run focused Ruff
         shell: bash
