@@ -31,9 +31,7 @@ Map<String, AgentRuntimeDisplayState> resolveCanonicalAgentRuntimeStates(
 
   Map<String, AgentRuntimeDisplayState> allOffline() =>
       Map<String, AgentRuntimeDisplayState>.unmodifiable(
-        merged.map(
-          (id, _) => MapEntry(id, AgentRuntimeDisplayState.offline),
-        ),
+        merged.map((id, _) => MapEntry(id, AgentRuntimeDisplayState.offline)),
       );
 
   if (!runtimeConnected) return allOffline();
@@ -96,7 +94,8 @@ Map<String, AgentRuntimeDisplayState> resolveCanonicalAgentRuntimeStates(
           ? item['registered'] as bool
           : true;
       if (!registered) return MapEntry(id, AgentRuntimeDisplayState.offline);
-      final raw = _text(item, const [
+      final raw =
+          _text(item, const [
             'runtime_status',
             'agent_status',
             'worker_status',
@@ -118,11 +117,15 @@ OperationalSnapshot canonicalAgentPresentationSnapshot(
   OperationalSnapshot snapshot, {
   bool runtimeConnected = true,
   String? authorizedTenantId,
+  DateTime? now,
+  Duration? maxAge,
 }) {
   final states = resolveCanonicalAgentRuntimeStates(
     snapshot,
     runtimeConnected: runtimeConnected,
     authorizedTenantId: authorizedTenantId,
+    now: now,
+    maxAge: maxAge,
   );
 
   String? canonicalId(Map<String, Object?> item) {
