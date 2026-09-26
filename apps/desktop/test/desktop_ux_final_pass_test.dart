@@ -5,6 +5,7 @@ import 'package:ilaios_desktop/control_plane/client.dart';
 import 'package:ilaios_desktop/control_plane/evidence_record.dart';
 import 'package:ilaios_desktop/control_plane/operational_snapshot.dart';
 import 'package:ilaios_desktop/features/create/create_view.dart';
+import 'package:ilaios_desktop/factory_selection/factory_selection.dart';
 import 'package:ilaios_desktop/main.dart';
 
 void main() {
@@ -15,6 +16,7 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     String? submittedObjective;
+    String? submittedFactory;
     await tester.pumpWidget(
       IlaiosLocaleScope(
         locale: IlaiosLocale.english,
@@ -32,6 +34,7 @@ void main() {
               status: 'Operational APIs connected',
               onSubmit: (objective) async {
                 submittedObjective = objective;
+                submittedFactory = FactorySelectionSubmissionBus.take();
                 return const PromptSubmission(
                   goalId: 'goal-test',
                   jobId: 'job-test',
@@ -52,6 +55,17 @@ void main() {
       findsOneWidget,
     );
 
+    for (final name in [
+      'app',
+      'research',
+      'security',
+      'creative',
+      'commerce',
+      'personal',
+    ]) {
+      expect(find.byKey(ValueKey('factory-preset-$name')), findsOneWidget);
+    }
+
     final video = find.byKey(const ValueKey('factory-preset-video'));
     await tester.ensureVisible(video);
     await tester.tap(video);
@@ -66,6 +80,7 @@ void main() {
 
     expect(submittedObjective, isNotNull);
     expect(submittedObjective, startsWith('Video creation task:'));
+    expect(submittedFactory, 'ilaios.capability.video-media-factory');
   });
 
   testWidgets('settings quick actions are interactive', (

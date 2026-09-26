@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../business_context/business_capability_context.dart';
+import '../factory_selection/factory_selection.dart';
 import '../company_knowledge/company_knowledge_draft.dart';
 import '../control_plane/client.dart';
 import '../reference_assets/reference_asset_draft.dart';
@@ -40,8 +41,8 @@ class IdentityClient extends core.IdentityClient {
     super.retryDelay,
     required this._assetBaseUri,
     required this._assetTransportToken,
-  })  : _assetTransport = transport,
-        super(transport: transport);
+  }) : _assetTransport = transport,
+       super(transport: transport);
 
   static const int _maxReferenceAssets = 20;
   static const int _maxReferenceAssetBytes = 10 * 1024 * 1024;
@@ -59,7 +60,12 @@ class IdentityClient extends core.IdentityClient {
     String objective,
     core.DesktopUserSession session, {
     BusinessCapabilityContext? businessContext,
+    String? selectedFactoryId,
   }) async {
+    if (selectedFactoryId != null &&
+        !DesktopFactorySelection.valid(selectedFactoryId)) {
+      throw const core.IdentityClientException('Unknown selected factory');
+    }
     final normalized = objective.trim();
     if (normalized.isEmpty) {
       throw const core.IdentityClientException('Prompt must not be empty');
@@ -123,6 +129,7 @@ class IdentityClient extends core.IdentityClient {
         '/v1/desktop/intent',
         <String, Object?>{
           'objective': normalized,
+          'selected_factory_id': ?selectedFactoryId,
           'reference_asset_ids': referenceAssetIds,
           'source_media_asset_id': ?sourceAssetId,
           'business_context_code': businessContext?.contextCode,
@@ -148,6 +155,13 @@ class IdentityClient extends core.IdentityClient {
           executionStatus.isEmpty) {
         throw const core.IdentityClientException(
           'Authenticated intent response is malformed',
+        );
+      }
+      if (selectedFactoryId != null &&
+          (payload['selected_factory_id'] != selectedFactoryId ||
+              payload['resolved_factory_id'] != selectedFactoryId)) {
+        throw const core.IdentityClientException(
+          'Authenticated intent factory route mismatch',
         );
       }
       final returnedBusinessContextCode = payload['business_context_code'];
@@ -377,13 +391,17 @@ class IdentityClient extends core.IdentityClient {
     var totalBytes = 0;
     final digests = <String>{};
     for (final reference in references) {
-      if (reference.filename.trim().isEmpty || reference.filename.length > 180) {
+      if (reference.filename.trim().isEmpty ||
+          reference.filename.length > 180) {
         throw const core.IdentityClientException(
           'Reference image filename is invalid',
         );
       }
-      if (!const <String>{'image/jpeg', 'image/png', 'image/webp'}
-          .contains(reference.mimeType)) {
+      if (!const <String>{
+        'image/jpeg',
+        'image/png',
+        'image/webp',
+      }.contains(reference.mimeType)) {
         throw const core.IdentityClientException(
           'Reference image type is unsupported',
         );
@@ -424,7 +442,9 @@ class IdentityClient extends core.IdentityClient {
     if (source.filename.trim().isEmpty ||
         source.filename.length > 180 ||
         !source.filename.toLowerCase().endsWith('.mp4')) {
-      throw const core.IdentityClientException('Source video filename is invalid');
+      throw const core.IdentityClientException(
+        'Source video filename is invalid',
+      );
     }
     if (source.sizeBytes < 12 || source.sizeBytes > _maxSourceMediaBytes) {
       throw const core.IdentityClientException(
@@ -440,7 +460,9 @@ class IdentityClient extends core.IdentityClient {
       );
     }
     if (!RegExp(r'^[0-9a-f]{64}$').hasMatch(source.sha256Hex)) {
-      throw const core.IdentityClientException('Source video digest is invalid');
+      throw const core.IdentityClientException(
+        'Source video digest is invalid',
+      );
     }
   }
 }
