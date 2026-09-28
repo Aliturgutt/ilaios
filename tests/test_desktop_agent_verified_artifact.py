@@ -89,3 +89,24 @@ def test_verified_worker_result_requires_product_adapter_before_acceptance(tmp_p
     with pytest.raises(Exception):
         inspect_worker_acceptance_readiness(coordinator, request_id='agentexec-result',
             principal_id='intruder', tenant_id='tenant-b')
+
+
+def test_verified_adapter_binds_agent_and_governance_without_false_acceptance(tmp_path):
+    from services.desktop_agent_verified_execution_adapter import VerifiedAgentExecutionAdapter
+    coordinator, delivery, lease = prepared(tmp_path)
+    content = b'agent-generated content'
+    receive_verified(AgentResultReceipt(delivery), request_id='agentexec-result',
+        agent_id='agent-a', secret='credential-a', lease=lease,
+        artifact_b64=base64.b64encode(content).decode(),
+        digest=hashlib.sha256(content).hexdigest(), now=NOW)
+    adapter = VerifiedAgentExecutionAdapter(coordinator)
+    evidence = adapter.verify(request_id='agentexec-result', agent_id='agent-a',
+        principal_id='owner', tenant_id='tenant-a')
+    assert evidence['verified'] and evidence['product_acceptance_required']
+    assert evidence['coordinator_accepted'] is False
+    with pytest.raises(PermissionError):
+        adapter.verify(request_id='agentexec-result', agent_id='agent-b',
+            principal_id='owner', tenant_id='tenant-a')
+    with pytest.raises(Exception):
+        adapter.verify(request_id='agentexec-result', agent_id='agent-a',
+            principal_id='other', tenant_id='tenant-b')
