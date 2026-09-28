@@ -268,6 +268,9 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
             if path == "/v1/reference-assets":
                 self._upload_reference_asset(body)
                 return
+            if path == "/v1/desktop/agents/assignments":
+                self._submit_agent_assignment(body)
+                return
             if path == "/v1/desktop/intent":
                 if any(key in body for key in ("agent_id", "selected_agent_id", "assignment_agent_id", "explicit_confirmation", "live_evidence", "adapter_evidence")):
                     raise ValueError("agent assignment is unavailable on general Desktop intent")

@@ -65,6 +65,7 @@ class DesktopIdentityHTTPServer(_core.DesktopIdentityHTTPServer):
         identity: DesktopOIDCService | None,
         coordinator: ExecutionCoordinator,
         reference_assets: ReferenceAssetStore | None = None,
+        agent_assignment: dict | None = None,
     ) -> None:
         super().__init__(
             server_address,
@@ -73,11 +74,16 @@ class DesktopIdentityHTTPServer(_core.DesktopIdentityHTTPServer):
             coordinator=coordinator,
             reference_assets=reference_assets,
         )
+        self.agent_assignment = agent_assignment
         self.RequestHandlerClass = DesktopIdentityRequestHandler
 
 
 class DesktopIdentityRequestHandler(_core.DesktopIdentityRequestHandler):
     """Admit bounded Desktop metadata while preserving backend authority."""
+
+    def _submit_agent_assignment(self, body: dict[str, object]) -> None:
+        from services.desktop_agent_assignment_http import submit_agent_assignment
+        submit_agent_assignment(self, body)
 
     def _submit_authenticated_intent(self, body: dict[str, object]) -> None:
         session = self._authenticated_session()
