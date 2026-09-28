@@ -31,3 +31,43 @@ def test_wrong_agent_cannot_submit_verified_bytes(tmp_path):
             agent_id='agent-b', secret='credential-b', lease=lease,
             artifact_b64=base64.b64encode(content).decode(),
             digest=hashlib.sha256(content).hexdigest(), now=NOW)
+
+
+def test_artifact_persists_after_coordinator_reopen_and_reconcile_fails_closed(tmp_path):
+    import sqlite3
+    from tests.test_execution_coordinator import _coordinator
+    from services.desktop_agent_coordinator_result_bridge import reconcile_verified_result
+    coordinator, delivery, lease = prepared(tmp_path)
+    content = b'actual worker output bytes'
+    digest = hashlib.sha256(content).hexdigest()
+    receive_verified(AgentResultReceipt(delivery), request_id='agentexec-result',
+        agent_id='agent-a', secret='credential-a', lease=lease,
+        artifact_b64=base64.b64encode(content).decode(), digest=digest, now=NOW)
+    reopened, *_ = _coordinator(tmp_path)
+    with sqlite3.connect(reopened._database_path) as conn:
+        saved = conn.execute('SELECT sha256,content FROM desktop_agent_artifacts WHERE request_id=?',
+                             ('agentexec-result',)).fetchone()
+    assert saved == (digest, content)
+    assert reconcile_verified_result(reopened, request_id='agentexec-result',
+        principal_id='owner', tenant_id='tenant-a') == {
+            'verified': False, 'reason': 'coordinator_not_accepted'}
+    with pytest.raises(Exception):
+        reconcile_verified_result(reopened, request_id='agentexec-result',
+            principal_id='intruder', tenant_id='tenant-b')
+
+
+def test_independent_coordinator_acceptance_does_not_launder_worker_digest(tmp_path):
+    from datetime import timedelta
+    from services.desktop_agent_coordinator_result_bridge import reconcile_verified_result
+    coordinator, delivery, lease = prepared(tmp_path)
+    content = b'unrelated worker bytes'
+    receive_verified(AgentResultReceipt(delivery), request_id='agentexec-result',
+        agent_id='agent-a', secret='credential-a', lease=lease,
+        artifact_b64=base64.b64encode(content).decode(),
+        digest=hashlib.sha256(content).hexdigest(), now=NOW)
+    manifest = coordinator.resume('agentexec-result', token='token', now=NOW + timedelta(seconds=1))
+    assert manifest['accepted'] is True
+    assert manifest['artifact_digest'] != hashlib.sha256(content).hexdigest()
+    assert reconcile_verified_result(coordinator, request_id='agentexec-result',
+        principal_id='owner', tenant_id='tenant-a') == {
+            'verified': False, 'reason': 'coordinator_evidence_mismatch'}

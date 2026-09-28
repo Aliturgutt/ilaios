@@ -10,8 +10,13 @@ class AgentResultReceipt:
     def __init__(self, delivery):
         self.delivery = delivery
 
-    def submit(self, *, request_id, agent_id, secret, lease, result, now):
+    def submit(self, *, request_id, agent_id, secret, lease, result, now, artifact=None):
         self.delivery._auth(agent_id, secret)
+        if artifact is not None:
+            if not isinstance(artifact, bytes) or not artifact or len(artifact) > 1024 * 1024:
+                raise ValueError('invalid artifact bytes')
+            if not isinstance(result, dict) or hashlib.sha256(artifact).hexdigest() != result.get('artifact_sha256'):
+                raise ValueError('artifact digest mismatch')
         if not isinstance(result, dict) or set(result) != {'status', 'artifact_sha256'}:
             raise ValueError('invalid result shape')
         if result['status'] not in ('completed', 'failed'):
@@ -41,6 +46,11 @@ class AgentResultReceipt:
             if conn.execute('SELECT 1 FROM desktop_agent_result_receipts WHERE request_id=?',
                             (request_id,)).fetchone():
                 raise PermissionError('result already submitted')
+            conn.execute('CREATE TABLE IF NOT EXISTS desktop_agent_artifacts ('
+                'request_id TEXT PRIMARY KEY, sha256 TEXT NOT NULL, content BLOB NOT NULL)')
+            if artifact is not None:
+                conn.execute('INSERT INTO desktop_agent_artifacts VALUES (?,?,?)',
+                             (request_id, digest, artifact))
             conn.execute('INSERT INTO desktop_agent_result_receipts VALUES (?,?,?,?)',
                          (request_id, agent_id, payload, now.isoformat()))
             return {'received': True, 'coordinator_accepted': False}

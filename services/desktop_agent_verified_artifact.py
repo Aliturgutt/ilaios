@@ -20,5 +20,6 @@ def receive_verified(receipt, *, request_id, agent_id, secret, lease, artifact_b
     if not hmac.compare_digest(actual, digest):
         raise ValueError('artifact digest mismatch')
     outcome = receipt.submit(request_id=request_id, agent_id=agent_id, secret=secret,
-        lease=lease, result={'status': 'completed', 'artifact_sha256': actual}, now=now)
+        lease=lease, result={'status': 'completed', 'artifact_sha256': actual},
+        now=now, artifact=artifact)
     return outcome, artifact
