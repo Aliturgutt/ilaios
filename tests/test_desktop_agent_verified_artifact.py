@@ -161,3 +161,37 @@ assert requests.post(url+'/artifact',json=p,headers=h,timeout=3).status_code==40
         assert evidence['verified'] and evidence['coordinator_accepted'] is False
     finally:
         server.shutdown(); thread.join(timeout=3); server.server_close()
+
+
+def test_video_contract_rejects_unaccepted_and_mismatched_product(tmp_path):
+    from datetime import timedelta
+    from services.desktop_agent_verified_execution_adapter import VerifiedAgentExecutionAdapter
+    coordinator, delivery, lease = prepared(tmp_path)
+    content = b'not the actual video runtime product'
+    receive_verified(AgentResultReceipt(delivery), request_id='agentexec-result',
+        agent_id='agent-a', secret='credential-a', lease=lease,
+        artifact_b64=base64.b64encode(content).decode(),
+        digest=hashlib.sha256(content).hexdigest(), now=NOW)
+    adapter = VerifiedAgentExecutionAdapter(coordinator)
+    args = dict(request_id='agentexec-result', agent_id='agent-a',
+                principal_id='owner', tenant_id='tenant-a')
+    with pytest.raises(PermissionError, match='not passed'):
+        adapter.verify_product_contract(**args)
+    manifest = coordinator.resume('agentexec-result', token='token', now=NOW + timedelta(seconds=1))
+    assert manifest['accepted'] is True
+    with pytest.raises(PermissionError, match='evidence differ'):
+        adapter.verify_product_contract(**args)
+
+
+def test_worker_upload_disconnect_does_not_record_success(tmp_path):
+    import sqlite3
+    from services.desktop_agent_verified_execution_adapter import VerifiedAgentExecutionAdapter
+    coordinator, delivery, lease = prepared(tmp_path)
+    # Simulate a worker disappearing after acknowledgement, before upload.
+    with pytest.raises(PermissionError, match='no bound worker result'):
+        VerifiedAgentExecutionAdapter(coordinator).verify(request_id='agentexec-result',
+            agent_id='agent-a', principal_id='owner', tenant_id='tenant-a')
+    with sqlite3.connect(coordinator._database_path) as conn:
+        assert conn.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='desktop_agent_result_receipts'").fetchone()[0] == 0
+    assert coordinator.get('agentexec-result', principal_id='owner',
+                           tenant_id='tenant-a')['execution_status'] == 'ADMITTED'
