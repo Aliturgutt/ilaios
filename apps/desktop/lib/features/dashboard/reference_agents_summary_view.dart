@@ -10,7 +10,8 @@ import '../deliveries/delivery_identity_scope.dart';
 import '../navigation/desktop_section.dart';
 import 'agent_runtime_status.dart';
 import 'pixel_agent_presentation.dart';
-import 'pixel_agent_sprite.dart';
+import 'office_live_workspace.dart';
+import 'office_team_counts.dart';
 import 'reference_agents_view.dart';
 
 /// Presentation-only wrapper for the canonical Agents surface.
@@ -124,11 +125,6 @@ class _VerifiedWorkingAgents extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tr = IlaiosLocaleScope.of(context).locale == IlaiosLocale.turkish;
-    final workingIds = states.entries
-        .where((entry) => entry.value == AgentRuntimeDisplayState.working)
-        .map((entry) => entry.key)
-        .toList(growable: false);
     final records = snapshot.agentState['agents'];
     final names = <String, String>{};
     final teams = <String, String>{};
@@ -136,7 +132,7 @@ class _VerifiedWorkingAgents extends StatelessWidget {
       for (final record in records) {
         if (record is! Map) continue;
         final id = record['agent_id'];
-        if (id is! String || !workingIds.contains(id)) continue;
+        if (id is! String || !states.containsKey(id)) continue;
         final alias = record['alias'];
         names[id] = alias is String && alias.trim().isNotEmpty ? alias : id;
         final team = record['team'];
@@ -145,99 +141,17 @@ class _VerifiedWorkingAgents extends StatelessWidget {
         }
       }
     }
-    return LayoutBuilder(
-      builder: (context, constraints) => Container(
-        key: const Key('agents-verified-workspace'),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              tr
-                  ? 'Ã‡alÄ±ÅŸan ajanlar: ${workingIds.length}'
-                  : 'Working agents: ${workingIds.length}',
-              key: const Key('agents-working-count'),
-              textAlign: TextAlign.center,
+    return Container(
+      key: const Key('agents-verified-workspace'),
+      padding: const EdgeInsets.all(8),
+      child: Column(
+        children: [
+          Expanded(
+            child: OfficeLiveWorkspace(
+              counts: countVerifiedOfficeTeams(states, teams),
             ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: GridView.builder(
-                key: const Key('agents-empty-office'),
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: 8,
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: constraints.maxWidth < 550 ? 2 : 4,
-                  mainAxisSpacing: 5,
-                  crossAxisSpacing: 5,
-                  childAspectRatio: constraints.maxWidth < 550 ? 1.6 : 2.3,
-                ),
-                itemBuilder: (context, index) {
-                  final team = pixelAgentTeams.elementAt(index);
-                  final occupants = workingIds
-                      .where((id) => teams[id] == team)
-                      .toList();
-                  return Container(
-                    key: ValueKey('office-department-$team'),
-                    padding: const EdgeInsets.all(3),
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: Theme.of(context).colorScheme.outlineVariant,
-                      ),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                          team,
-                          style: Theme.of(context).textTheme.labelSmall,
-                        ),
-                        const Icon(Icons.desktop_windows, size: 18),
-                        Expanded(
-                          child: occupants.isEmpty
-                              ? const SizedBox.shrink()
-                              : ListView(
-                                  scrollDirection: Axis.horizontal,
-                                  children: [
-                                    for (final id in occupants)
-                                      SizedBox(
-                                        key: ValueKey('working-agent-$id'),
-                                        width: 116,
-                                        child: Row(
-                                          children: [
-                                            PixelAgentSprite(
-                                              team: team,
-                                              view: PixelAgentView.rear,
-                                              motion: PixelAgentMotion.working,
-                                              size: const Size(20, 22),
-                                            ),
-                                            Expanded(
-                                              child: Text(
-                                                names[id] ?? id,
-                                                maxLines: 1,
-                                                style: Theme.of(
-                                                  context,
-                                                ).textTheme.labelSmall,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

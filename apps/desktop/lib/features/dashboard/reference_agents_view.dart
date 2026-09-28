@@ -570,215 +570,248 @@ class _TablePanel extends StatelessWidget {
     return _Panel(
       key: const Key('agents-table-panel'),
       padding: EdgeInsets.zero,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SizedBox(
-            height: 38,
-            child: Row(
-              children: [
-                for (final item in <(String, String)>[
-                  ('Tümü', 'All'),
-                  ('Aktif', 'Active'),
-                  ('Meşgul', 'Busy'),
-                  ('Boşta', 'Idle'),
-                  ('İncelemede', 'In Review'),
-                  ('Devre Dışı', 'Offline'),
-                ].indexed)
-                  _Tab(
-                    label: _tr(context, item.$2.$1, item.$2.$2),
-                    selected: tab == item.$1,
-                    onTap: () => onTab(item.$1),
+      child: SingleChildScrollView(
+        key: const Key('agents-page-scroll'),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              height: 38,
+              child: Row(
+                children: [
+                  for (final item in <(String, String)>[
+                    ('Tümü', 'All'),
+                    ('Aktif', 'Active'),
+                    ('Meşgul', 'Busy'),
+                    ('Boşta', 'Idle'),
+                    ('İncelemede', 'In Review'),
+                    ('Devre Dışı', 'Offline'),
+                  ].indexed)
+                    _Tab(
+                      label: _tr(context, item.$2.$1, item.$2.$2),
+                      selected: tab == item.$1,
+                      onTap: () => onTab(item.$1),
+                    ),
+                  const Spacer(),
+                  SizedBox(
+                    height: 28,
+                    child: FilledButton.icon(
+                      key: const Key('new-agent-button'),
+                      onPressed: provisioning || !canProvision
+                          ? null
+                          : onProvision,
+                      icon: provisioning
+                          ? const SizedBox(
+                              width: 13,
+                              height: 13,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.add, size: 15),
+                      label: Text(_tr(context, 'Yeni Ajan', 'New Agent')),
+                    ),
                   ),
-                const Spacer(),
-                SizedBox(
-                  height: 28,
-                  child: FilledButton.icon(
-                    key: const Key('new-agent-button'),
-                    onPressed: provisioning || !canProvision
-                        ? null
-                        : onProvision,
-                    icon: provisioning
-                        ? const SizedBox(
-                            width: 13,
-                            height: 13,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.add, size: 15),
-                    label: Text(_tr(context, 'Yeni Ajan', 'New Agent')),
+                  PopupMenuButton<_ToolbarAction>(
+                    key: const Key('agents-more-menu'),
+                    tooltip: _tr(context, 'Diğer', 'More'),
+                    onSelected: (action) {
+                      switch (action) {
+                        case _ToolbarAction.refresh:
+                          onRefresh?.call();
+                      }
+                    },
+                    itemBuilder: (_) => [
+                      PopupMenuItem(
+                        value: _ToolbarAction.refresh,
+                        enabled: onRefresh != null,
+                        child: Text(_tr(context, 'Yenile', 'Refresh')),
+                      ),
+                    ],
+                    icon: const Icon(Icons.more_vert, size: 16),
                   ),
-                ),
-                PopupMenuButton<_ToolbarAction>(
-                  key: const Key('agents-more-menu'),
-                  tooltip: _tr(context, 'Diğer', 'More'),
-                  onSelected: (action) {
-                    switch (action) {
-                      case _ToolbarAction.refresh:
-                        onRefresh?.call();
-                    }
-                  },
-                  itemBuilder: (_) => [
-                    PopupMenuItem(
-                      value: _ToolbarAction.refresh,
-                      enabled: onRefresh != null,
-                      child: Text(_tr(context, 'Yenile', 'Refresh')),
+                ],
+              ),
+            ),
+            Divider(
+              height: 1,
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final narrow = constraints.maxWidth < 1080;
+                final search = TextField(
+                  key: const Key('agent-search'),
+                  controller: searchController,
+                  onChanged: onQuery,
+                  decoration: InputDecoration(
+                    isDense: true,
+                    hintText: _tr(context, 'Ajan ara...', 'Search agents...'),
+                    prefixIcon: const Icon(Icons.search, size: 15),
+                  ),
+                  style: const TextStyle(fontSize: 11),
+                );
+                final filters = <Widget>[
+                  _Filter(
+                    id: 'role',
+                    label: _tr(context, 'Rol Türü', 'Role Type'),
+                    value: role,
+                    options: roleOptions,
+                    onChanged: onRole,
+                  ),
+                  _Filter(
+                    id: 'state',
+                    label: _tr(context, 'Durum Türü', 'Status Type'),
+                    value: state,
+                    options: _AgentState.values
+                        .map((e) => e.name)
+                        .toList(growable: false),
+                    onChanged: onState,
+                  ),
+                  _Filter(
+                    id: 'capability',
+                    label: _tr(context, 'Yetkinlik Türü', 'Capability Type'),
+                    value: capability,
+                    options: capabilityOptions,
+                    onChanged: onCapability,
+                  ),
+                ];
+                final clear = OutlinedButton(
+                  key: const Key('agent-clear-filters'),
+                  onPressed: hasFilters ? onClear : null,
+                  child: Text(
+                    _tr(context, 'Filtreleri Temizle', 'Clear Filters'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                );
+                return Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 6,
+                  ),
+                  child: narrow
+                      ? Column(
+                          children: [
+                            SizedBox(height: 32, child: search),
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                for (final filter in filters) ...[
+                                  Expanded(child: filter),
+                                  const SizedBox(width: 5),
+                                ],
+                                Flexible(flex: 2, child: clear),
+                              ],
+                            ),
+                          ],
+                        )
+                      : Row(
+                          children: [
+                            Expanded(flex: 3, child: search),
+                            const SizedBox(width: 7),
+                            for (final filter in filters) ...[
+                              Expanded(flex: 2, child: filter),
+                              const SizedBox(width: 7),
+                            ],
+                            Flexible(flex: 2, child: clear),
+                          ],
+                        ),
+                );
+              },
+            ),
+            Divider(
+              height: 1,
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
+            if (workspace != null)
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  // Keep the entire office visible within the usable viewport;
+                  // the surrounding page remains the sole vertical scroll area.
+                  final availableHeight = MediaQuery.sizeOf(context).height;
+                  final officeHeight = (constraints.maxWidth - 16) * 809 / 1945;
+                  final boundedHeight = officeHeight.clamp(
+                    0.0,
+                    (availableHeight * 0.66).clamp(240.0, 620.0),
+                  );
+                  return SizedBox(
+                    height: boundedHeight + 14,
+                    child: Padding(
+                      key: const Key('agents-workspace-slot'),
+                      padding: const EdgeInsets.fromLTRB(8, 8, 8, 6),
+                      child: Center(
+                        child: AspectRatio(
+                          aspectRatio: 1945 / 809,
+                          child: workspace!,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            const _AgentHeader(),
+            SizedBox(
+              height: agents.isEmpty ? 72 : agents.length * 34.0,
+              child: agents.isEmpty
+                  ? _EmptyAgents()
+                  : Column(
+                      children: [
+                        for (var index = 0; index < agents.length; index++)
+                          SizedBox(
+                            height: 34,
+                            child: _AgentRow(
+                              record: agents[index],
+                              selected: selected?.id == agents[index].id,
+                              onTap: () => onSelect(index),
+                            ),
+                          ),
+                      ],
+                    ),
+            ),
+            SizedBox(
+              height: 28,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Row(
+                  children: [
+                    Text(
+                      totalFiltered == 0
+                          ? _tr(context, '0 ajan', '0 agents')
+                          : '$first-$last / $totalFiltered ${_tr(context, 'ajan', 'agents')} · $totalAgents ${_tr(context, 'toplam', 'total')}',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      key: const Key('agent-page-previous'),
+                      onPressed: onPrevious,
+                      icon: const Icon(Icons.chevron_left, size: 14),
+                    ),
+                    Container(
+                      key: const Key('agent-page-indicator'),
+                      height: 21,
+                      constraints: const BoxConstraints(minWidth: 34),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.outlineVariant,
+                        ),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        '${page + 1}/$pageCount',
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                    ),
+                    IconButton(
+                      key: const Key('agent-page-next'),
+                      onPressed: onNext,
+                      icon: const Icon(Icons.chevron_right, size: 14),
                     ),
                   ],
-                  icon: const Icon(Icons.more_vert, size: 16),
-                ),
-              ],
-            ),
-          ),
-          Divider(
-            height: 1,
-            color: Theme.of(context).colorScheme.outlineVariant,
-          ),
-          SizedBox(
-            height: 43,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              child: Row(
-                children: [
-                  Expanded(
-                    flex: 3,
-                    child: TextField(
-                      key: const Key('agent-search'),
-                      controller: searchController,
-                      onChanged: onQuery,
-                      decoration: InputDecoration(
-                        isDense: true,
-                        hintText: _tr(
-                          context,
-                          'Ajan ara...',
-                          'Search agents...',
-                        ),
-                        prefixIcon: const Icon(Icons.search, size: 15),
-                      ),
-                      style: const TextStyle(fontSize: 11),
-                    ),
-                  ),
-                  const SizedBox(width: 7),
-                  Expanded(
-                    child: _Filter(
-                      id: 'role',
-                      label: _tr(context, 'Rol Türü', 'Role Type'),
-                      value: role,
-                      options: roleOptions,
-                      onChanged: onRole,
-                    ),
-                  ),
-                  const SizedBox(width: 7),
-                  Expanded(
-                    child: _Filter(
-                      id: 'state',
-                      label: _tr(context, 'Durum Türü', 'Status Type'),
-                      value: state,
-                      options: _AgentState.values
-                          .map((e) => e.name)
-                          .toList(growable: false),
-                      onChanged: onState,
-                    ),
-                  ),
-                  const SizedBox(width: 7),
-                  Expanded(
-                    child: _Filter(
-                      id: 'capability',
-                      label: _tr(context, 'Yetkinlik Türü', 'Capability Type'),
-                      value: capability,
-                      options: capabilityOptions,
-                      onChanged: onCapability,
-                    ),
-                  ),
-                  const SizedBox(width: 7),
-                  OutlinedButton(
-                    key: const Key('agent-clear-filters'),
-                    onPressed: hasFilters ? onClear : null,
-                    child: Text(
-                      _tr(context, 'Filtreleri Temizle', 'Clear Filters'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Divider(
-            height: 1,
-            color: Theme.of(context).colorScheme.outlineVariant,
-          ),
-          if (workspace != null)
-            Flexible(
-              flex: 3,
-              child: Padding(
-                key: const Key('agents-workspace-slot'),
-                padding: const EdgeInsets.fromLTRB(8, 8, 8, 6),
-                child: Center(
-                  child: AspectRatio(
-                    aspectRatio: 1614 / 537,
-                    child: workspace!,
-                  ),
                 ),
               ),
             ),
-          const _AgentHeader(),
-          Expanded(
-            flex: 2,
-            child: agents.isEmpty
-                ? _EmptyAgents()
-                : Column(
-                    children: [
-                      for (var index = 0; index < agents.length; index++)
-                        Expanded(
-                          child: _AgentRow(
-                            record: agents[index],
-                            selected: selected?.id == agents[index].id,
-                            onTap: () => onSelect(index),
-                          ),
-                        ),
-                    ],
-                  ),
-          ),
-          SizedBox(
-            height: 28,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Row(
-                children: [
-                  Text(
-                    totalFiltered == 0
-                        ? _tr(context, '0 ajan', '0 agents')
-                        : '$first-$last / $totalFiltered ${_tr(context, 'ajan', 'agents')} · $totalAgents ${_tr(context, 'toplam', 'total')}',
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    key: const Key('agent-page-previous'),
-                    onPressed: onPrevious,
-                    icon: const Icon(Icons.chevron_left, size: 14),
-                  ),
-                  Container(
-                    key: const Key('agent-page-indicator'),
-                    height: 21,
-                    constraints: const BoxConstraints(minWidth: 34),
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      '${page + 1}/$pageCount',
-                      style: const TextStyle(fontSize: 11),
-                    ),
-                  ),
-                  IconButton(
-                    key: const Key('agent-page-next'),
-                    onPressed: onNext,
-                    icon: const Icon(Icons.chevron_right, size: 14),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -931,7 +964,9 @@ class _AgentRow extends StatelessWidget {
               : null,
           border: selected
               ? Border.all(
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .42),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: .42),
                 )
               : null,
           borderRadius: BorderRadius.circular(6),
@@ -1001,7 +1036,11 @@ class _AgentRow extends StatelessWidget {
                       _stateLabel(context, record.state),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
                     ),
                   ),
                 ],
@@ -1273,6 +1312,7 @@ class _SelectedPanel extends StatelessWidget {
                           'Governed assignment API is not available yet.',
                         ),
                         child: OutlinedButton.icon(
+                          key: const Key('agent-assign-task-disabled'),
                           onPressed: null,
                           icon: const Icon(
                             Icons.person_add_alt_1_outlined,
@@ -1442,9 +1482,7 @@ class _Tab extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 11),
       decoration: BoxDecoration(
         border: selected
-            ? const Border(
-                bottom: BorderSide(color: Colors.black87, width: 2),
-              )
+            ? const Border(bottom: BorderSide(color: Colors.black87, width: 2))
             : null,
       ),
       child: Text(
@@ -1541,7 +1579,11 @@ class _Chip extends StatelessWidget {
       text,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface),
+      style: TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w600,
+        color: Theme.of(context).colorScheme.onSurface,
+      ),
     ),
   );
 }

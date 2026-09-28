@@ -79,6 +79,8 @@ const _snapshot = OperationalSnapshot(
 );
 
 Future<void> _selectAgent(WidgetTester tester) async {
+  await tester.ensureVisible(find.byKey(const ValueKey('agent-row-$_agentId')));
+  await tester.pumpAndSettle();
   await tester.tap(find.byKey(const ValueKey('agent-row-$_agentId')));
   await tester.pumpAndSettle();
 }
@@ -217,6 +219,44 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('nav-agents')));
       await tester.pumpAndSettle();
 
+      final officeSlot = find.byKey(const Key('agents-workspace-slot'));
+      expect(officeSlot, findsOneWidget);
+      final officeHeight = tester.getSize(officeSlot).height;
+      expect(officeHeight, lessThanOrEqualTo(size.height * 0.66 + 15));
+      final pageScroll = find.byKey(const Key('agents-page-scroll'));
+      expect(pageScroll, findsOneWidget);
+      final before = tester
+          .state<ScrollableState>(
+            find
+                .descendant(of: pageScroll, matching: find.byType(Scrollable))
+                .first,
+          )
+          .position
+          .pixels;
+      await tester.drag(pageScroll, const Offset(0, -450));
+      await tester.pumpAndSettle();
+      final after = tester
+          .state<ScrollableState>(
+            find
+                .descendant(of: pageScroll, matching: find.byType(Scrollable))
+                .first,
+          )
+          .position
+          .pixels;
+      final scrollPosition = tester
+          .state<ScrollableState>(
+            find
+                .descendant(of: pageScroll, matching: find.byType(Scrollable))
+                .first,
+          )
+          .position;
+      if (scrollPosition.maxScrollExtent > before + 1) {
+        expect(after, greaterThan(before));
+      } else {
+        expect(after, closeTo(before, 1));
+      }
+      await tester.drag(pageScroll, const Offset(0, 450));
+      await tester.pumpAndSettle();
       expect(find.byKey(const Key('reference-agents-page')), findsOneWidget);
 
       expect(find.text('Agents'), findsWidgets);

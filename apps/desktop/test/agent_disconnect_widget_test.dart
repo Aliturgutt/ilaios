@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ilaios_desktop/control_plane/operational_snapshot.dart';
 import 'package:ilaios_desktop/main.dart';
+import 'package:ilaios_desktop/features/dashboard/office_live_workspace.dart';
 
 const _agentId = 'ilaios.agent.core.disconnect.v1';
 const _online = ControlPlaneProjection(
@@ -82,10 +83,16 @@ void main() {
         findsOneWidget,
       );
       expect(find.byKey(const Key('agents-summary-busy')), findsOneWidget);
-      expect(find.byKey(const Key('agents-working-count')), findsOneWidget);
       expect(
-        find.byKey(const ValueKey('working-agent-$_agentId')),
+        find.byKey(const Key('agents-verified-workspace')),
         findsOneWidget,
+      );
+      expect(
+        tester
+            .widget<OfficeLiveWorkspace>(find.byType(OfficeLiveWorkspace))
+            .counts['core']
+            ?.working,
+        1,
       );
       expect(
         find.descendant(of: row, matching: find.text('84.0%')),
@@ -98,8 +105,11 @@ void main() {
 
       await show(false);
       expect(
-        find.byKey(const ValueKey('working-agent-$_agentId')),
-        findsNothing,
+        tester
+            .widget<OfficeLiveWorkspace>(find.byType(OfficeLiveWorkspace))
+            .counts['core']
+            ?.working,
+        0,
       );
       final disconnectedRow = find.byKey(const ValueKey('agent-row-$_agentId'));
       expect(
@@ -133,8 +143,11 @@ void main() {
       }
       await show(true);
       expect(
-        find.byKey(const ValueKey('working-agent-$_agentId')),
-        findsOneWidget,
+        tester
+            .widget<OfficeLiveWorkspace>(find.byType(OfficeLiveWorkspace))
+            .counts['core']
+            ?.working,
+        1,
       );
       final restoredRow = find.byKey(const ValueKey('agent-row-$_agentId'));
       expect(
@@ -234,22 +247,15 @@ void main() {
     await tester.pumpAndSettle();
     final busy = find.byKey(const Key('agents-summary-busy'));
     expect(find.descendant(of: busy, matching: find.text('2')), findsOneWidget);
-    expect(
-      find.byKey(const ValueKey('working-agent-$_agentId')),
-      findsOneWidget,
+    final office = tester.widget<OfficeLiveWorkspace>(
+      find.byType(OfficeLiveWorkspace),
     );
-    expect(
-      find.byKey(const ValueKey('working-agent-$secondId')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const ValueKey('office-department-core')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const ValueKey('office-department-engineering')),
-      findsOneWidget,
-    );
+    expect(office.counts['core']?.working, 1);
+    expect(office.counts['engineering']?.working, 1);
+    expect(find.byKey(const ValueKey('agent-row-$_agentId')), findsOneWidget);
+    expect(find.byKey(const ValueKey('agent-row-$secondId')), findsOneWidget);
+    expect(find.byKey(const ValueKey('office-live-core')), findsNothing);
+    expect(find.byKey(const ValueKey('office-live-engineering')), findsNothing);
     expect(tester.takeException(), isNull);
   });
   testWidgets('connected stale telemetry never animates a working agent', (
