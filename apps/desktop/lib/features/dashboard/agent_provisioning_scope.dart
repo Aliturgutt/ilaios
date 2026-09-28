@@ -12,11 +12,19 @@ class AgentProvisioningScope extends InheritedWidget {
     required super.child,
     required this.onProvisionAgent,
     this.onAssignAgent,
+    this.readyAgentIds = const <String>{},
     super.key,
   });
 
   final CanonicalAgentProvisioner? onProvisionAgent;
   final GovernedAgentAssigner? onAssignAgent;
+  final Set<String> readyAgentIds;
+  static bool readyFor(BuildContext context, String agentId) =>
+      context
+          .dependOnInheritedWidgetOfExactType<AgentProvisioningScope>()
+          ?.readyAgentIds
+          .contains(agentId) ??
+      false;
 
   static GovernedAgentAssigner? assignerOf(BuildContext context) => context
       .dependOnInheritedWidgetOfExactType<AgentProvisioningScope>()
@@ -29,5 +37,6 @@ class AgentProvisioningScope extends InheritedWidget {
   @override
   bool updateShouldNotify(AgentProvisioningScope oldWidget) =>
       oldWidget.onProvisionAgent != onProvisionAgent ||
-      oldWidget.onAssignAgent != onAssignAgent;
+      oldWidget.onAssignAgent != onAssignAgent ||
+      oldWidget.readyAgentIds != readyAgentIds;
 }

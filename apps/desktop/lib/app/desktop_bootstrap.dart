@@ -45,6 +45,7 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
   List<IdentityProviderOption> _identityProviders =
       const <IdentityProviderOption>[];
   DesktopUserSession? _userSession;
+  Set<String> _readyAssignmentAgents = const <String>{};
   final DeliveryLocalStorage _deliveryStorage = DeliveryLocalStorage();
   int _lastLiveSequence = 0;
   bool _refreshing = false;
@@ -127,6 +128,7 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
       setState(() {
         _identityProviders = providers;
         _userSession = restoredSession;
+        _readyAssignmentAgents = const <String>{};
         _identityStatus = restoredSession != null
             ? (restoredSession.displayIdentity == null
                   ? 'Signed in with ${restoredSession.providerId}'
@@ -135,6 +137,7 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
                   ? 'Account sign-in is not configured; governed execution is disabled'
                   : 'Sign in to submit governed work');
       });
+      unawaited(_refreshAssignmentReadiness());
     } on IdentityClientException catch (error) {
       if (!mounted) return;
       setState(() {
@@ -171,10 +174,12 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
       if (!mounted) return;
       setState(() {
         _userSession = session;
+        _readyAssignmentAgents = const <String>{};
         _identityStatus = session.displayIdentity == null
             ? 'Signed in with ${session.providerId}'
             : 'Signed in as ${session.displayIdentity}';
       });
+      unawaited(_refreshAssignmentReadiness());
       return;
     }
     throw const IdentityClientException('Browser sign-in timed out');
@@ -191,6 +196,7 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
     setState(() {
       _userSession = null;
       _identityStatus = 'Signed out';
+      _readyAssignmentAgents = const <String>{};
     });
   }
 
@@ -335,6 +341,52 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
       setState(() => _operationalStatus = 'Verified artifact saved');
     }
     return output.path;
+  }
+
+  Future<void> _refreshAssignmentReadiness() async {
+    final identity = _identityClient;
+    final session = _userSession;
+    if (identity == null || session == null) {
+      if (mounted) setState(() => _readyAssignmentAgents = const <String>{});
+      return;
+    }
+    Set<String> ready;
+    try {
+      ready = await identity.readyAssignmentAgents(session);
+    } on Object {
+      ready = const <String>{};
+    }
+    if (mounted && identical(_userSession, session)) {
+      setState(() => _readyAssignmentAgents = ready);
+    }
+  }
+
+  Future<String> _assignAgent(String agentId, String objective) async {
+    final identity = _identityClient;
+    final session = _userSession;
+    if (identity == null ||
+        session == null ||
+        !_readyAssignmentAgents.contains(agentId)) {
+      throw const IdentityClientException('Agent assignment is not ready');
+    }
+    // Recheck at submission time; readiness can change after rendering.
+    final ready = await identity.readyAssignmentAgents(session);
+    if (!ready.contains(agentId)) {
+      if (mounted) setState(() => _readyAssignmentAgents = ready);
+      throw const IdentityClientException('Agent assignment readiness changed');
+    }
+    final requestId = await identity.assignAgentTask(
+      agentId,
+      objective,
+      session,
+    );
+    if (mounted) {
+      setState(
+        () => _operationalStatus = 'Agent assignment created: $requestId',
+      );
+    }
+    await _refresh();
+    return requestId;
   }
 
   Future<void> _provisionAgent(String agentId) async {
@@ -526,7 +578,8 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
       onRefreshRequested: _client == null ? null : _refresh,
       onProvisionAgent: agentProvisionEnabled ? _provisionAgent : null,
       // Fail closed until the identity server publishes configured assignment readiness.
-      onAssignAgent: null,
+      onAssignAgent: _readyAssignmentAgents.isNotEmpty ? _assignAgent : null,
+      readyAgentIds: _readyAssignmentAgents,
       onGovernanceDecision: governanceEnabled ? _decideGovernance : null,
     );
   }

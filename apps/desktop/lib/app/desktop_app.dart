@@ -41,6 +41,7 @@ class IlaiosDesktopApp extends StatefulWidget {
     this.onRefreshRequested,
     this.onProvisionAgent,
     this.onAssignAgent,
+    this.readyAgentIds = const <String>{},
     this.onGovernanceDecision,
   });
 
@@ -74,6 +75,7 @@ class IlaiosDesktopApp extends StatefulWidget {
   final Future<void> Function(String agentId)? onProvisionAgent;
   final Future<String> Function(String agentId, String objective)?
   onAssignAgent;
+  final Set<String> readyAgentIds;
   final Future<void> Function(String requestId, GovernanceDecision decision)?
   onGovernanceDecision;
 
@@ -278,6 +280,7 @@ class _IlaiosDesktopAppState extends State<IlaiosDesktopApp>
             onRefreshRequested: widget.onRefreshRequested,
             onProvisionAgent: widget.onProvisionAgent,
             onAssignAgent: widget.onAssignAgent,
+            readyAgentIds: widget.readyAgentIds,
             onGovernanceDecision: widget.onGovernanceDecision,
           ),
         ),

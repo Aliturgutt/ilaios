@@ -64,6 +64,8 @@ void main() {
   Future<void> openAgents(
     WidgetTester tester, {
     Future<void> Function(String agentId)? onProvision,
+    Future<String> Function(String, String)? onAssign,
+    Set<String> readyAgents = const <String>{},
     OperationalSnapshot? operationalSnapshot,
   }) async {
     await tester.binding.setSurfaceSize(const Size(1648, 928));
@@ -72,6 +74,8 @@ void main() {
         projection: projection,
         operationalSnapshot: operationalSnapshot ?? snapshot(),
         onProvisionAgent: onProvision,
+        onAssignAgent: onAssign,
+        readyAgentIds: readyAgents,
       ),
     );
     await tester.pumpAndSettle();
@@ -104,6 +108,17 @@ void main() {
     );
   });
 
+  testWidgets('assignment remains disabled without server readiness',
+      (WidgetTester tester) async {
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await openAgents(tester, onAssign: (agent, objective) async => 'agentexec-test');
+    await tester.tap(find.byKey(
+      const ValueKey('agent-row-ilaios.agent.core.orchestrator.v1')));
+    await tester.pumpAndSettle();
+    final button = find.byKey(const Key('agent-assign-task'));
+    expect(button, findsOneWidget);
+    expect(tester.widget<OutlinedButton>(button).onPressed, isNull);
+  });
   testWidgets('Agents role filter and clear are real local controls', (
     WidgetTester tester,
   ) async {

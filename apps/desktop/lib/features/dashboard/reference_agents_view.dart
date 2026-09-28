@@ -1373,6 +1373,10 @@ class _SelectedPanel extends StatelessWidget {
                           onPressed:
                               connected &&
                                   agent!.registered &&
+                                  AgentProvisioningScope.readyFor(
+                                    context,
+                                    agent!.id,
+                                  ) &&
                                   agent!.state != _AgentState.busy &&
                                   agent!.state != _AgentState.offline &&
                                   agent!.state != _AgentState.review &&

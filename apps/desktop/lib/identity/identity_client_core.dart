@@ -109,10 +109,10 @@ class IdentityClient {
     required String transportToken,
     ControlPlaneTransport? transport,
     IdentityRetryDelay? retryDelay,
-  })  : _baseUri = _validatedBaseUri(baseUri),
-        _transportToken = _validatedToken(transportToken),
-        _transport = transport ?? const IoControlPlaneTransport(),
-        _retryDelay = retryDelay ?? _defaultRetryDelay;
+  }) : _baseUri = _validatedBaseUri(baseUri),
+       _transportToken = _validatedToken(transportToken),
+       _transport = transport ?? const IoControlPlaneTransport(),
+       _retryDelay = retryDelay ?? _defaultRetryDelay;
 
   static const Duration _startupRetryDelay = Duration(milliseconds: 350);
   static const int _maxReferenceAssets = 20;
@@ -128,28 +128,42 @@ class IdentityClient {
     DesktopUserSession session,
     Map<String, Object?> request,
   ) async {
-    final payload = await _sessionPost('/v1/assistant', request, 'Assistant',
-        session, expectedStatus: HttpStatus.ok);
+    final payload = await _sessionPost(
+      '/v1/assistant',
+      request,
+      'Assistant',
+      session,
+      expectedStatus: HttpStatus.ok,
+    );
     final binding = payload['binding'];
     if (binding is! Map<String, dynamic> ||
-        binding.length != 5 || !binding.containsKey('project_id') || !binding.containsKey('workload_id') ||
+        binding.length != 5 ||
+        !binding.containsKey('project_id') ||
+        !binding.containsKey('workload_id') ||
         binding['user_id'] != session.principalId ||
         binding['tenant_id'] != session.tenantId ||
-        binding['project_id'] != null || binding['workload_id'] != null ||
+        binding['project_id'] != null ||
+        binding['workload_id'] != null ||
         !const ['assistant', 'li'].contains(binding['persona']) ||
         (binding['persona'] == 'li' && !session.liFounder)) {
-      throw const IdentityClientException('Assistant scope could not be verified');
+      throw const IdentityClientException(
+        'Assistant scope could not be verified',
+      );
     }
     final conversation = payload['conversation'];
     if (conversation != null) {
       if (conversation is! Map<String, dynamic> ||
           conversation['binding'] is! Map<String, dynamic>) {
-        throw const IdentityClientException('Assistant conversation binding invalid');
+        throw const IdentityClientException(
+          'Assistant conversation binding invalid',
+        );
       }
       final actual = conversation['binding'] as Map<String, dynamic>;
       if (actual.length != binding.length ||
           binding.keys.any((key) => binding[key] != actual[key])) {
-        throw const IdentityClientException('Assistant conversation binding invalid');
+        throw const IdentityClientException(
+          'Assistant conversation binding invalid',
+        );
       }
     }
     return payload;
@@ -159,7 +173,9 @@ class IdentityClient {
     final payload = await _get('/v1/auth/providers', 'identity providers');
     final raw = payload['providers'];
     if (raw is! List<Object?>) {
-      throw const IdentityClientException('Identity providers response is malformed');
+      throw const IdentityClientException(
+        'Identity providers response is malformed',
+      );
     }
     final providers = <IdentityProviderOption>[];
     for (final item in raw) {
@@ -207,7 +223,9 @@ class IdentityClient {
         state.isEmpty ||
         authorizationUrl is! String ||
         returnedProvider != normalized) {
-      throw const IdentityClientException('Sign-in start response is malformed');
+      throw const IdentityClientException(
+        'Sign-in start response is malformed',
+      );
     }
     final uri = Uri.tryParse(authorizationUrl);
     if (uri == null || uri.scheme != 'https' || uri.host.isEmpty) {
@@ -283,7 +301,9 @@ class IdentityClient {
         tenantId is! String ||
         tenantId != session.tenantId ||
         source != 'canonical_desktop_session') {
-      throw const IdentityClientException('Desktop Li state response is malformed');
+      throw const IdentityClientException(
+        'Desktop Li state response is malformed',
+      );
     }
     return DesktopLiState(
       name: name as String,
@@ -304,11 +324,11 @@ class IdentityClient {
     );
     final raw = payload['memories'];
     if (raw is! List<Object?>) {
-      throw const IdentityClientException('Desktop Li memories response is malformed');
+      throw const IdentityClientException(
+        'Desktop Li memories response is malformed',
+      );
     }
-    return List<DesktopLiMemory>.unmodifiable(
-      raw.map(_parseLiMemory),
-    );
+    return List<DesktopLiMemory>.unmodifiable(raw.map(_parseLiMemory));
   }
 
   Future<DesktopLiMemory> rememberLiMemory(
@@ -318,8 +338,11 @@ class IdentityClient {
   }) async {
     final normalizedKind = kind.trim();
     final normalizedContent = content.trim();
-    if (!const <String>{'working', 'episodic', 'semantic'}
-        .contains(normalizedKind)) {
+    if (!const <String>{
+      'working',
+      'episodic',
+      'semantic',
+    }.contains(normalizedKind)) {
       throw const IdentityClientException('Li memory kind is invalid');
     }
     if (normalizedContent.isEmpty ||
@@ -329,10 +352,7 @@ class IdentityClient {
     }
     final payload = await _sessionPost(
       '/v1/li/memories',
-      <String, Object?>{
-        'kind': normalizedKind,
-        'content': normalizedContent,
-      },
+      <String, Object?>{'kind': normalizedKind, 'content': normalizedContent},
       'Li memory',
       session,
       expectedStatus: HttpStatus.created,
@@ -349,7 +369,9 @@ class IdentityClient {
       throw const IdentityClientException('Prompt must not be empty');
     }
     if (normalized.length > 20000) {
-      throw const IdentityClientException('Prompt exceeds the Desktop input limit');
+      throw const IdentityClientException(
+        'Prompt exceeds the Desktop input limit',
+      );
     }
 
     final references = ReferenceAssetSubmissionBus.pending;
@@ -361,9 +383,7 @@ class IdentityClient {
     _validateReferenceAssets(references);
     final referenceAssetIds = <String>[];
     for (final reference in references) {
-      referenceAssetIds.add(
-        await _uploadReferenceAsset(reference, session),
-      );
+      referenceAssetIds.add(await _uploadReferenceAsset(reference, session));
     }
 
     final payload = await _sessionPost(
@@ -438,6 +458,19 @@ class IdentityClient {
 
   /// Explicitly submits an agent-bound task to the authenticated identity API.
   /// A created assignment is not evidence of video execution or acceptance.
+  Future<Set<String>> readyAssignmentAgents(DesktopUserSession session) async {
+    final payload = await _sessionGet(
+      '/v1/desktop/agents/assignment-readiness',
+      'assignment readiness',
+      session,
+    );
+    final agents = payload['ready_agents'];
+    if (agents is! List || agents.any((agent) => agent is! String)) {
+      throw const IdentityClientException('Malformed assignment readiness');
+    }
+    return agents.cast<String>().toSet();
+  }
+
   Future<String> assignAgentTask(
     String agentId,
     String objective,
@@ -486,21 +519,22 @@ class IdentityClient {
         : HttpStatus.ok;
     final payload = await _sessionPost(
       '/v1/execution/decision',
-      <String, Object?>{
-        'request_id': normalized,
-        'decision': decision.name,
-      },
+      <String, Object?>{'request_id': normalized, 'decision': decision.name},
       'execution decision',
       session,
       expectedStatus: expectedStatus,
     );
     if (payload['request_id'] != normalized) {
-      throw const IdentityClientException('Execution decision response is malformed');
+      throw const IdentityClientException(
+        'Execution decision response is malformed',
+      );
     }
     final status = payload['execution_status'];
     if (status is! String ||
         (status != 'EXECUTION_STARTED' && status != 'DENIED')) {
-      throw const IdentityClientException('Execution decision response is malformed');
+      throw const IdentityClientException(
+        'Execution decision response is malformed',
+      );
     }
     return status;
   }
@@ -522,7 +556,9 @@ class IdentityClient {
     );
     if (payload['request_id'] != normalized ||
         payload['execution_status'] != 'RESUME_REQUESTED') {
-      throw const IdentityClientException('Execution resume response is malformed');
+      throw const IdentityClientException(
+        'Execution resume response is malformed',
+      );
     }
   }
 
@@ -540,11 +576,15 @@ class IdentityClient {
     ).toString();
     final payload = await _sessionGet(path, 'execution status', session);
     if (payload['request_id'] != normalized) {
-      throw const IdentityClientException('Execution status response is malformed');
+      throw const IdentityClientException(
+        'Execution status response is malformed',
+      );
     }
     final status = payload['execution_status'];
     if (status is! String || status.isEmpty) {
-      throw const IdentityClientException('Execution status response is malformed');
+      throw const IdentityClientException(
+        'Execution status response is malformed',
+      );
     }
     return status;
   }
@@ -560,7 +600,9 @@ class IdentityClient {
 
   Future<Map<String, dynamic>> _get(String path, String label) async {
     final uri = _baseUri.resolve(path);
-    final headers = <String, String>{'Authorization': 'Bearer $_transportToken'};
+    final headers = <String, String>{
+      'Authorization': 'Bearer $_transportToken',
+    };
     var response = await _transport.get(uri, headers: headers);
     if (_isTransportAuthenticationFailure(response)) {
       await _retryDelay(_startupRetryDelay);
@@ -602,7 +644,9 @@ class IdentityClient {
   }) async {
     final uri = _baseUri.resolve(path);
     final encodedBody = jsonEncode(body);
-    final headers = <String, String>{'Authorization': 'Bearer $_transportToken'};
+    final headers = <String, String>{
+      'Authorization': 'Bearer $_transportToken',
+    };
     var response = await _transport.post(
       uri,
       body: encodedBody,
@@ -653,7 +697,9 @@ class IdentityClient {
     final payload = _decode(response, label);
     if (response.statusCode == HttpStatus.unauthorized ||
         response.statusCode == HttpStatus.forbidden) {
-      throw const IdentityClientException('Desktop session is invalid or expired');
+      throw const IdentityClientException(
+        'Desktop session is invalid or expired',
+      );
     }
     if (response.statusCode != expectedStatus) {
       final error = payload['error'];
@@ -666,7 +712,9 @@ class IdentityClient {
 
   static DesktopLiMemory _parseLiMemory(Object? value) {
     if (value is! Map<String, dynamic>) {
-      throw const IdentityClientException('Desktop Li memory response is malformed');
+      throw const IdentityClientException(
+        'Desktop Li memory response is malformed',
+      );
     }
     final memoryId = value['memory_id'];
     final kind = value['kind'];
@@ -675,8 +723,9 @@ class IdentityClient {
     final confidence = value['confidence'];
     final sensitivity = value['sensitivity'];
     final createdAtRaw = value['created_at'];
-    final createdAt =
-        createdAtRaw is String ? DateTime.tryParse(createdAtRaw)?.toUtc() : null;
+    final createdAt = createdAtRaw is String
+        ? DateTime.tryParse(createdAtRaw)?.toUtc()
+        : null;
     if (memoryId is! String ||
         !memoryId.startsWith('li_mem_') ||
         kind is! String ||
@@ -691,7 +740,9 @@ class IdentityClient {
         sensitivity is! String ||
         !const <String>{'internal', 'private'}.contains(sensitivity) ||
         createdAt == null) {
-      throw const IdentityClientException('Desktop Li memory response is malformed');
+      throw const IdentityClientException(
+        'Desktop Li memory response is malformed',
+      );
     }
     return DesktopLiMemory(
       memoryId: memoryId,
@@ -713,12 +764,20 @@ class IdentityClient {
     var totalBytes = 0;
     final digests = <String>{};
     for (final reference in references) {
-      if (reference.filename.trim().isEmpty || reference.filename.length > 180) {
-        throw const IdentityClientException('Reference image filename is invalid');
+      if (reference.filename.trim().isEmpty ||
+          reference.filename.length > 180) {
+        throw const IdentityClientException(
+          'Reference image filename is invalid',
+        );
       }
-      if (!const <String>{'image/jpeg', 'image/png', 'image/webp'}
-          .contains(reference.mimeType)) {
-        throw const IdentityClientException('Reference image type is unsupported');
+      if (!const <String>{
+        'image/jpeg',
+        'image/png',
+        'image/webp',
+      }.contains(reference.mimeType)) {
+        throw const IdentityClientException(
+          'Reference image type is unsupported',
+        );
       }
       if (reference.sizeBytes <= 0 ||
           reference.sizeBytes > _maxReferenceAssetBytes) {

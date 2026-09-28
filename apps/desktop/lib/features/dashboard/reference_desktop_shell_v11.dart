@@ -58,6 +58,7 @@ class ReferenceDesktopShellV11 extends StatefulWidget {
     this.onRefreshRequested,
     this.onProvisionAgent,
     this.onAssignAgent,
+    this.readyAgentIds = const <String>{},
     this.onGovernanceDecision,
     super.key,
   });
@@ -91,6 +92,7 @@ class ReferenceDesktopShellV11 extends StatefulWidget {
   final Future<void> Function(String agentId)? onProvisionAgent;
   final Future<String> Function(String agentId, String objective)?
   onAssignAgent;
+  final Set<String> readyAgentIds;
   final Future<void> Function(String requestId, GovernanceDecision decision)?
   onGovernanceDecision;
 
@@ -396,6 +398,7 @@ class _ReferenceDesktopShellV11State extends State<ReferenceDesktopShellV11> {
           child: AgentProvisioningScope(
             onProvisionAgent: widget.onProvisionAgent,
             onAssignAgent: widget.onAssignAgent,
+            readyAgentIds: widget.readyAgentIds,
             child: HomeRuntimeBinding(
               userSession: widget.userSession,
               onPromptSubmit: widget.onPromptSubmit,

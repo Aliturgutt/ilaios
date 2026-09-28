@@ -167,6 +167,22 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
                 memories = identity.list_li_memories(session.session_id)
                 self._send_json(HTTPStatus.OK, {"memories": memories})
                 return
+            if parsed.path == "/v1/desktop/agents/assignment-readiness":
+                session = self._authenticated_session()
+                config = getattr(self.server, "agent_assignment", None)
+                agents = []
+                if (config is not None and config.get("delivery") is not None
+                        and config.get("worker_runtime_ready") is True):
+                    from datetime import datetime, timezone
+                    for agent, (adapter_id, capability) in config["bindings"].items():
+                        eligibility = config["preflight"].check(
+                            runtime=config["runtime"], db=config["db"],
+                            tenant=session.tenant_id, agent=agent,
+                            adapter_id=adapter_id, now=datetime.now(timezone.utc))
+                        if eligibility.eligible:
+                            agents.append(agent)
+                self._send_json(HTTPStatus.OK, {"ready_agents": agents})
+                return
             if parsed.path == "/v1/execution/status":
                 session = self._authenticated_session()
                 request_id = _single_query(parse_qs(parsed.query), "request_id")
