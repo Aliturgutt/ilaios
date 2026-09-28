@@ -47,7 +47,7 @@ def submit_agent_assignment(handler, body: dict[str, object]) -> None:
     record_agent_assignment(handler.server.coordinator._database_path,
         request_id=request_id, agent_id=agent, principal_id=session.principal_id,
         tenant_id=session.tenant_id)
-    if execution.get('execution_status') == 'ADMITTED':
+    if execution.get('execution_status') == 'ADMITTED' and config.get('delivery') is None:
         handler._start_execution(request_id)
     handler._send_json(HTTPStatus.CREATED, {'request_id': request_id,
         'agent_id': agent, 'execution_status': execution.get('execution_status'),
