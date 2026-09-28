@@ -284,6 +284,9 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
             if path == "/v1/reference-assets":
                 self._upload_reference_asset(body)
                 return
+            if path == "/v1/desktop/agents/auto-assignments":
+                self._submit_auto_agent_assignment(body)
+                return
             if path == "/v1/desktop/agents/assignments":
                 self._submit_agent_assignment(body)
                 return

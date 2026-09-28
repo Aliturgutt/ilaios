@@ -7,8 +7,20 @@ from services.desktop_agent_assignment_contract import AssignmentContext, valida
 from services.execution_coordinator import classify_execution_plan, ExecutionCoordinatorError
 
 
-def submit_agent_assignment(handler, body: dict[str, object]) -> None:
+def submit_agent_assignment(handler, body: dict[str, object], *, automatic=False) -> None:
     session = handler._authenticated_session()
+    if automatic:
+        if set(body) != {'objective', 'explicit_confirmation'} or body.get('explicit_confirmation') is not True:
+            raise ValueError('automatic assignment requires objective and confirmation')
+        from services.desktop_agent_auto_router import select_agent, AutomaticRoutingUnavailable
+        try:
+            agent, _ = select_agent(objective=body['objective'],
+                config=getattr(handler.server, 'agent_assignment', None),
+                tenant=session.tenant_id, now=datetime.now(timezone.utc))
+        except AutomaticRoutingUnavailable:
+            handler._send_error(HTTPStatus.SERVICE_UNAVAILABLE, 'verified automatic routing unavailable')
+            return
+        body = {'agent_id': agent, 'objective': body['objective'], 'explicit_confirmation': True}
     config = getattr(handler.server, 'agent_assignment', None)
     if config is None:
         handler._send_error(HTTPStatus.SERVICE_UNAVAILABLE, 'agent assignment unavailable')

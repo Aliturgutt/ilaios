@@ -81,6 +81,10 @@ class DesktopIdentityHTTPServer(_core.DesktopIdentityHTTPServer):
 class DesktopIdentityRequestHandler(_core.DesktopIdentityRequestHandler):
     """Admit bounded Desktop metadata while preserving backend authority."""
 
+    def _submit_auto_agent_assignment(self, body: dict[str, object]) -> None:
+        from services.desktop_agent_assignment_http import submit_agent_assignment
+        submit_agent_assignment(self, body, automatic=True)
+
     def _submit_agent_assignment(self, body: dict[str, object]) -> None:
         from services.desktop_agent_assignment_http import submit_agent_assignment
         submit_agent_assignment(self, body)
