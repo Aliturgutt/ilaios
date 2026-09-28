@@ -112,3 +112,25 @@ except requests.RequestException:
         if worker.poll() is None:
             worker.kill(); worker.wait(timeout=5)
         server.server_close()
+
+
+def test_reconnection_status_is_read_only_and_owner_bound(tmp_path):
+    import requests
+    coordinator, request, server, thread = prepared(tmp_path)
+    endpoint = f'http://127.0.0.1:{server.server_address[1]}/v1/agents/delivery'
+    headers = {'Authorization':'Bearer credential-a'}
+    payload = {'request_id':request, 'agent_id':'agent-a'}
+    try:
+        before = requests.post(endpoint+'/status', json=payload, headers=headers, timeout=3)
+        assert before.status_code == 200 and before.json()['received'] is False
+        assert requests.post(endpoint+'/status', json=payload,
+            headers={'Authorization':'Bearer invalid'}, timeout=3).status_code == 403
+        worker = worker_script(endpoint, request, tmp_path/'reconnect.mp4')
+        assert worker.returncode == 0, worker.stderr
+        after = requests.post(endpoint+'/status', json=payload, headers=headers, timeout=3)
+        assert after.status_code == 200 and after.json() == {
+            'received':True, 'coordinator_accepted':False}
+        assert requests.post(endpoint+'/claim', json=payload,
+            headers=headers, timeout=3).status_code == 403
+    finally:
+        server.shutdown(); thread.join(timeout=3); server.server_close()

@@ -16,16 +16,20 @@ class WorkerDeliveryError(RuntimeError):
 
 
 def execute_video_delivery(*, endpoint, request_id, agent_id, secret, output_path,
-                           ffmpeg='ffmpeg', timeout=20):
+                           ffmpeg='ffmpeg', timeout=20, ca_bundle=None,
+                           client_cert=None):
     """Claim, acknowledge, render and upload once; never fabricate acceptance."""
-    if not endpoint.startswith('http://127.0.0.1:'):
-        raise ValueError('only loopback delivery endpoint is currently supported')
+    loopback = endpoint.startswith('http://127.0.0.1:')
+    remote_tls = endpoint.startswith('https://') and ca_bundle and client_cert
+    if not (loopback or remote_tls):
+        raise ValueError('remote worker requires verified TLS and client certificate')
+    transport = {'verify': ca_bundle, 'cert': client_cert} if remote_tls else {}
     headers = {'Authorization': 'Bearer ' + secret}
     body = {'request_id': request_id, 'agent_id': agent_id}
-    claim = requests.post(endpoint + '/claim', json=body, headers=headers, timeout=5)
+    claim = requests.post(endpoint + '/claim', json=body, headers=headers, timeout=5, **transport)
     claim.raise_for_status()
     body['lease'] = claim.json()['lease']
-    ack = requests.post(endpoint + '/ack', json=body, headers=headers, timeout=5)
+    ack = requests.post(endpoint + '/ack', json=body, headers=headers, timeout=5, **transport)
     ack.raise_for_status()
     output = Path(output_path)
     completed = subprocess.run([ffmpeg, '-y', '-v', 'error', '-f', 'lavfi', '-i',
@@ -40,7 +44,7 @@ def execute_video_delivery(*, endpoint, request_id, agent_id, secret, output_pat
     body['digest'] = hashlib.sha256(content).hexdigest()
     try:
         result = requests.post(endpoint + '/artifact', json=body,
-                               headers=headers, timeout=10)
+                               headers=headers, timeout=10, **transport)
     except requests.RequestException as error:
         raise WorkerDeliveryError('upload outcome unknown; do not automatically replay') from error
     result.raise_for_status()

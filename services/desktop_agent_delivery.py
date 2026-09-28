@@ -65,3 +65,17 @@ class AgentDelivery:
             conn.execute('UPDATE desktop_agent_deliveries SET acknowledged=1 WHERE request_id=?',
                          (request_id,))
             return True
+
+    def receipt_status(self, *, request_id: str, agent_id: str, secret: str):
+        """Read-only reconnection probe; never reissues an acknowledged lease."""
+        self._auth(agent_id, secret)
+        with sqlite3.connect(self.db, timeout=10) as conn:
+            assignment = conn.execute('SELECT 1 FROM desktop_agent_assignments '
+                'WHERE request_id=? AND agent_id=?', (request_id, agent_id)).fetchone()
+            if assignment is None:
+                raise PermissionError('task is not assigned to this agent')
+            exists = conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' "
+                                  "AND name='desktop_agent_result_receipts'").fetchone()
+            received = bool(exists and conn.execute('SELECT 1 FROM desktop_agent_result_receipts '
+                'WHERE request_id=? AND agent_id=?', (request_id, agent_id)).fetchone())
+        return {'received': received, 'coordinator_accepted': False}
