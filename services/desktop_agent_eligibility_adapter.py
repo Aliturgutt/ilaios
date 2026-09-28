@@ -1,9 +1,9 @@
-﻿"""Desktop read-only evidence adapter; never treats historical routes as live state."""
+"""Desktop read-only evidence adapter; never treats historical routes as live state."""
 from __future__ import annotations
 import sqlite3
 from datetime import datetime
 from pathlib import Path
-from typing import Mapping
+from services.desktop_agent_trust_evidence import (LiveEvidence, AgentAdapterEvidence, validate_live, validate_adapter)
 from services.control_plane.agent_api import canonical_agent_state
 from services.desktop_agent_eligibility import EligibilityEvidence, EligibilityResult, evaluate_eligibility
 
@@ -20,9 +20,10 @@ def _owned_agent(db: Path, tenant: str, agent: str) -> bool:
 
 
 def desktop_agent_eligibility(*, runtime, db: Path, tenant: str, agent: str,
-                              live: Mapping[str, object] | None,
-                              adapter: Mapping[str, object] | None,
-                              now: datetime) -> EligibilityResult:
+                              live: LiveEvidence | None,
+                              adapter: AgentAdapterEvidence | None,
+                              now: datetime, trusted_producers: frozenset[str] = frozenset(),
+                              required_adapter_id: str = "") -> EligibilityResult:
     """Resolve canonical/tenant evidence; require independent trusted live/adapter input.
 
     `live` and `adapter` must be supplied by trusted server providers, never HTTP
@@ -37,17 +38,20 @@ def desktop_agent_eligibility(*, runtime, db: Path, tenant: str, agent: str,
     except (OSError, sqlite3.Error, ValueError, KeyError, TypeError):
         record = None
     record = record or {}
-    live = live or {}
-    adapter = adapter or {}
+    live_ok = validate_live(live, agent_id=agent, now=now,
+                            trusted_producers=trusted_producers)
+    adapter_ok = validate_adapter(adapter, agent_id=agent,
+                                  adapter_id=required_adapter_id, now=now,
+                                  trusted_producers=trusted_producers)
     evidence = EligibilityEvidence(
         agent_id=agent, session_tenant=tenant, owner_tenant=owner,
         canonical_registered=bool(record),
         persisted_registered=record.get('registered') is True,
         canonical_authority_matches=record.get('authority_matches_canonical') is True,
         readiness=record.get('readiness'),
-        live_agent_id=live.get('agent_id'), live_status=live.get('status'),
-        live_observed_at=live.get('observed_at'),
-        adapter_agent_id=adapter.get('agent_id'),
-        adapter_verified=adapter.get('verified') is True,
+        live_agent_id=agent if live_ok else None, live_status='idle' if live_ok else None,
+        live_observed_at=live.observed_at if live_ok else None,
+        adapter_agent_id=agent if adapter_ok else None,
+        adapter_verified=adapter_ok,
     )
     return evaluate_eligibility(evidence, now=now)
