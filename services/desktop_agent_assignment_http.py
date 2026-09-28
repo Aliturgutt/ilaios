@@ -1,4 +1,4 @@
-﻿"""Desktop authenticated agent assignment admission; server-owned scope only."""
+"""Desktop authenticated agent assignment admission; server-owned scope only."""
 from __future__ import annotations
 import secrets
 from datetime import datetime, timezone
@@ -36,7 +36,7 @@ def submit_agent_assignment(handler, body: dict[str, object]) -> None:
         return
     validate_assignment(body, AssignmentContext(session.principal_id, session.tenant_id,
         agent, session.tenant_id, True, 'idle', True, agent))
-    request_id = 'exec-' + secrets.token_hex(16)
+    request_id = 'agentexec-' + secrets.token_hex(16)
     execution = handler.server.coordinator.prepare(request_id, objective.strip(),
         token=handler.server.bearer_token, principal_id=session.principal_id,
         tenant_id=session.tenant_id, now=now)
