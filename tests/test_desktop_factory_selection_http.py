@@ -29,6 +29,7 @@ def _server(*, actual_id: str | None = None, status: str = "BLOCKED") -> Iterato
     identity = Mock()
     identity.validate_session.return_value = SimpleNamespace(principal_id="user-1", tenant_id="tenant-1")
     coordinator = Mock()
+    coordinator.recover_stale.return_value = []
     coordinator.prepare.return_value = {
         "execution_status": status,
         "plan": {"capabilities": [actual_id] if actual_id else []},
