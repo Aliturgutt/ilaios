@@ -110,3 +110,54 @@ def test_verified_adapter_binds_agent_and_governance_without_false_acceptance(tm
     with pytest.raises(Exception):
         adapter.verify(request_id='agentexec-result', agent_id='agent-a',
             principal_id='other', tenant_id='tenant-b')
+
+
+def test_real_subprocess_uploads_bytes_and_bad_digest_fails_over_http(tmp_path):
+    import subprocess
+    import sys
+    import sqlite3
+    from datetime import datetime, timezone
+    from threading import Thread
+    from services.desktop_agent_delivery_http import AgentDeliveryHTTPServer
+    from services.desktop_agent_assignment_store import record_agent_assignment
+    from services.desktop_agent_verified_execution_adapter import VerifiedAgentExecutionAdapter
+    coordinator, delivery, _ = prepared(tmp_path)
+    now = datetime.now(timezone.utc)
+    coordinator.prepare('agentexec-worker-upload', 'Create a launch video and final MP4',
+        token='token', principal_id='owner', tenant_id='tenant-a', now=now)
+    record_agent_assignment(coordinator._database_path, request_id='agentexec-worker-upload',
+        agent_id='agent-a', principal_id='owner', tenant_id='tenant-a')
+    server = AgentDeliveryHTTPServer(('127.0.0.1', 0), delivery)
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    script = '''import sys,hashlib,base64,requests
+url=sys.argv[1]
+h={'Authorization':'Bearer credential-a'}
+p={'request_id':'agentexec-worker-upload','agent_id':'agent-a'}
+r=requests.post(url+'/claim',json=p,headers=h,timeout=3);r.raise_for_status()
+p['lease']=r.json()['lease']
+r=requests.post(url+'/ack',json=p,headers=h,timeout=3);r.raise_for_status()
+content=b'actual subprocess artifact bytes'
+p['artifact_b64']=base64.b64encode(content).decode()
+p['digest']='0'*64
+assert requests.post(url+'/artifact',json=p,headers=h,timeout=3).status_code==400
+p['digest']=hashlib.sha256(content).hexdigest()
+r=requests.post(url+'/artifact',json=p,headers=h,timeout=3)
+assert r.status_code==202,r.text
+assert requests.post(url+'/artifact',json=p,headers=h,timeout=3).status_code==403
+'''
+    try:
+        worker = subprocess.run([sys.executable, '-c', script,
+            f'http://127.0.0.1:{server.server_address[1]}/v1/agents/delivery'],
+            capture_output=True, text=True, timeout=15)
+        assert worker.returncode == 0, worker.stderr
+        with sqlite3.connect(coordinator._database_path) as conn:
+            saved = conn.execute('SELECT content FROM desktop_agent_artifacts WHERE request_id=?',
+                                 ('agentexec-worker-upload',)).fetchone()
+        assert saved == (b'actual subprocess artifact bytes',)
+        evidence = VerifiedAgentExecutionAdapter(coordinator).verify(
+            request_id='agentexec-worker-upload', agent_id='agent-a',
+            principal_id='owner', tenant_id='tenant-a')
+        assert evidence['verified'] and evidence['coordinator_accepted'] is False
+    finally:
+        server.shutdown(); thread.join(timeout=3); server.server_close()

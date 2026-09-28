@@ -17,15 +17,16 @@ class AgentDeliveryHTTPServer(ThreadingHTTPServer):
 
 class AgentDeliveryHandler(BaseHTTPRequestHandler):
     def do_POST(self):
-        if self.path not in ('/v1/agents/delivery/claim', '/v1/agents/delivery/ack', '/v1/agents/delivery/result'):
+        if self.path not in ('/v1/agents/delivery/claim', '/v1/agents/delivery/ack', '/v1/agents/delivery/result', '/v1/agents/delivery/artifact'):
             self.send_error(HTTPStatus.NOT_FOUND)
             return
         try:
             size = int(self.headers.get('Content-Length', '-1'))
-            if not 0 < size <= 2048:
+            if not 0 < size <= (1400000 if self.path.endswith('/artifact') else 2048):
                 raise ValueError('invalid payload size')
             body = json.loads(self.rfile.read(size))
             keys = ({'request_id', 'agent_id'} if self.path.endswith('/claim') else
+                    {'request_id', 'agent_id', 'lease', 'artifact_b64', 'digest'} if self.path.endswith('/artifact') else
                     {'request_id', 'agent_id', 'lease', 'result'} if self.path.endswith('/result') else
                     {'request_id', 'agent_id', 'lease'})
             if not isinstance(body, dict) or set(body) != keys or any(
@@ -43,7 +44,13 @@ class AgentDeliveryHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(payload)
             else:
-                if self.path.endswith('/result'):
+                if self.path.endswith('/artifact'):
+                    from services.desktop_agent_result_receipt import AgentResultReceipt
+                    from services.desktop_agent_verified_artifact import receive_verified
+                    receive_verified(AgentResultReceipt(self.server.delivery), **body,
+                                     secret=secret, now=now)
+                    self.send_response(HTTPStatus.ACCEPTED)
+                elif self.path.endswith('/result'):
                     from services.desktop_agent_result_receipt import AgentResultReceipt
                     AgentResultReceipt(self.server.delivery).submit(**body, secret=secret, now=now)
                     self.send_response(HTTPStatus.ACCEPTED)
