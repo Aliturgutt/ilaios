@@ -31,7 +31,7 @@ class AgentDeliveryHTTPServer(ThreadingHTTPServer):
 
 class AgentDeliveryHandler(BaseHTTPRequestHandler):
     def do_POST(self):
-        if self.path not in ('/v1/agents/delivery/claim', '/v1/agents/delivery/ack', '/v1/agents/delivery/result', '/v1/agents/delivery/artifact', '/v1/agents/delivery/status'):
+        if self.path not in ('/v1/agents/delivery/claim', '/v1/agents/delivery/ack', '/v1/agents/delivery/result', '/v1/agents/delivery/artifact', '/v1/agents/delivery/status', '/v1/agents/delivery/renew'):
             self.send_error(HTTPStatus.NOT_FOUND)
             return
         try:
@@ -61,6 +61,14 @@ class AgentDeliveryHandler(BaseHTTPRequestHandler):
             if self.path.endswith('/status'):
                 status = self.server.delivery.receipt_status(**body, secret=secret)
                 payload = json.dumps(status).encode()
+                self.send_response(HTTPStatus.OK)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Content-Length', str(len(payload)))
+                self.end_headers()
+                self.wfile.write(payload)
+            elif self.path.endswith('/renew'):
+                lease = self.server.delivery.renew_acknowledged(**body, secret=secret, now=now)
+                payload = json.dumps({'lease': lease}).encode()
                 self.send_response(HTTPStatus.OK)
                 self.send_header('Content-Type', 'application/json')
                 self.send_header('Content-Length', str(len(payload)))
