@@ -17,7 +17,7 @@ class AgentDeliveryHTTPServer(ThreadingHTTPServer):
 
 class AgentDeliveryHandler(BaseHTTPRequestHandler):
     def do_POST(self):
-        if self.path not in ('/v1/agents/delivery/claim', '/v1/agents/delivery/ack'):
+        if self.path not in ('/v1/agents/delivery/claim', '/v1/agents/delivery/ack', '/v1/agents/delivery/result'):
             self.send_error(HTTPStatus.NOT_FOUND)
             return
         try:
@@ -25,10 +25,11 @@ class AgentDeliveryHandler(BaseHTTPRequestHandler):
             if not 0 < size <= 2048:
                 raise ValueError('invalid payload size')
             body = json.loads(self.rfile.read(size))
-            keys = {'request_id', 'agent_id'} if self.path.endswith('/claim') else {
-                'request_id', 'agent_id', 'lease'}
+            keys = ({'request_id', 'agent_id'} if self.path.endswith('/claim') else
+                    {'request_id', 'agent_id', 'lease', 'result'} if self.path.endswith('/result') else
+                    {'request_id', 'agent_id', 'lease'})
             if not isinstance(body, dict) or set(body) != keys or any(
-                    not isinstance(v, str) or not v for v in body.values()):
+                    not isinstance(body[k], str) or not body[k] for k in keys - {'result'}):
                 raise ValueError('invalid payload')
             auth = self.headers.get('Authorization', '')
             secret = auth[7:] if auth.startswith('Bearer ') else ''
@@ -42,8 +43,13 @@ class AgentDeliveryHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(payload)
             else:
-                self.server.delivery.acknowledge(**body, secret=secret, now=now)
-                self.send_response(HTTPStatus.NO_CONTENT)
+                if self.path.endswith('/result'):
+                    from services.desktop_agent_result_receipt import AgentResultReceipt
+                    AgentResultReceipt(self.server.delivery).submit(**body, secret=secret, now=now)
+                    self.send_response(HTTPStatus.ACCEPTED)
+                else:
+                    self.server.delivery.acknowledge(**body, secret=secret, now=now)
+                    self.send_response(HTTPStatus.NO_CONTENT)
                 self.send_header('Content-Length', '0')
                 self.end_headers()
         except (ValueError, UnicodeError, json.JSONDecodeError):
