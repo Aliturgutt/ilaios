@@ -625,9 +625,9 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
     def _resume_authenticated_execution(self, body: dict[str, Any]) -> None:
         session = self._authenticated_session()
         request_id = _required_string(body, "request_id")
-        from services.desktop_agent_assignment_store import is_agent_assignment
+        from services.desktop_agent_legacy_provenance import requires_agent_resume_guard
         db = getattr(self.server.coordinator, "_database_path", None)
-        if request_id.startswith("agentexec-") or (isinstance(db, Path) and is_agent_assignment(db, request_id)):
+        if requires_agent_resume_guard(db if isinstance(db, Path) else None, request_id):
             self._send_error(HTTPStatus.FORBIDDEN, "agent tasks cannot use general resume")
             return
         execution = self.server.coordinator.get(
