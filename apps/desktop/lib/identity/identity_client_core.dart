@@ -436,6 +436,42 @@ class IdentityClient {
     return assetId;
   }
 
+  /// Explicitly submits an agent-bound task to the authenticated identity API.
+  /// A created assignment is not evidence of video execution or acceptance.
+  Future<String> assignAgentTask(
+    String agentId,
+    String objective,
+    DesktopUserSession session,
+  ) async {
+    if (!agentId.startsWith('ilaios.agent.') ||
+        agentId.contains('/') ||
+        objective.trim().isEmpty ||
+        objective.length > 20000) {
+      throw const IdentityClientException('Invalid agent assignment');
+    }
+    final payload = await _sessionPost(
+      '/v1/desktop/agents/assignments',
+      <String, Object?>{
+        'agent_id': agentId,
+        'objective': objective.trim(),
+        'explicit_confirmation': true,
+      },
+      'agent assignment',
+      session,
+      expectedStatus: HttpStatus.created,
+    );
+    final requestId = payload['request_id'];
+    if (payload['agent_id'] != agentId ||
+        requestId is! String ||
+        !requestId.startsWith('agentexec-') ||
+        payload['execution_status'] is! String) {
+      throw const IdentityClientException(
+        'Malformed agent assignment response',
+      );
+    }
+    return requestId;
+  }
+
   Future<String> decideExecution(
     String requestId,
     GovernanceDecision decision,
@@ -713,7 +749,7 @@ class IdentityClient {
   static bool _isVideoObjective(String objective) {
     final normalized = objective.trimLeft().toLowerCase();
     return normalized.startsWith('video creation task:') ||
-        normalized.startsWith('video oluşturma görevi:');
+        normalized.startsWith('video olu┼şturma g├Ârevi:');
   }
 
   static bool _isTransportAuthenticationFailure(

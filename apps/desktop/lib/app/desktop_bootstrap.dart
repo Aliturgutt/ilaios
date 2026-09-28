@@ -525,6 +525,8 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
                 _identityClient!.assistantRequest(_userSession!, request),
       onRefreshRequested: _client == null ? null : _refresh,
       onProvisionAgent: agentProvisionEnabled ? _provisionAgent : null,
+      // Fail closed until the identity server publishes configured assignment readiness.
+      onAssignAgent: null,
       onGovernanceDecision: governanceEnabled ? _decideGovernance : null,
     );
   }

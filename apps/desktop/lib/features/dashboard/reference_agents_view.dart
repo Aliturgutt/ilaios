@@ -1106,6 +1106,59 @@ class _SelectedPanel extends StatelessWidget {
   final VoidCallback? onRefresh;
   final VoidCallback onWorkspace;
 
+  Future<void> _showAssignmentDialog(
+    BuildContext context,
+    _AgentRecord selected,
+  ) async {
+    final assign = AgentProvisioningScope.assignerOf(context);
+    if (assign == null) return;
+    final controller = TextEditingController();
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Assign Task'),
+        content: TextField(
+          key: const Key('agent-assignment-objective'),
+          controller: controller,
+          maxLength: 20000,
+          maxLines: 3,
+          decoration: const InputDecoration(labelText: 'Task objective'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            key: const Key('agent-assignment-confirm'),
+            onPressed: () async {
+              if (controller.text.trim().isEmpty) return;
+              try {
+                final id = await assign(selected.id, controller.text.trim());
+                if (!dialogContext.mounted) return;
+                Navigator.pop(dialogContext);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Assignment created: $id (execution pending)',
+                    ),
+                  ),
+                );
+              } catch (error) {
+                if (!dialogContext.mounted) return;
+                ScaffoldMessenger.of(dialogContext).showSnackBar(
+                  SnackBar(content: Text('Assignment failed: $error')),
+                );
+              }
+            },
+            child: const Text('Confirm assignment'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+  }
+
   @override
   Widget build(BuildContext context) => _Panel(
     key: const Key('selected-agent-panel'),
@@ -1309,11 +1362,24 @@ class _SelectedPanel extends StatelessWidget {
                         message: _tr(
                           context,
                           'Governed assignment API henüz mevcut değil.',
-                          'Governed assignment API is not available yet.',
+                          'Requires a verified session and an idle registered agent.',
                         ),
                         child: OutlinedButton.icon(
-                          key: const Key('agent-assign-task-disabled'),
-                          onPressed: null,
+                          key: Key(
+                            AgentProvisioningScope.assignerOf(context) == null
+                                ? 'agent-assign-task-disabled'
+                                : 'agent-assign-task',
+                          ),
+                          onPressed:
+                              connected &&
+                                  agent!.registered &&
+                                  agent!.state != _AgentState.busy &&
+                                  agent!.state != _AgentState.offline &&
+                                  agent!.state != _AgentState.review &&
+                                  AgentProvisioningScope.assignerOf(context) !=
+                                      null
+                              ? () => _showAssignmentDialog(context, agent!)
+                              : null,
                           icon: const Icon(
                             Icons.person_add_alt_1_outlined,
                             size: 14,
