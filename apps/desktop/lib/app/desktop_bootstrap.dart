@@ -578,7 +578,7 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
       onRefreshRequested: _client == null ? null : _refresh,
       onProvisionAgent: agentProvisionEnabled ? _provisionAgent : null,
       // Fail closed until the identity server publishes configured assignment readiness.
-      onAssignAgent: _readyAssignmentAgents.isNotEmpty ? _assignAgent : null,
+      onAssignAgent: null, // Automatic routing replaces manual user assignment.
       readyAgentIds: _readyAssignmentAgents,
       onGovernanceDecision: governanceEnabled ? _decideGovernance : null,
     );

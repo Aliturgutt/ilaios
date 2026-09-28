@@ -290,7 +290,30 @@ def main(argv: Sequence[str] | None = None) -> int:
         source_media=source_media,
         company_knowledge=company_knowledge,
     )
-    identity_host, identity_port = identity_server.server_address[:2]
+    identity_host, identity_port = identity_server.server_address[:2]    # Provisioned loopback delivery is independent of routing readiness.
+    # A tenant/owner-bound worker video coordinator is not available globally;
+    # never advertise automatic assignment until that binding is verified.
+    delivery_server = None
+    delivery_thread = None
+    delivery_agent = os.environ.get("ILAIOS_DESKTOP_WORKER_AGENT_ID", "").strip()
+    delivery_secret = os.environ.get("ILAIOS_DESKTOP_WORKER_SECRET", "").strip()
+    if bool(delivery_agent) != bool(delivery_secret):
+        identity_server.server_close()
+        control_server.server_close()
+        raise SystemExit("Desktop worker agent ID and secret must be provisioned together")
+    if delivery_agent:
+        from services.agent_registry import CANONICAL_AGENT_REGISTRY
+        if delivery_agent not in {item.manifest.agent_id for item in CANONICAL_AGENT_REGISTRY}:
+            identity_server.server_close()
+            control_server.server_close()
+            raise SystemExit("Desktop worker identity is not a canonical agent")
+        from services.desktop_agent_delivery import AgentDelivery
+        from services.desktop_agent_delivery_http import AgentDeliveryHTTPServer
+        delivery_server = AgentDeliveryHTTPServer(("127.0.0.1", 0),
+            AgentDelivery(coordinator._database_path, {delivery_agent: delivery_secret}))
+        delivery_thread = threading.Thread(target=delivery_server.serve_forever,
+            name="ilaios-agent-delivery", daemon=True)
+        delivery_thread.start()
 
     control_thread = threading.Thread(
         target=control_server.serve_forever,
@@ -321,6 +344,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         "web_agent_browser_tool_required": web_agents.browser_tool_required,
         "web_agent_browser_runtime_configured": False,
         "agent_readiness_store_configured": True,
+        "agent_delivery_configured": delivery_server is not None,
+        "agent_delivery_host": "127.0.0.1" if delivery_server else None,
+        "agent_delivery_port": delivery_server.server_address[1] if delivery_server else None,
+        "automatic_agent_routing_ready": False,
         "openrouter_secret_present": bool(openrouter_api_key),
         "video_finished_product_configured": video_finished_product_configured,
         "video_provider": video_provider,
@@ -349,6 +376,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     def stop_identity_if_control_plane_exits() -> None:
         control_thread.join()
         identity_server.shutdown()
+        if delivery_server is not None:
+            delivery_server.shutdown()
 
     def stop_identity_if_parent_pipe_closes() -> None:
         try:
@@ -358,6 +387,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         except (OSError, ValueError):
             pass
         identity_server.shutdown()
+        if delivery_server is not None:
+            delivery_server.shutdown()
 
     def _force_exit_after_desktop_owner_loss() -> None:
         # Once the authoritative Desktop process is gone, the bundled sidecar
@@ -384,6 +415,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             daemon=True,
         ).start()
         identity_server.shutdown()
+        if delivery_server is not None:
+            delivery_server.shutdown()
         control_server.shutdown()
 
     control_watchdog = threading.Thread(
@@ -416,6 +449,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         pass
     finally:
         identity_server.shutdown()
+        if delivery_server is not None:
+            delivery_server.shutdown()
         identity_server.server_close()
         control_server.shutdown()
         control_server.server_close()
