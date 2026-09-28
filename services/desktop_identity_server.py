@@ -152,6 +152,11 @@ class DesktopIdentityRequestHandler(_core.DesktopIdentityRequestHandler):
             actual_routes = actual_plan.get("capabilities", []) if isinstance(actual_plan, dict) else []
             if actual_routes != [selected_factory]:
                 raise ExecutionCoordinatorError("actual route differs from selected factory")
+        from pathlib import Path
+        from services.desktop_human_intent_provenance import record_human_intent
+        db = getattr(self.server.coordinator, "_database_path", None)
+        if isinstance(db, Path):
+            record_human_intent(db, request_id, session.principal_id, session.tenant_id)
         if store is not None:
             store.bind_request(
                 request_id,

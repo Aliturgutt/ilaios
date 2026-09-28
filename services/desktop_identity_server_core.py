@@ -554,6 +554,10 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
             tenant_id=session.tenant_id,
             now=datetime.now(timezone.utc),
         )
+        from services.desktop_human_intent_provenance import record_human_intent
+        db = getattr(self.server.coordinator, "_database_path", None)
+        if isinstance(db, Path):
+            record_human_intent(db, request_id, session.principal_id, session.tenant_id)
         if store is not None:
             store.bind_request(
                 request_id,
