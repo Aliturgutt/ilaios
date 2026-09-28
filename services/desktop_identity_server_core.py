@@ -269,6 +269,8 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
                 self._upload_reference_asset(body)
                 return
             if path == "/v1/desktop/intent":
+                if any(key in body for key in ("agent_id", "selected_agent_id", "assignment_agent_id", "explicit_confirmation", "live_evidence", "adapter_evidence")):
+                    raise ValueError("agent assignment is unavailable on general Desktop intent")
                 self._submit_authenticated_intent(body)
                 return
             if path == "/v1/web/preview":
@@ -514,6 +516,8 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
 
     def _submit_authenticated_intent(self, body: dict[str, Any]) -> None:
         session = self._authenticated_session()
+        if any(key in body for key in ("agent_id", "selected_agent_id", "assignment_agent_id", "explicit_confirmation", "live_evidence", "adapter_evidence")):
+            raise ValueError("agent assignment is unavailable on general Desktop intent")
         objective = _required_string(body, "objective")
         if len(objective) > 20_000:
             raise ValueError("objective exceeds Desktop input limit")
