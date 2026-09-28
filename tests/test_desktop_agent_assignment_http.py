@@ -2,7 +2,7 @@
 from contextlib import contextmanager
 from threading import Thread
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 import pytest
 import requests
 from services.desktop_identity_server import DesktopIdentityHTTPServer
@@ -33,7 +33,8 @@ def server():
     thread = Thread(target=http.serve_forever, daemon=True)
     thread.start()
     try:
-        yield f'http://127.0.0.1:{http.server_address[1]}/v1/desktop/agents/assignments', identity, coordinator, preflight, start
+        with patch('services.desktop_agent_assignment_store.record_agent_assignment'):
+            yield f'http://127.0.0.1:{http.server_address[1]}/v1/desktop/agents/assignments', identity, coordinator, preflight, start
     finally:
         http.shutdown()
         thread.join(timeout=3)

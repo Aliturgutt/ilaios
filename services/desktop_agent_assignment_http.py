@@ -43,6 +43,10 @@ def submit_agent_assignment(handler, body: dict[str, object]) -> None:
     actual = execution.get('plan')
     if not isinstance(actual, dict) or actual.get('capabilities') != [capability]:
         raise ExecutionCoordinatorError('actual route differs from verified agent capability')
+    from services.desktop_agent_assignment_store import record_agent_assignment
+    record_agent_assignment(handler.server.coordinator._database_path,
+        request_id=request_id, agent_id=agent, principal_id=session.principal_id,
+        tenant_id=session.tenant_id)
     if execution.get('execution_status') == 'ADMITTED':
         handler._start_execution(request_id)
     handler._send_json(HTTPStatus.CREATED, {'request_id': request_id,
