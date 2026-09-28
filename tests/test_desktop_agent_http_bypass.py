@@ -1,7 +1,15 @@
 """Real HTTP regression: general Desktop intent cannot accept agent selection or forged evidence."""
 import pytest
 import requests
-from tests.test_desktop_factory_selection_http import _server
+from tests.test_desktop_factory_selection_http import _server as _factory_server
+from contextlib import contextmanager
+from unittest.mock import Mock, patch
+
+@contextmanager
+def _server():
+    with patch.object(Mock, "recover_stale", create=True, return_value=[]):
+        with _factory_server() as instance:
+            yield instance
 
 @pytest.mark.parametrize('injected', [
     {'agent_id': 'agent-a'},
