@@ -71,3 +71,21 @@ def test_independent_coordinator_acceptance_does_not_launder_worker_digest(tmp_p
     assert reconcile_verified_result(coordinator, request_id='agentexec-result',
         principal_id='owner', tenant_id='tenant-a') == {
             'verified': False, 'reason': 'coordinator_evidence_mismatch'}
+
+
+def test_verified_worker_result_requires_product_adapter_before_acceptance(tmp_path):
+    from services.desktop_agent_coordinator_result_bridge import inspect_worker_acceptance_readiness
+    coordinator, delivery, lease = prepared(tmp_path)
+    content = b'worker result with no product-specific acceptance evidence'
+    receive_verified(AgentResultReceipt(delivery), request_id='agentexec-result',
+        agent_id='agent-a', secret='credential-a', lease=lease,
+        artifact_b64=base64.b64encode(content).decode(),
+        digest=hashlib.sha256(content).hexdigest(), now=NOW)
+    readiness = inspect_worker_acceptance_readiness(coordinator, request_id='agentexec-result',
+        principal_id='owner', tenant_id='tenant-a')
+    assert readiness['ready'] and readiness['requires_verified_execution_adapter']
+    assert readiness['coordinator_accepted'] is False
+    assert coordinator.get('agentexec-result', principal_id='owner', tenant_id='tenant-a')['execution_status'] == 'ADMITTED'
+    with pytest.raises(Exception):
+        inspect_worker_acceptance_readiness(coordinator, request_id='agentexec-result',
+            principal_id='intruder', tenant_id='tenant-b')
