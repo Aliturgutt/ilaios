@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "decision": "ACCEPT",
+  "base_sha": "a8e65517c7c5393c97351af5f262730947c4a5c9",
+  "changeset_sha256": "18c63930f142e89eb51ce4dea18aa32fcbde72dfdf84cc70ad7380b28acaa736",
+  "changeset_authors": [
+    "codex@openai.com"
+  ],
+  "reviewer": "ai-subagent:/root/sf20_current_base_review",
+  "reviewed_at": "2026-09-11T22:05:10.949793+00:00",
+  "migration_files": [
+    "services/control_plane/migrations.py"
+  ],
+  "finding_fingerprints": [
+    "409a79fa0322f5add48151f32497cb2e5b967ca3a34dd0d42860f4ac99cdaa70"
+  ],
+  "review_notes": "Independent AI subagent /root/sf20_current_base_review reviewed only the F04 migration delta against base a8e65517c7c5393c97351af5f262730947c4a5c9 at subject HEAD 4f4e2c1602fd2d84e08181cc22e6d8927d7e9cb9. This reviewer did not author or modify the implementation. Recomputed the canonical full migration diff SHA-256, migration author set and SF-20 finding fingerprint; confirmed the exact base is now an ancestor and the migration file has no change since code commit 638284de68417a67f419acf83a193c048379d24e. ACCEPT the scoped code-review risk: the partial UNIQUE index enforces at most one ACTIVE primary membership per user; existing BEGIN IMMEDIATE and atomic rollback leave conflicting legacy rows and schema version intact on failure rather than choosing or deleting data. The expand-only down migration retains the invariant and existing rollback owner snapshots before rollback. Inspected existing regression test source for duplicate legacy state with unchanged dump/version, valid upgrade without rewrite, concurrent promotions with one winner and rollback/backup enforcement. No new runtime or Pytest execution is claimed by this refresh; only the canonical SF-20 classifier was executed to derive current bindings. Uniqueness conflicts intentionally block upgrade; index creation holds a writer lock. Production duplicate pre-validation, a restorable backup and database-specific lock-duration/deployment planning remain runtime deployment requirements; this evidence does not authorize or prove a production migration. This is a fresh independent assessment, not reuse of the former attestation. Reviewer identity denotes this actual AI subagent, not a human or verified email."
+}

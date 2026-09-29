@@ -70,16 +70,17 @@ class SQLiteCentralIdentityStore:
         if not normalized_user_id:
             return None
         with self._connect() as connection:
-            row = connection.execute(
+            rows = connection.execute(
                 "SELECT u.user_id, m.tenant_id, u.enabled, t.status, m.status "
                 "FROM identity_users AS u "
                 "JOIN identity_memberships AS m ON m.user_id = u.user_id "
                 "JOIN identity_tenants AS t ON t.tenant_id = m.tenant_id "
                 "WHERE u.user_id = ? AND m.is_primary = 1",
                 (normalized_user_id,),
-            ).fetchone()
-        if row is None:
+            ).fetchmany(2)
+        if len(rows) != 1:
             return None
+        row = rows[0]
         enabled = bool(row[2]) and row[3] == "ACTIVE" and row[4] == "ACTIVE"
         return CanonicalAccount(user_id=str(row[0]), tenant_id=str(row[1]), enabled=enabled)
 
