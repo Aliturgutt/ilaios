@@ -13,6 +13,7 @@ from services.agent_registry import CANONICAL_AGENT_REGISTRY
 def agent_state_projection(
     routes: Iterable[Mapping[str, Any]],
     readiness: Mapping[str, Mapping[str, object]] | None = None,
+    live_execution: Mapping[str, Mapping[str, object]] | None = None,
 ) -> dict[str, object]:
     latest: dict[str, Mapping[str, Any]] = {}
     for runtime_route in routes:
@@ -21,6 +22,9 @@ def agent_state_projection(
             latest[agent_id] = runtime_route
     readiness_map: Mapping[str, Mapping[str, object]] = (
         readiness if readiness is not None else {}
+    )
+    live_execution_map: Mapping[str, Mapping[str, object]] = (
+        live_execution if live_execution is not None else {}
     )
 
     agents: list[dict[str, object]] = []
@@ -45,6 +49,9 @@ def agent_state_projection(
             _merge_readiness(record, readiness_record)
         if latest_route is not None:
             _merge_route(record, latest_route)
+        live_record = live_execution_map.get(manifest.agent_id)
+        if live_record is not None:
+            _merge_live_execution(record, live_record)
         agents.append(record)
 
     return {
@@ -55,6 +62,30 @@ def agent_state_projection(
             "append-only-readiness-evidence"
         ),
     }
+
+
+
+def _merge_live_execution(
+    record: dict[str, object], live: Mapping[str, object]
+) -> None:
+    agent_id = live.get("agent_id")
+    if not isinstance(agent_id, str) or agent_id != record.get("agent_id"):
+        return
+
+    status = live.get("agent_status")
+    active_tasks = live.get("active_tasks")
+
+    if status == "busy" and isinstance(active_tasks, int) and active_tasks > 0:
+        record["agent_status"] = "busy"
+        record["active_tasks"] = active_tasks
+        for key in ("current_task", "current_task_detail", "last_activity"):
+            value = live.get(key)
+            if isinstance(value, str) and value:
+                record[key] = value
+    elif status == "idle" and active_tasks == 0:
+        if record.get("agent_status") != "offline":
+            record["agent_status"] = "idle"
+        record["active_tasks"] = 0
 
 
 def _merge_readiness(
