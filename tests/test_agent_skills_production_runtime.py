@@ -16,6 +16,7 @@ from services.agent_skills_runtime import (
     ExternalSkillExecutionRequest,
 )
 from services.cloud import DeploymentProfile, TenantBoundary, TenantPolicy
+from services.evidence.store import EvidenceStore
 from services.governance.runtime import GovernedRuntimeGateway
 from services.identity import (
     AuthorizationEngine,
@@ -169,6 +170,7 @@ def _configured(
         authorization=authorization,
         tenants=tenants,
         evidence_chain=evidence,
+        evidence_store=EvidenceStore(tmp_path / "skill-evidence"),
     )
     return bridge, governed, evidence
 
@@ -297,3 +299,76 @@ def test_bundled_script_is_never_authorized_or_executed_by_instruction_bridge(
     assert admission["script_execution_authorized"] is False
     receipt = bridge.execute(request)
     assert receipt.output["script_executed"] is False
+
+
+def test_same_request_concurrent_execution_is_single_dispatch(tmp_path: Path) -> None:
+    from concurrent.futures import ThreadPoolExecutor
+
+    package_root = _package(tmp_path)
+    bridge, governed, evidence = _configured(tmp_path)
+    request = _request(tmp_path, package_root)
+    bridge.submit(request, now=datetime.now(timezone.utc))
+
+    def attempt() -> tuple[str, object]:
+        try:
+            return ("ok", bridge.execute(request))
+        except Exception as error:
+            return ("error", error)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        outcomes = list(pool.map(lambda _: attempt(), range(2)))
+    assert sum(kind == "ok" for kind, _ in outcomes) == 1
+    assert sum(kind == "error" for kind, _ in outcomes) == 1
+    assert len(evidence.get_records()) == 1
+    work = governed.state()["work"]
+    assert isinstance(work, list)
+    assert work[0]["status"] == "executed"
+
+
+def test_skill_evidence_survives_runtime_restart(tmp_path: Path) -> None:
+    from services.evidence.store import EvidenceStore
+
+    package_root = _package(tmp_path)
+    bridge, governed, evidence = _configured(tmp_path)
+    request = _request(tmp_path, package_root)
+    bridge.submit(request, now=datetime.now(timezone.utc))
+    receipt = bridge.execute(request)
+    assert evidence.verify_integrity()
+
+    reopened = EvidenceStore(tmp_path / "skill-evidence")
+    records = reopened.verify()
+    matching = [record for record in records if record.execution_id == request.request_id]
+    assert len(matching) == 1
+    payload = reopened.get_artifact(matching[0].artifact_digest)
+    import json
+    stored = json.loads(payload)
+    assert stored["evidence_chain_hash"] == receipt.evidence_chain_hash
+    assert stored["request_id"] == request.request_id
+
+
+def test_durable_evidence_write_failure_does_not_return_success(tmp_path: Path) -> None:
+    from services.evidence.store import EvidenceError
+
+    package_root = _package(tmp_path)
+    bridge, _, _ = _configured(tmp_path)
+    request = _request(tmp_path, package_root)
+    bridge.submit(request, now=datetime.now(timezone.utc))
+    store = bridge._evidence_store
+    assert store is not None
+
+    def fail_append(*args: object) -> None:
+        raise EvidenceError("durable provenance unavailable")
+
+    store.append_provenance = fail_append  # type: ignore[assignment]
+    with pytest.raises(EvidenceError, match="durable provenance unavailable"):
+        bridge.execute(request)
+
+
+def test_missing_durable_evidence_store_fails_closed(tmp_path: Path) -> None:
+    package_root = _package(tmp_path)
+    bridge, _, _ = _configured(tmp_path)
+    request = _request(tmp_path, package_root)
+    bridge.submit(request, now=datetime.now(timezone.utc))
+    bridge._evidence_store = None  # type: ignore[assignment]
+    with pytest.raises(AgentSkillsRuntimeError, match="durable evidence store"):
+        bridge.execute(request)
