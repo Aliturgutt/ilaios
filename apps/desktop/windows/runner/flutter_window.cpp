@@ -5,6 +5,7 @@
 #include <utility>
 
 #include "flutter/generated_plugin_registrant.h"
+#include <multiview_desktop/multi_view_desktop_plugin.h>
 #include "utils.h"
 
 namespace {
@@ -47,23 +48,27 @@ bool FlutterWindow::OnCreate() {
   }
 
   RECT frame = GetClientArea();
-  flutter_controller_ = std::make_unique<flutter::FlutterViewController>(
-      frame.right - frame.left, frame.bottom - frame.top, project_);
-  if (!flutter_controller_->engine() || !flutter_controller_->view()) {
-    return false;
-  }
-  RegisterPlugins(flutter_controller_->engine());
-  SetChildContent(flutter_controller_->view()->GetNativeWindow());
+  const int width = frame.right - frame.left;
+  const int height = frame.bottom - frame.top;
+  MultiViewDesktopPrepareEngine(project_, GetHandle());
+  MultiViewDesktopCreateMainView(GetHandle(), width, height, RegisterPlugins);
+  const HWND flutter_hwnd = MultiViewDesktopGetFlutterHwnd(MultiViewDesktopGetMainViewId());
+  if (flutter_hwnd == nullptr) return false;
+  SetChildContent(flutter_hwnd);
 
+
+  reference_registrar_ = std::make_unique<flutter::PluginRegistrarWindows>(
+      FlutterDesktopEngineGetPluginRegistrar(MultiViewDesktopGetEngineRef(),
+                                            "ILAIOSReferenceDrop"));
   reference_drop_channel_ =
       std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
-          flutter_controller_->engine()->messenger(), kReferenceDropChannel,
+          reference_registrar_->messenger(), kReferenceDropChannel,
           &flutter::StandardMethodCodec::GetInstance());
 
   // The Flutter child HWND covers the complete client area. Register and
   // subclass that HWND itself; registering only the top-level parent creates a
   // false-positive drop configuration because drops land on the child surface.
-  flutter_child_window_ = flutter_controller_->view()->GetNativeWindow();
+  flutter_child_window_ = flutter_hwnd;
   if (!SetPropW(flutter_child_window_, kDropOwnerProperty, this)) {
     return false;
   }
@@ -78,8 +83,7 @@ bool FlutterWindow::OnCreate() {
   }
   DragAcceptFiles(flutter_child_window_, TRUE);
 
-  flutter_controller_->engine()->SetNextFrameCallback([&]() { this->Show(); });
-  flutter_controller_->ForceRedraw();
+  Show();
   return true;
 }
 
@@ -95,9 +99,7 @@ void FlutterWindow::OnDestroy() {
   flutter_child_window_ = nullptr;
   original_flutter_child_proc_ = nullptr;
   reference_drop_channel_.reset();
-  if (flutter_controller_) {
-    flutter_controller_ = nullptr;
-  }
+  reference_registrar_.reset();
 
   Win32Window::OnDestroy();
 }
@@ -110,21 +112,12 @@ LRESULT FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
     return 0;
   }
 
-  if (flutter_controller_) {
-    std::optional<LRESULT> result =
-        flutter_controller_->HandleTopLevelWindowProc(hwnd, message, wparam,
-                                                      lparam);
-    if (result) {
-      return *result;
-    }
+  LRESULT result = 0;
+  if (message == WM_FONTCHANGE) {
+    FlutterDesktopEngineReloadSystemFonts(MultiViewDesktopGetEngineRef());
   }
-
-  switch (message) {
-    case WM_FONTCHANGE:
-      if (flutter_controller_) {
-        flutter_controller_->engine()->ReloadSystemFonts();
-      }
-      break;
+  if (MultiViewDesktopHandleWindowProc(hwnd, message, wparam, lparam, &result)) {
+    return result;
   }
 
   return Win32Window::MessageHandler(hwnd, message, wparam, lparam);

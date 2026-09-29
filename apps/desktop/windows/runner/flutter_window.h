@@ -6,7 +6,7 @@
 #include <shellapi.h>
 
 #include <flutter/dart_project.h>
-#include <flutter/flutter_view_controller.h>
+#include <flutter/plugin_registrar_windows.h>
 #include <flutter/method_channel.h>
 #include <flutter/standard_method_codec.h>
 
@@ -33,7 +33,7 @@ class FlutterWindow : public Win32Window {
   void HandleDroppedFiles(HDROP drop);
 
   flutter::DartProject project_;
-  std::unique_ptr<flutter::FlutterViewController> flutter_controller_;
+  std::unique_ptr<flutter::PluginRegistrarWindows> reference_registrar_;
   std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
       reference_drop_channel_;
   HWND flutter_child_window_ = nullptr;
