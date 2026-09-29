@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 from typing import Any
 
 from services.agent_projection import agent_state_projection
+from services.control_plane.live_state import LiveStateTransport
 from services.agent_readiness_store import AgentReadinessStore
 from services.agent_registry import CANONICAL_AGENT_REGISTRY
 from services.named_agent_executor import (
@@ -54,7 +57,19 @@ def canonical_agent_state(
     readiness_projection = (
         resolved_store.projection() if resolved_store is not None else {}
     )
-    runtime_projection = agent_state_projection(runtime.routes(), readiness_projection)
+    live_state = LiveStateTransport(runtime.database_path)
+    live_execution: dict[str, Mapping[str, object]] = {}
+    for snapshot in live_state.snapshots_with_prefix("agent-runtime:"):
+        state = snapshot.state
+        agent_id = state.get("agent_id")
+        if isinstance(agent_id, str):
+            live_execution[agent_id] = state
+
+    runtime_projection = agent_state_projection(
+        runtime.routes(),
+        readiness_projection,
+        live_execution,
+    )
     raw_agents = runtime_projection.get("agents")
     if not isinstance(raw_agents, list):
         raise ValueError("runtime agent projection is malformed")
