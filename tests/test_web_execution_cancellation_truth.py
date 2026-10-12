@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import pytest
+
 from services.control_plane import ControlPlane, ControlPlaneConfig
 from services.control_plane.workflows import WorkflowStore, WorkflowStoreConfig
 from services.evidence import EvidenceStore
@@ -18,6 +20,7 @@ from services.integrations import (
 )
 from services.runtime import DurableGrantPolicy, DurableWorkerScheduler, GovernedRuntime
 from src.video_automation.models import JobState
+from services.execution_coordinator import ExecutionCoordinatorError
 
 
 def test_authenticated_web_cancellation_is_durably_cancelled(tmp_path: Path) -> None:
@@ -68,14 +71,28 @@ def test_authenticated_web_cancellation_is_durably_cancelled(tmp_path: Path) -> 
         token=token,
         principal_id="oidc|web-user",
         tenant_id="tenant/example",
+        project_id="project-web-cancel",
+        workload_id="workload-web-cancel",
         now=now,
     )
 
+    scoped = coordinator.get(
+        "web-cancel-1", principal_id="oidc|web-user", tenant_id="tenant/example"
+    )
+    assert isinstance(scoped["state_version"], int)
+    state_version = scoped["state_version"]
+    with pytest.raises(ExecutionCoordinatorError, match="project_id scope mismatch"):
+            coordinator.get("web-cancel-1", principal_id="oidc|web-user", tenant_id="tenant/example", project_id="wrong-project", workload_id="workload-web-cancel", job_id=str(scoped["job_id"]), action_instance_id=str(scoped["action_instance_id"]), expected_state_version=state_version)
     assert coordinator.cancel(
         "web-cancel-1",
         token=token,
         actor_id="oidc|web-user",
         tenant_id="tenant/example",
+        project_id="project-web-cancel",
+        workload_id="workload-web-cancel",
+        job_id=str(scoped["job_id"]),
+        action_instance_id=str(scoped["action_instance_id"]),
+        expected_state_version=state_version,
         now=now + timedelta(seconds=1),
     ) == "CANCELLED"
 
@@ -86,3 +103,7 @@ def test_authenticated_web_cancellation_is_durably_cancelled(tmp_path: Path) -> 
     assert product_state["reason"] == "cancelled by authenticated execution owner"
     assert coordinator_state["execution_status"] == "CANCELLED"
     assert control.get_job(token, str(prepared["job_id"])).state is JobState.CANCELLED
+    reloaded = coordinator.get("web-cancel-1", principal_id="oidc|web-user", tenant_id="tenant/example")
+    assert reloaded["project_id"] == "project-web-cancel"
+    assert reloaded["workload_id"] == "workload-web-cancel"
+    assert coordinator.cancel("web-cancel-1", token=token, actor_id="oidc|web-user", tenant_id="tenant/example", project_id="project-web-cancel", workload_id="workload-web-cancel", job_id=str(scoped["job_id"]), action_instance_id=str(scoped["action_instance_id"]), expected_state_version=state_version, now=now + timedelta(seconds=2)) == "CANCELLED"
