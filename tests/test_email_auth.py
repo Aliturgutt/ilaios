@@ -33,8 +33,8 @@ def _service(*, max_issues: int = 5) -> EmailAuthService:
 
 
 def _migrate_email_challenge_schema(database_path: Path) -> None:
-    assert migrate_database(database_path) == 10 == LATEST_SCHEMA_VERSION
-    assert current_schema_version(database_path) == 10
+    assert migrate_database(database_path) == LATEST_SCHEMA_VERSION
+    assert current_schema_version(database_path) == LATEST_SCHEMA_VERSION
 
 
 def _sqlite_service(database_path: Path, *, max_issues: int = 5) -> EmailAuthService:
@@ -268,6 +268,9 @@ def test_v10_rollback_and_reupgrade_recreate_challenge_persistence(tmp_path: Pat
     _migrate_email_challenge_schema(database_path)
     issued = _sqlite_service(database_path).issue("user@example.com", now=NOW)
 
+    backup_v11 = tmp_path / "identity-v11-backup.db"
+    assert rollback_database(database_path, backup_v11) == 10
+    assert current_schema_version(backup_v11) == 11
     assert rollback_database(database_path, backup_path) == 9
     assert current_schema_version(database_path) == 9
     with pytest.raises(EmailAuthError, match="persistence schema is unavailable"):
@@ -281,7 +284,7 @@ def test_v10_rollback_and_reupgrade_recreate_challenge_persistence(tmp_path: Pat
         ).fetchone()
     assert backed_up == (issued.challenge_id,)
 
-    assert migrate_database(database_path) == 10
+    assert migrate_database(database_path) == LATEST_SCHEMA_VERSION
     restarted = _sqlite_service(database_path)
     replacement = restarted.issue("user@example.com", now=NOW + timedelta(minutes=16))
     assert replacement.email == "user@example.com"
