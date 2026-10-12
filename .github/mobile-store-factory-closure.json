@@ -3,7 +3,7 @@
   "tracking_issue": 502,
   "checkpoint_protocol": "branch-pr-exact-head-ci-merge-next-master",
   "truth_rule": "NO_EVIDENCE_NO_DONE",
-  "base_master_sha": "d2d9eb329437fe0fccf48a7730c0f9a3f0795bc8",
+  "base_master_sha": "698204b5b62c37a4a6e08943253042cfd7a33446",
   "current_phase": 3,
   "automation_mode": "bounded-zero-spend-non-publication",
   "store_submission_requires_explicit_approval": true,
@@ -12,7 +12,7 @@
   "phases": [
     {"id": 1, "name": "common-store-certification-foundation", "status": "VERIFIED"},
     {"id": 2, "name": "android-implementation-executor", "status": "VERIFIED"},
-    {"id": 3, "name": "android-build-google-play-certification", "status": "IN_PROGRESS"},
+    {"id": 3, "name": "android-build-google-play-certification", "status": "BLOCKED_EXTERNAL_EVIDENCE"},
     {"id": 4, "name": "ilaios-mobile-android-golden-reference", "status": "NOT_STARTED"},
     {"id": 5, "name": "ios-implementation-executor", "status": "NOT_STARTED"},
     {"id": 6, "name": "ios-build-app-store-certification", "status": "NOT_STARTED"},
