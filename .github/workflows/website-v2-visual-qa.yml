@@ -5,6 +5,10 @@ on:
     branches: [master]
     paths:
       - 'apps/website/**'
+      - 'services/design_quality.py'
+      - 'services/web_screenshot_fidelity.py'
+      - 'services/integrations/web_factory.py'
+      - 'services/integrations/web_project.py'
       - '.github/workflows/website-v2-visual-qa.yml'
   workflow_dispatch:
 
@@ -53,41 +57,12 @@ jobs:
           ILAIOS_WEB_FACTORY_TRIAL_ARTIFACT_DIR: ${{ github.workspace }}/artifacts/web-factory-ilaios-trial
         run: python apps/website/scripts/web-factory-ilaios-trial.py
 
-      - name: Build generated Web Factory candidate
-        working-directory: artifacts/web-factory-ilaios-trial/source-project
-        run: |
-          npm install --ignore-scripts --no-audit --no-fund
-          npm run typecheck
-          npm run build
-
-      - name: Start generated Web Factory candidate
-        shell: bash
-        run: |
-          set -euo pipefail
-          (cd artifacts/web-factory-ilaios-trial/source-project && npm run start -- -H 127.0.0.1 -p 3200) > /tmp/ilaios-web-factory-trial.log 2>&1 &
-          echo $! > /tmp/ilaios-web-factory-trial.pid
-          for attempt in $(seq 1 60); do
-            if curl --fail --silent --show-error http://127.0.0.1:3200/en >/dev/null; then
-              exit 0
-            fi
-            sleep 1
-          done
-          cat /tmp/ilaios-web-factory-trial.log
-          exit 1
-
-      - name: Capture exact-head generated Web Factory candidate
+      - name: Certify generated Web Factory candidate with live reference analysis and bounded visual refinement
         env:
           PYTHONPATH: ${{ github.workspace }}
+          ILAIOS_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           ILAIOS_WEB_FACTORY_TRIAL_ARTIFACT_DIR: ${{ github.workspace }}/artifacts/web-factory-ilaios-trial
-        run: python apps/website/scripts/web-factory-ilaios-trial.py --capture http://127.0.0.1:3200
-
-      - name: Stop generated Web Factory candidate
-        if: always()
-        shell: bash
-        run: |
-          if [ -f /tmp/ilaios-web-factory-trial.pid ]; then
-            kill "$(cat /tmp/ilaios-web-factory-trial.pid)" || true
-          fi
+        run: python apps/website/scripts/web-factory-ilaios-trial.py --certify
 
       - name: Upload isolated Web Factory trial evidence
         if: always()
