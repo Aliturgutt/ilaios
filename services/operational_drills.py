@@ -6,14 +6,16 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
+import tempfile
 import time
 from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, BinaryIO, cast
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -41,6 +43,7 @@ class _RuntimeProcess:
         self._state_root = state_root
         self._ready_file = ready_file
         self._process: subprocess.Popen[str] | None = None
+        self._stderr_capture: BinaryIO | None = None
         self.base_url = ""
 
     def start(self) -> None:
@@ -52,18 +55,39 @@ class _RuntimeProcess:
             "ILAIOS_READY_FILE": str(self._ready_file),
             "ILAIOS_STATE_ROOT": str(self._state_root),
         }
-        self._process = subprocess.Popen(
-            (sys.executable, "-m", "services.deployment.runtime"),
-            cwd=self._repository,
-            env=environment,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.STDOUT,
-            text=True,
-        )
+        stderr_capture = cast(BinaryIO, tempfile.TemporaryFile(mode="w+b"))
+        self._stderr_capture = stderr_capture
+        try:
+            self._process = subprocess.Popen(
+                (sys.executable, "-m", "services.deployment.runtime"),
+                cwd=self._repository,
+                env=environment,
+                stdout=subprocess.DEVNULL,
+                stderr=stderr_capture,
+                text=True,
+            )
+        except OSError:
+            stderr_capture.close()
+            self._stderr_capture = None
+            raise
         deadline = time.monotonic() + 15
         while time.monotonic() < deadline:
             if self._process.poll() is not None:
-                raise DrillExecutionError("runtime exited before readiness")
+                stderr_capture.seek(0, os.SEEK_END)
+                size = stderr_capture.tell()
+                stderr_capture.seek(max(size - 4096, 0))
+                tail = stderr_capture.read().decode("utf-8", errors="replace")
+                exception_types = re.findall(
+                    r"\b([A-Za-z_][A-Za-z0-9_]*(?:Error|Exception))(?=[:\s])",
+                    tail,
+                )
+                error_type = exception_types[-1] if exception_types else "UNKNOWN"
+                exit_code = self._process.returncode
+                stderr_capture.close()
+                self._stderr_capture = None
+                raise DrillExecutionError(
+                    f"runtime exited before readiness (exit_code={exit_code}, error_type={error_type})"
+                )
             if self._ready_file.is_file():
                 raw: object = json.loads(self._ready_file.read_text())
                 if isinstance(raw, dict) and isinstance(raw.get("port"), int):
@@ -86,6 +110,9 @@ class _RuntimeProcess:
                 process.kill()
                 process.wait(timeout=5)
         self._process = None
+        if self._stderr_capture is not None:
+            self._stderr_capture.close()
+            self._stderr_capture = None
 
 
 def execute_operational_drills(
